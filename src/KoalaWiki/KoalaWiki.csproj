@@ -28,16 +28,16 @@
         </PackageReference>
         <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.5" />
         <PackageReference Include="Microsoft.KernelMemory" Version="0.98.250508.3" />
-        <PackageReference Include="Microsoft.SemanticKernel" Version="1.53.1" />
-        <PackageReference Include="Microsoft.SemanticKernel.Connectors.AzureOpenAI" Version="1.53.1" />
-        <PackageReference Include="Microsoft.SemanticKernel.Connectors.OpenAI" Version="1.53.1" />
-        <PackageReference Include="ModelContextProtocol" Version="0.2.0-preview.1" />
-        <PackageReference Include="ModelContextProtocol.AspNetCore" Version="0.2.0-preview.1" />
+        <PackageReference Include="Microsoft.SemanticKernel" Version="1.54.0" />
+        <PackageReference Include="Microsoft.SemanticKernel.Connectors.AzureOpenAI" Version="1.54.0" />
+        <PackageReference Include="Microsoft.SemanticKernel.Connectors.OpenAI" Version="1.54.0" />
+        <PackageReference Include="ModelContextProtocol" Version="0.2.0-preview.2" />
+        <PackageReference Include="ModelContextProtocol.AspNetCore" Version="0.2.0-preview.2" />
         <PackageReference Include="ModelContextProtocolServer.Sse" Version="0.0.1-preview-06" />
         <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
         <PackageReference Include="Octokit" Version="14.0.0" />
         <PackageReference Include="Polly" Version="8.5.2" />
-        <PackageReference Include="Scalar.AspNetCore" Version="2.3.1" />
+        <PackageReference Include="Scalar.AspNetCore" Version="2.4.7" />
         <PackageReference Include="Serilog" Version="4.2.0" />
         <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
         <PackageReference Include="Serilog.Extensions.Logging" Version="9.0.1" />
@@ -82,6 +82,9 @@
       <None Update="plugins\CodeAnalysis\FunctionPrompt\skprompt.txt">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
+      <None Update="Prompts\Warehouse\RepositoryClassification.md">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
     </ItemGroup>
 
     <ItemGroup>
@@ -93,9 +96,6 @@
 
     <ItemGroup>
       <Compile Update="KoalaWarehouse\DocumentsService.Commit.cs">
-        <DependentUpon>DocumentsService.cs</DependentUpon>
-      </Compile>
-      <Compile Update="KoalaWarehouse\DocumentsService.Catalogue.cs">
         <DependentUpon>DocumentsService.cs</DependentUpon>
       </Compile>
       <Compile Update="WarehouseProcessing\WarehouseProcessingTask.Analyse.cs">

@@ -49,7 +49,7 @@ public class WarehouseTask(
                         info.BranchName);
 
                     await dbContext!.Warehouses.Where(x => x.Id == value.Id)
-                        .ExecuteUpdateAsync(x => x.SetProperty(a => a.Name, info.RepositoryName)
+                        .ExecuteUpdateAsync(x => x.SetProperty(a =>  a.Name, info.RepositoryName)
                             .SetProperty(x => x.Branch, info.BranchName)
                             .SetProperty(x => x.Version, info.Version)
                             .SetProperty(x => x.Status, WarehouseStatus.Processing)

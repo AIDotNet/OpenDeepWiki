@@ -1,21 +1,42 @@
 ﻿using System.Text;
 using System.Text.RegularExpressions;
 using KoalaWiki.Entities;
-using KoalaWiki.Options;
+using KoalaWiki.Prompts;
+using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 using Newtonsoft.Json;
-using OpenAI.Chat;
-using Serilog;
 
-namespace KoalaWiki.KoalaWarehouse;
+namespace KoalaWiki.KoalaWarehouse.GenerateThinkCatalogue;
 
-public partial class DocumentsService
+public class GenerateThinkCatalogueService
 {
-    public async Task<(DocumentResultCatalogue catalogue, Exception? exception)> GenerateThinkCatalogue(string path,
+    public static async Task<(DocumentResultCatalogue catalogue, Exception? exception)> GenerateThinkCatalogue(string path,
         string catalogue, string gitRepository,
-        Warehouse warehouse)
+        Warehouse warehouse, WarehouseClassify.ClassifyType? classify)
     {
+        string prompt = string.Empty;
+        if (classify.HasValue)
+        {
+            prompt = await PromptContext.Warehouse(nameof(PromptConstant.Warehouse.Overview) + classify,
+                new KernelArguments()
+                {
+                    ["code_files"] = catalogue,
+                    ["git_repository_url"] = gitRepository.Replace(".git", ""),
+                    ["repository_name"] = warehouse.Name
+                });
+        }
+        else
+        {
+            prompt = await PromptContext.Warehouse(nameof(PromptConstant.Warehouse.Overview),
+                new KernelArguments()
+                {
+                    ["code_files"] = catalogue,
+                    ["git_repository_url"] = gitRepository.Replace(".git", ""),
+                    ["repository_name"] = warehouse.Name
+                });
+        }
+
         DocumentResultCatalogue? result = null;
 
         var retryCount = 0;
@@ -33,10 +54,7 @@ public partial class DocumentsService
 
                 StringBuilder str = new StringBuilder();
                 var history = new ChatHistory();
-                history.AddUserMessage(Prompt.GenerateCatalogue
-                    .Replace("{{code_files}}", catalogue)
-                    .Replace("{{git_repository_url}}", gitRepository)
-                    .Replace("{{repository_name}}", warehouse.Name));
+                history.AddUserMessage(prompt);
 
                 await foreach (var item in chat.GetStreamingChatMessageContentsAsync(history,
                                    new OpenAIPromptExecutionSettings()
@@ -44,7 +62,7 @@ public partial class DocumentsService
                                        ToolCallBehavior = ToolCallBehavior.AutoInvokeKernelFunctions,
                                        Temperature = 0.3,
                                        // 这里使用分析模型的最大token
-                                       MaxTokens = GetMaxTokens(OpenAIOptions.AnalysisModel)
+                                       MaxTokens = DocumentsService.GetMaxTokens(OpenAIOptions.AnalysisModel)
                                    }, analysisModel))
                 {
                     // 将推理内容输出
@@ -52,7 +70,7 @@ public partial class DocumentsService
                 }
 
                 result =
-                    await GenerateCatalogue(str.ToString(), path, gitRepository, catalogue, warehouse);
+                    await GenerateCatalogue(str.ToString(), path, gitRepository, catalogue, warehouse,classify);
 
                 break;
             }
@@ -76,11 +94,37 @@ public partial class DocumentsService
         return (result, exception);
     }
 
-    public async Task<DocumentResultCatalogue> GenerateCatalogue(
-        string think,
+
+    public static async Task<DocumentResultCatalogue> GenerateCatalogue(string think,
         string path, string gitRepository, string catalogue,
-        Warehouse warehouse)
+        Warehouse warehouse, WarehouseClassify.ClassifyType? classify)
     {
+        
+        string prompt = string.Empty;
+        if (classify.HasValue)
+        {
+            prompt = await PromptContext.Warehouse(nameof(PromptConstant.Warehouse.Overview) + classify,
+                new KernelArguments()
+                {
+                    ["code_files"] = catalogue,
+                    ["think"] = think,
+                    ["git_repository_url"] = gitRepository.Replace(".git", ""),
+                    ["repository_name"] = warehouse.Name
+                });
+        }
+        else
+        {
+            prompt = await PromptContext.Warehouse(nameof(PromptConstant.Warehouse.Overview),
+                new KernelArguments()
+                {
+                    ["code_files"] = catalogue,
+                    ["think"] = think,
+                    ["git_repository_url"] = gitRepository.Replace(".git", ""),
+                    ["repository_name"] = warehouse.Name
+                });
+        }
+
+        
         DocumentResultCatalogue? result = null;
 
         var retryCount = 0;
@@ -98,18 +142,14 @@ public partial class DocumentsService
 
                 StringBuilder str = new StringBuilder();
                 var history = new ChatHistory();
-                history.AddUserMessage(Prompt.AnalyzeCatalogue
-                    .Replace("{{code_files}}", catalogue)
-                    .Replace("{{think}}", think)
-                    .Replace("{{git_repository_url}}", gitRepository)
-                    .Replace("{{repository_name}}", warehouse.Name));
+                history.AddUserMessage(prompt);
 
                 await foreach (var item in chat.GetStreamingChatMessageContentsAsync(history,
                                    new OpenAIPromptExecutionSettings()
                                    {
                                        ToolCallBehavior = ToolCallBehavior.AutoInvokeKernelFunctions,
                                        Temperature = 0.5,
-                                       MaxTokens = GetMaxTokens(OpenAIOptions.AnalysisModel)
+                                       MaxTokens = DocumentsService.GetMaxTokens(OpenAIOptions.AnalysisModel)
                                    }, analysisModel))
                 {
                     str.Append(item);
