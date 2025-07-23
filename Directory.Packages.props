@@ -33,6 +33,7 @@
   <ItemGroup>
     <!-- Web API 和 框架包 -->
     <PackageVersion Include="AngleSharp" Version="1.3.0" />
+    <PackageVersion Include="BCrypt.Net-Next" Version="4.0.3" />
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="9.0.6" />
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.6" />
     <PackageVersion Include="MySql.EntityFrameworkCore" Version="9.0.3" />

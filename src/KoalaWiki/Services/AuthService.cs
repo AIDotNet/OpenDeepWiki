@@ -25,7 +25,8 @@ public class AuthService(
     IMapper mapper,
     ILogger<AuthService> logger,
     IConfiguration configuration,
-    IHttpContextAccessor httpContextAccessor) : FastApi
+    IHttpContextAccessor httpContextAccessor,
+    IPasswordService passwordService) : FastApi
 {
     /// <summary>
     /// 用户登录
@@ -49,9 +50,32 @@ public class AuthService(
             }
 
             // 验证密码
-            if (password != user.Password)
+            bool passwordValid = false;
+            bool needsPasswordMigration = false;
+            
+            // 检查是否为明文密码（用于迁移现有数据）
+            if (passwordService.IsPlainTextPassword(user.Password))
+            {
+                // 明文密码比较
+                passwordValid = password == user.Password;
+                needsPasswordMigration = passwordValid; // 如果密码正确，需要迁移到哈希
+            }
+            else
+            {
+                // 哈希密码验证
+                passwordValid = passwordService.VerifyPassword(password, user.Password);
+            }
+            
+            if (!passwordValid)
             {
                 return new LoginDto(false, string.Empty, null, null, "密码错误");
+            }
+            
+            // 如果需要迁移密码，将明文密码更新为哈希密码
+            if (needsPasswordMigration)
+            {
+                user.Password = passwordService.HashPassword(password);
+                logger.LogInformation("用户 {UserId} 的密码已从明文迁移到哈希", user.Id);
             }
 
             // 更新登录信息
@@ -149,7 +173,7 @@ public class AuthService(
                 Id = Guid.NewGuid().ToString("N"),
                 Name = input.UserName,
                 Email = input.Email,
-                Password = input.Password, // 随机密码
+                Password = passwordService.HashPassword(input.Password), // 哈希密码
                 CreatedAt = DateTime.UtcNow,
             };
 
@@ -241,7 +265,7 @@ public class AuthService(
                     Id = Guid.NewGuid().ToString("N"),
                     Name = githubUser.Login,
                     Email = githubUser.Email ?? string.Empty,
-                    Password = Guid.NewGuid().ToString(), // 随机密码
+                    Password = passwordService.HashPassword(Guid.NewGuid().ToString()), // 哈希随机密码
                     Avatar = githubUser.AvatarUrl,
                     CreatedAt = DateTime.UtcNow,
                 };

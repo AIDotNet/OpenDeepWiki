@@ -1,5 +1,6 @@
 ﻿using KoalaWiki.Core.DataAccess;
 using KoalaWiki.Domains.Users;
+using KoalaWiki.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace KoalaWiki.DataMigration;
@@ -13,15 +14,16 @@ public class DataMigrationTask(IServiceProvider service) : BackgroundService
         await using var scope = service.CreateAsyncScope();
 
         var dbContext = scope.ServiceProvider.GetService<IKoalaWikiContext>();
+        var passwordService = scope.ServiceProvider.GetService<IPasswordService>();
 
 
-        await InitializeUsersAsync(dbContext, stoppingToken);
+        await InitializeUsersAsync(dbContext, passwordService, stoppingToken);
     }
 
     /// <summary>
     /// 用户初始化任务
     /// </summary>
-    private async Task InitializeUsersAsync(IKoalaWikiContext dbContext, CancellationToken stoppingToken)
+    private async Task InitializeUsersAsync(IKoalaWikiContext dbContext, IPasswordService passwordService, CancellationToken stoppingToken)
     {
         // 判断是否存在账号
         if (await dbContext.UserInRoles.AnyAsync(cancellationToken: stoppingToken))
@@ -88,7 +90,7 @@ public class DataMigrationTask(IServiceProvider service) : BackgroundService
         {
             Id = Guid.NewGuid().ToString("N"),
             Name = "admin",
-            Password = "admin",
+            Password = passwordService?.HashPassword("admin") ?? "admin", // 使用哈希密码，如果服务不可用则回退到明文
             Email = "239573049@qq.com",
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,

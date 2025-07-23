@@ -21,7 +21,8 @@ namespace KoalaWiki.Services;
 public class UserService(
     IKoalaWikiContext dbContext,
     ILogger<UserService> logger,
-    IUserContext userContext) : FastApi
+    IUserContext userContext,
+    IPasswordService passwordService) : FastApi
 {
     /// <summary>
     /// 获取用户列表
@@ -217,9 +218,30 @@ public class UserService(
                 throw new UnauthorizedAccessException();
             }
 
-            // 这里应该使用密码哈希验证，暂时使用简单比较
-            // 在实际项目中，应该使用 BCrypt 或其他安全的密码哈希算法
-            var isValid = user.Password == verifyPasswordDto.Password;
+            // 验证密码
+            bool isValid = false;
+            
+            // 检查是否为明文密码（用于迁移现有数据）
+            if (passwordService.IsPlainTextPassword(user.Password))
+            {
+                // 明文密码比较
+                isValid = user.Password == verifyPasswordDto.Password;
+                
+                // 如果密码正确，将明文密码迁移为哈希密码
+                if (isValid)
+                {
+                    user.Password = passwordService.HashPassword(verifyPasswordDto.Password);
+                    user.UpdatedAt = DateTime.UtcNow;
+                    dbContext.Users.Update(user);
+                    await dbContext.SaveChangesAsync();
+                    logger.LogInformation("用户 {UserId} 的密码已从明文迁移到哈希", user.Id);
+                }
+            }
+            else
+            {
+                // 哈希密码验证
+                isValid = passwordService.VerifyPassword(verifyPasswordDto.Password, user.Password);
+            }
 
             return ResultDto<bool>.Success(isValid);
         }
@@ -254,15 +276,27 @@ public class UserService(
             }
 
             // 验证当前密码
-            // 这���应该使用密码哈希验证，暂时使用简单比较
-            // 在实际项目中，应该使用 BCrypt 或其他安全的密码哈希算法
-            if (existingUser.Password != changePasswordDto.CurrentPassword)
+            bool currentPasswordValid = false;
+            
+            // 检查是否为明文密码（用于迁移现有数据）
+            if (passwordService.IsPlainTextPassword(existingUser.Password))
+            {
+                // 明文密码比较
+                currentPasswordValid = existingUser.Password == changePasswordDto.CurrentPassword;
+            }
+            else
+            {
+                // 哈希密码验证
+                currentPasswordValid = passwordService.VerifyPassword(changePasswordDto.CurrentPassword, existingUser.Password);
+            }
+            
+            if (!currentPasswordValid)
             {
                 return ResultDto<bool>.Error("当前密码不正确");
             }
 
-            // 更新密码
-            existingUser.Password = changePasswordDto.NewPassword;
+            // 更新密码（使用哈希）
+            existingUser.Password = passwordService.HashPassword(changePasswordDto.NewPassword);
             existingUser.UpdatedAt = DateTime.UtcNow;
 
             // 保存更改
@@ -403,7 +437,7 @@ public class UserService(
                 Id = Guid.NewGuid().ToString("N"),
                 Name = createUserDto.Name,
                 Email = createUserDto.Email,
-                Password = createUserDto.Password,
+                Password = passwordService.HashPassword(createUserDto.Password), // 哈希密码
                 Avatar = createUserDto.Avatar ?? string.Empty,
                 CreatedAt = DateTime.UtcNow
             };
@@ -479,10 +513,10 @@ public class UserService(
             existingUser.Avatar = updateUserDto.Avatar ?? existingUser.Avatar;
             existingUser.UpdatedAt = DateTime.UtcNow;
 
-            // 如果提供了新密码，则更新密码
+            // 如果提供了新密码，则更新密码（使用哈希）
             if (!string.IsNullOrEmpty(updateUserDto.Password))
             {
-                existingUser.Password = updateUserDto.Password;
+                existingUser.Password = passwordService.HashPassword(updateUserDto.Password);
             }
 
             // 保存更改

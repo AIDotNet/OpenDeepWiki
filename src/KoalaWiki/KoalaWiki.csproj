@@ -9,6 +9,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="BCrypt.Net-Next" />
         <PackageReference Include="FastService" />
         <PackageReference Include="FastService.Analyzers" />
         <PackageReference Include="LibGit2Sharp" />

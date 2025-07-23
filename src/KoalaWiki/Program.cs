@@ -54,6 +54,7 @@ builder.Services.AddDocumentProcessingPipeline();
 
 builder.Services.AddTransient<GlobalMiddleware>();
 builder.Services.AddScoped<IUserContext, UserContext>();
+builder.Services.AddScoped<IPasswordService, PasswordService>();
 builder.Services.AddMemoryCache();
 
 builder.Services.AddHostedService<StatisticsBackgroundService>();
