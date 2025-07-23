@@ -110,4 +110,51 @@ public class PasswordServiceTests
         // Assert
         Assert.False(result);
     }
+
+    [Fact]
+    public void IsPlainTextPassword_EmptyOrNull_ReturnsTrue()
+    {
+        // Act & Assert
+        Assert.True(_passwordService.IsPlainTextPassword(""));
+        Assert.True(_passwordService.IsPlainTextPassword(null));
+    }
+
+    [Theory]
+    [InlineData("$2a$12$example")]
+    [InlineData("$2b$12$example")]
+    [InlineData("$2x$12$example")]
+    [InlineData("$2y$12$example")]
+    public void IsPlainTextPassword_ValidBCryptFormats_ReturnsFalse(string hashedPassword)
+    {
+        // Act
+        var result = _passwordService.IsPlainTextPassword(hashedPassword);
+
+        // Assert
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void MigrationScenario_PlaintextToHashedPassword_WorksCorrectly()
+    {
+        // Arrange - 模拟现有明文密码
+        var originalPlaintextPassword = "admin";
+        
+        // Act - 检查是否为明文
+        var isPlaintext = _passwordService.IsPlainTextPassword(originalPlaintextPassword);
+        
+        // Act - 迁移：将明文密码哈希化
+        var hashedPassword = _passwordService.HashPassword(originalPlaintextPassword);
+        
+        // Act - 验证迁移后的密码仍然可以正确验证
+        var verificationResult = _passwordService.VerifyPassword(originalPlaintextPassword, hashedPassword);
+        
+        // Act - 确认迁移后的密码不再是明文
+        var isStillPlaintext = _passwordService.IsPlainTextPassword(hashedPassword);
+
+        // Assert
+        Assert.True(isPlaintext, "原始密码应该被识别为明文");
+        Assert.NotEqual(originalPlaintextPassword, hashedPassword, "哈希后的密码不应该等于原始明文密码");
+        Assert.True(verificationResult, "迁移后的密码应该能够正确验证");
+        Assert.False(isStillPlaintext, "迁移后的密码不应该再被识别为明文");
+    }
 }
