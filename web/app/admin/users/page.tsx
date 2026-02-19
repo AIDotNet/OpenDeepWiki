@@ -180,7 +180,11 @@ export default function AdminUsersPage() {
   };
 
   const openRolesDialog = (user: AdminUser) => {
-    setSelectedRoles(user.roles || []);
+    // Map role names to IDs since the API expects IDs
+    const roleIds = (user.roles || []).map(
+      (name) => roles.find((r) => r.name === name)?.id
+    ).filter(Boolean) as string[];
+    setSelectedRoles(roleIds);
     setShowRolesDialog(user);
   };
 
@@ -439,12 +443,12 @@ export default function AdminUsersPage() {
               <div key={role.id} className="flex items-center gap-2">
                 <Checkbox
                   id={role.id}
-                  checked={selectedRoles.includes(role.name)}
+                  checked={selectedRoles.includes(role.id)}
                   onCheckedChange={(checked) => {
                     if (checked) {
-                      setSelectedRoles([...selectedRoles, role.name]);
+                      setSelectedRoles([...selectedRoles, role.id]);
                     } else {
-                      setSelectedRoles(selectedRoles.filter((r) => r !== role.name));
+                      setSelectedRoles(selectedRoles.filter((r) => r !== role.id));
                     }
                   }}
                 />
