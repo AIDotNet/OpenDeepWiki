@@ -82,7 +82,7 @@ public static class DbInitializer
             {
                 Id = Guid.NewGuid().ToString(),
                 Name = "Admin",
-                Description = "系统管理员",
+                Description = "System Administrator",
                 IsActive = true,
                 IsSystemRole = true,
                 CreatedAt = DateTime.UtcNow
@@ -91,7 +91,7 @@ public static class DbInitializer
             {
                 Id = Guid.NewGuid().ToString(),
                 Name = "User",
-                Description = "普通用户",
+                Description = "Regular User",
                 IsActive = true,
                 IsSystemRole = true,
                 CreatedAt = DateTime.UtcNow
