@@ -20,6 +20,7 @@ public static class AdminEndpoints
         adminGroup.MapAdminToolsEndpoints();
         adminGroup.MapAdminSettingsEndpoints();
         adminGroup.MapAdminChatAssistantEndpoints();
+        adminGroup.MapAdminGitHubImportEndpoints();
 
         return app;
     }

@@ -23,10 +23,28 @@ public static class SerilogConfiguration
             logDirectory = Path.Combine(AppContext.BaseDirectory, logDirectory);
         }
 
-        // Ensure log directory exists
-        if (!Directory.Exists(logDirectory))
+        // Ensure log directory exists - fall back to /data/logs if default is not writable
+        var canWriteLogs = true;
+        try
         {
-            Directory.CreateDirectory(logDirectory);
+            if (!Directory.Exists(logDirectory))
+            {
+                Directory.CreateDirectory(logDirectory);
+            }
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Container filesystem may be read-only; try /data/logs if /data is mounted
+            if (Directory.Exists("/data"))
+            {
+                logDirectory = "/data/logs";
+                if (!Directory.Exists(logDirectory))
+                    Directory.CreateDirectory(logDirectory);
+            }
+            else
+            {
+                canWriteLogs = false;
+            }
         }
 
         var minimumLevel = Enum.TryParse<LogEventLevel>(loggingOptions.MinimumLevel, true, out var level)
@@ -63,15 +81,18 @@ public static class SerilogConfiguration
                 restrictedToMinimumLevel: minimumLevel,
                 outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff} {Level:u3}] {SourceContext}{NewLine}    {Message:lj}{NewLine}{Exception}");
 
-            // File sink - Error logs only, daily rolling
-            var errorLogPath = Path.Combine(logDirectory, "error-.log");
-            configuration.WriteTo.File(
-                errorLogPath,
-                restrictedToMinimumLevel: LogEventLevel.Error,
-                rollingInterval: RollingInterval.Day,
-                retainedFileCountLimit: loggingOptions.RetainedFileCountLimit,
-                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] [{SourceContext}] {Message:lj}{NewLine}{Properties:j}{NewLine}{Exception}",
-                shared: true);
+            // File sink - Error logs only, daily rolling (skip if log dir is not writable)
+            if (canWriteLogs)
+            {
+                var errorLogPath = Path.Combine(logDirectory, "error-.log");
+                configuration.WriteTo.File(
+                    errorLogPath,
+                    restrictedToMinimumLevel: LogEventLevel.Error,
+                    rollingInterval: RollingInterval.Day,
+                    retainedFileCountLimit: loggingOptions.RetainedFileCountLimit,
+                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] [{SourceContext}] {Message:lj}{NewLine}{Properties:j}{NewLine}{Exception}",
+                    shared: true);
+            }
         });
 
         return builder;

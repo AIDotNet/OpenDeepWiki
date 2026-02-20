@@ -1,8 +1,12 @@
 using System.Diagnostics;
 using LibGit2Sharp;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using OpenDeepWiki.EFCore;
 using OpenDeepWiki.Entities;
+using OpenDeepWiki.Services.GitHub;
 using GitRepository = LibGit2Sharp.Repository;
 
 namespace OpenDeepWiki.Services.Repositories;
@@ -43,13 +47,22 @@ public class RepositoryAnalyzer : IRepositoryAnalyzer
 {
     private readonly RepositoryAnalyzerOptions _options;
     private readonly ILogger<RepositoryAnalyzer> _logger;
+    private readonly IGitHubAppService _gitHubAppService;
+    private readonly IContext _context;
+    private readonly IConfiguration _configuration;
 
     public RepositoryAnalyzer(
         IOptions<RepositoryAnalyzerOptions> options,
-        ILogger<RepositoryAnalyzer> logger)
+        ILogger<RepositoryAnalyzer> logger,
+        IGitHubAppService gitHubAppService,
+        IContext context,
+        IConfiguration configuration)
     {
         _options = options.Value;
         _logger = logger;
+        _gitHubAppService = gitHubAppService;
+        _context = context;
+        _configuration = configuration;
 
         _logger.LogDebug(
             "RepositoryAnalyzer initialized. RepositoriesDirectory: {RepoDir}, CleanupAfterProcessing: {Cleanup}, MaxRetryAttempts: {MaxRetry}",
@@ -87,8 +100,8 @@ public class RepositoryAnalyzer : IRepositoryAnalyzer
             Directory.CreateDirectory(parentDir);
         }
 
-        // Build credentials if provided
-        var credentials = BuildCredentials(repository);
+        // Build credentials: per-repo auth > GitHub App installation token > global GITHUB_TOKEN
+        var credentials = await BuildCredentialsAsync(repository, cancellationToken);
         var hasCredentials = credentials != null;
         _logger.LogDebug("Credentials configured: {HasCredentials}", hasCredentials);
 
@@ -248,21 +261,65 @@ public class RepositoryAnalyzer : IRepositoryAnalyzer
     }
 
     /// <summary>
-    /// Builds LibGit2Sharp credentials from repository authentication info.
+    /// Builds LibGit2Sharp credentials with fallback chain:
+    /// 1. Per-repo AuthAccount/AuthPassword (existing behavior)
+    /// 2. GitHub App installation token (if org has an installation)
+    /// 3. Global GITHUB_TOKEN environment variable
     /// </summary>
-    private static Credentials? BuildCredentials(Entities.Repository repository)
+    private async Task<Credentials?> BuildCredentialsAsync(
+        Entities.Repository repository,
+        CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(repository.AuthAccount) && 
-            string.IsNullOrWhiteSpace(repository.AuthPassword))
+        // Priority 1: Per-repo credentials
+        if (!string.IsNullOrWhiteSpace(repository.AuthAccount) ||
+            !string.IsNullOrWhiteSpace(repository.AuthPassword))
         {
-            return null;
+            _logger.LogDebug("Using per-repo credentials for {Org}/{Repo}", repository.OrgName, repository.RepoName);
+            return new UsernamePasswordCredentials
+            {
+                Username = repository.AuthAccount ?? string.Empty,
+                Password = repository.AuthPassword ?? string.Empty
+            };
         }
 
-        return new UsernamePasswordCredentials
+        // Priority 2: GitHub App installation token
+        if (_gitHubAppService.IsConfigured && !string.IsNullOrWhiteSpace(repository.OrgName))
         {
-            Username = repository.AuthAccount ?? string.Empty,
-            Password = repository.AuthPassword ?? string.Empty
-        };
+            try
+            {
+                var installation = await _context.GitHubAppInstallations
+                    .FirstOrDefaultAsync(i => i.AccountLogin == repository.OrgName && !i.IsDeleted, cancellationToken);
+
+                if (installation != null)
+                {
+                    var token = await _gitHubAppService.GetInstallationTokenAsync(installation.InstallationId, cancellationToken);
+                    _logger.LogDebug("Using GitHub App installation token for {Org}/{Repo}", repository.OrgName, repository.RepoName);
+                    return new UsernamePasswordCredentials
+                    {
+                        Username = "x-access-token",
+                        Password = token
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to get GitHub App installation token for {Org}/{Repo}, falling back", repository.OrgName, repository.RepoName);
+            }
+        }
+
+        // Priority 3: Global GITHUB_TOKEN
+        var globalToken = _configuration["GitHub:Token"];
+        if (!string.IsNullOrWhiteSpace(globalToken))
+        {
+            _logger.LogDebug("Using global GitHub token for {Org}/{Repo}", repository.OrgName, repository.RepoName);
+            return new UsernamePasswordCredentials
+            {
+                Username = "x-access-token",
+                Password = globalToken
+            };
+        }
+
+        return null;
     }
 
 

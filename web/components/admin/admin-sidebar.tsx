@@ -15,6 +15,7 @@ import {
   ChevronLeft,
   Building2,
   MessageCircle,
+  Github,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +32,11 @@ const getNavItems = (t: (key: string) => string) => [
     href: "/admin/repositories",
     icon: GitBranch,
     label: t('common.admin.repositories'),
+  },
+  {
+    href: "/admin/github-import",
+    icon: Github,
+    label: t('admin.githubImport.title'),
   },
   {
     label: t('common.admin.tools'),

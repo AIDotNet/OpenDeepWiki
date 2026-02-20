@@ -1009,3 +1009,113 @@ export async function updateChatAssistantConfig(
   });
   return result.data;
 }
+
+// ==================== GitHub Import API ====================
+
+export interface GitHubInstallation {
+  id: string;
+  installationId: number;
+  accountLogin: string;
+  accountType: string;
+  accountId: number;
+  avatarUrl?: string;
+  departmentId?: string;
+  departmentName?: string;
+  createdAt: string;
+}
+
+export interface GitHubStatus {
+  configured: boolean;
+  appName?: string;
+  installations: GitHubInstallation[];
+}
+
+export interface GitHubRepo {
+  id: number;
+  fullName: string;
+  name: string;
+  owner: string;
+  private: boolean;
+  description?: string;
+  language?: string;
+  stargazersCount: number;
+  forksCount: number;
+  defaultBranch: string;
+  cloneUrl: string;
+  htmlUrl: string;
+  alreadyImported: boolean;
+}
+
+export interface GitHubRepoList {
+  totalCount: number;
+  repositories: GitHubRepo[];
+  page: number;
+  perPage: number;
+}
+
+export interface BatchImportResult {
+  totalRequested: number;
+  imported: number;
+  skipped: number;
+  skippedRepos: string[];
+  importedRepos: string[];
+}
+
+export async function getGitHubStatus(): Promise<GitHubStatus> {
+  const url = buildApiUrl("/api/admin/github/status");
+  const result = await fetchWithAuth(url);
+  return result.data;
+}
+
+export async function getGitHubInstallUrl(): Promise<{ url: string; appName: string }> {
+  const url = buildApiUrl("/api/admin/github/install-url");
+  const result = await fetchWithAuth(url);
+  return result.data;
+}
+
+export async function storeGitHubInstallation(installationId: number): Promise<GitHubInstallation> {
+  const url = buildApiUrl("/api/admin/github/installations");
+  const result = await fetchWithAuth(url, {
+    method: "POST",
+    body: JSON.stringify({ installationId }),
+  });
+  return result.data;
+}
+
+export async function getInstallationRepos(
+  installationId: number,
+  page: number = 1,
+  perPage: number = 30
+): Promise<GitHubRepoList> {
+  const params = new URLSearchParams({
+    page: page.toString(),
+    perPage: perPage.toString(),
+  });
+  const url = buildApiUrl(`/api/admin/github/installations/${installationId}/repos?${params}`);
+  const result = await fetchWithAuth(url);
+  return result.data;
+}
+
+export async function batchImportRepos(request: {
+  installationId: number;
+  departmentId: string;
+  languageCode: string;
+  repos: {
+    fullName: string;
+    name: string;
+    owner: string;
+    cloneUrl: string;
+    defaultBranch: string;
+    private: boolean;
+    language?: string;
+    stargazersCount: number;
+    forksCount: number;
+  }[];
+}): Promise<BatchImportResult> {
+  const url = buildApiUrl("/api/admin/github/batch-import");
+  const result = await fetchWithAuth(url, {
+    method: "POST",
+    body: JSON.stringify(request),
+  });
+  return result.data;
+}

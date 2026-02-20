@@ -44,6 +44,7 @@ public interface IContext : IDisposable
     DbSet<ChatLog> ChatLogs { get; set; }
     DbSet<TranslationTask> TranslationTasks { get; set; }
     DbSet<IncrementalUpdateTask> IncrementalUpdateTasks { get; set; }
+    DbSet<GitHubAppInstallation> GitHubAppInstallations { get; set; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
@@ -91,6 +92,7 @@ public abstract class MasterDbContext : DbContext, IContext
     public DbSet<ChatLog> ChatLogs { get; set; } = null!;
     public DbSet<TranslationTask> TranslationTasks { get; set; } = null!;
     public DbSet<IncrementalUpdateTask> IncrementalUpdateTasks { get; set; } = null!;
+    public DbSet<GitHubAppInstallation> GitHubAppInstallations { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -277,5 +279,17 @@ public abstract class MasterDbContext : DbContext, IContext
         // IncrementalUpdateTask 优先级和创建时间索引（用于按优先级排序处理）
         modelBuilder.Entity<IncrementalUpdateTask>()
             .HasIndex(t => new { t.Priority, t.CreatedAt });
+
+        // GitHubAppInstallation unique index on InstallationId
+        modelBuilder.Entity<GitHubAppInstallation>()
+            .HasIndex(g => g.InstallationId)
+            .IsUnique();
+
+        // GitHubAppInstallation optional FK to Department
+        modelBuilder.Entity<GitHubAppInstallation>()
+            .HasOne(g => g.Department)
+            .WithMany()
+            .HasForeignKey(g => g.DepartmentId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }
