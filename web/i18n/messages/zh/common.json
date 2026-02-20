@@ -14,6 +14,7 @@
   "success": "成功",
   "user": "用户",
   "backToHome": "返回首页",
+  "openMenu": "打开菜单",
   "submitting": "提交中...",
   "submitFailed": "提交失败",
   "pleaseLogin": "请先登录",

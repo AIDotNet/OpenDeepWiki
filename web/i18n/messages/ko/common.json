@@ -16,6 +16,7 @@
   "success": "성공",
   "user": "사용자",
   "backToHome": "홈으로 돌아가기",
+  "openMenu": "메뉴 열기",
   "submitting": "제출 중...",
   "submitFailed": "제출 실패",
   "pleaseLogin": "먼저 로그인해 주세요",
