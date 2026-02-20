@@ -65,6 +65,12 @@ public static class ChatEndpoints
             .WithSummary("微信客服消息 Webhook")
             .AllowAnonymous();
         
+        // Slack Webhook
+        app.MapPost("/slack", HandleSlackWebhookAsync)
+            .WithName("SlackWebhook")
+            .WithSummary("Slack message Webhook")
+            .AllowAnonymous();
+
         // 通用 Webhook（根据平台参数路由）
         app.MapPost("/{platform}", HandleGenericWebhookAsync)
             .WithName("GenericWebhook")
@@ -194,6 +200,17 @@ public static class ChatEndpoints
         return await HandlePlatformWebhookAsync("wechat", httpContext, messageRouter, logger);
     }
     
+    /// <summary>
+    /// Handle Slack Webhook
+    /// </summary>
+    private static async Task<IResult> HandleSlackWebhookAsync(
+        HttpContext httpContext,
+        [FromServices] IMessageRouter messageRouter,
+        [FromServices] ILogger<ChatEndpointsLogger> logger)
+    {
+        return await HandlePlatformWebhookAsync("slack", httpContext, messageRouter, logger);
+    }
+
     /// <summary>
     /// 处理通用 Webhook
     /// </summary>

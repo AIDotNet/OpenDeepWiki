@@ -1,37 +1,37 @@
 namespace OpenDeepWiki.Chat.Execution;
 
 /// <summary>
-/// Agent 执行器配置选项
+/// Agent executor configuration options.
 /// </summary>
 public class AgentExecutorOptions
 {
     /// <summary>
-    /// 默认模型名称
+    /// Default model name.
     /// </summary>
     public string DefaultModel { get; set; } = "gpt-4o-mini";
-    
+
     /// <summary>
-    /// 执行超时时间（秒）
+    /// Execution timeout in seconds.
     /// </summary>
     public int TimeoutSeconds { get; set; } = 120;
-    
+
     /// <summary>
-    /// 最大重试次数
+    /// Maximum retry count.
     /// </summary>
     public int MaxRetries { get; set; } = 3;
-    
+
     /// <summary>
-    /// 默认系统提示
+    /// Default system prompt (used as fallback if DeepWiki prompt fails).
     /// </summary>
     public string DefaultSystemPrompt { get; set; } = "You are a helpful assistant.";
-    
+
     /// <summary>
-    /// 是否启用流式响应
+    /// Whether to enable streaming responses.
     /// </summary>
     public bool EnableStreaming { get; set; } = true;
-    
+
     /// <summary>
-    /// 友好错误消息模板
+    /// Friendly error message shown to users when an error occurs.
     /// </summary>
-    public string FriendlyErrorMessage { get; set; } = "抱歉，处理您的消息时遇到了问题，请稍后重试。";
+    public string FriendlyErrorMessage { get; set; } = "Sorry, an error occurred while processing your message. Please try again later.";
 }

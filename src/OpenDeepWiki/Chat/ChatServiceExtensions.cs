@@ -7,6 +7,7 @@ using OpenDeepWiki.Chat.Processing;
 using OpenDeepWiki.Chat.Providers;
 using OpenDeepWiki.Chat.Providers.Feishu;
 using OpenDeepWiki.Chat.Providers.QQ;
+using OpenDeepWiki.Chat.Providers.Slack;
 using OpenDeepWiki.Chat.Providers.WeChat;
 using OpenDeepWiki.Chat.Queue;
 using OpenDeepWiki.Chat.Routing;
@@ -70,6 +71,7 @@ public static class ChatServiceExtensions
         services.Configure<FeishuProviderOptions>(configuration.GetSection("Chat:Providers:Feishu"));
         services.Configure<QQProviderOptions>(configuration.GetSection("Chat:Providers:QQ"));
         services.Configure<WeChatProviderOptions>(configuration.GetSection("Chat:Providers:WeChat"));
+        services.Configure<SlackProviderOptions>(configuration.GetSection("Chat:Providers:Slack"));
         
         return services;
     }
@@ -94,14 +96,20 @@ public static class ChatServiceExtensions
         // 消息合并器
         services.TryAddSingleton<IMessageMerger, TextMessageMerger>();
         
+        // User identity resolver (Singleton with in-memory cache)
+        services.AddHttpClient<ChatUserResolver>();
+        services.TryAddSingleton<IChatUserResolver, ChatUserResolver>();
+
         // Agent 执行器
         services.TryAddScoped<IAgentExecutor, AgentExecutor>();
         
         // 消息路由器（Singleton，因为需要维护 Provider 注册表）
+        // Uses IServiceScopeFactory to resolve scoped deps (SessionManager, MessageQueue, etc.)
         services.TryAddSingleton<IMessageRouter>(sp =>
         {
             var logger = sp.GetRequiredService<ILogger<MessageRouter>>();
-            return new MessageRouter(logger);
+            var scopeFactory = sp.GetRequiredService<IServiceScopeFactory>();
+            return new MessageRouter(logger, scopeFactory);
         });
         
         // 消息回调管理器
@@ -133,18 +141,21 @@ public static class ChatServiceExtensions
         services.AddHttpClient<FeishuProvider>();
         services.AddHttpClient<QQProvider>();
         services.AddHttpClient<WeChatProvider>();
+        services.AddHttpClient<SlackProvider>();
         
         // 注册 Provider 为 Scoped 服务
         services.TryAddScoped<FeishuProvider>();
         services.TryAddScoped<QQProvider>();
         services.TryAddScoped<WeChatProvider>();
+        services.TryAddScoped<SlackProvider>();
         
         // 注册 Provider 集合（用于自动发现）
         services.TryAddScoped<IEnumerable<IMessageProvider>>(sp => new IMessageProvider[]
         {
             sp.GetRequiredService<FeishuProvider>(),
             sp.GetRequiredService<QQProvider>(),
-            sp.GetRequiredService<WeChatProvider>()
+            sp.GetRequiredService<WeChatProvider>(),
+            sp.GetRequiredService<SlackProvider>()
         });
         
         // 注册 Provider 初始化服务

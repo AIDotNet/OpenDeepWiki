@@ -64,6 +64,16 @@ public class ChatWebhookApiService(IMessageRouter messageRouter, ILogger<ChatWeb
     }
 
     /// <summary>
+    /// Slack Webhook
+    /// </summary>
+    [HttpPost("/slack")]
+    [AllowAnonymous]
+    public Task<IResult> HandleSlackWebhookAsync(HttpContext httpContext)
+    {
+        return HandlePlatformWebhookAsync("slack", httpContext);
+    }
+
+    /// <summary>
     /// 通用 Webhook
     /// </summary>
     [HttpPost("/{platform}")]
