@@ -171,6 +171,27 @@
       "OpenAI": "OpenAI",
       "OpenAIResponses": "OpenAI Responses",
       "Anthropic": "Anthropic"
+    },
+    "quickSetup": {
+      "title": "Provider Quick Setup",
+      "description": "Select a provider, enter your API key, and load available models.",
+      "provider": "Provider",
+      "selectProvider": "Select a provider",
+      "apiKey": "API Key",
+      "apiKeyPlaceholder": "Enter your API key",
+      "loadModels": "Load Models",
+      "loadingModels": "Loading models...",
+      "catalogModel": "Catalog Model",
+      "contentModel": "Content Model",
+      "translationModel": "Translation Model",
+      "selectModel": "Select a model",
+      "apply": "Apply Configuration",
+      "applied": "Settings applied. Review below and click Save Changes.",
+      "loadFailed": "Failed to load models. Check your API key and try again.",
+      "modelsLoaded": "{count} models loaded",
+      "catalogModelHint": "Generates document structure and navigation tree. A fast, cheaper model works well here.",
+      "contentModelHint": "Generates actual document content with code analysis. Use the most capable model for best quality.",
+      "translationModelHint": "Translates generated documents to other languages. A fast, cheaper model is sufficient."
     }
   },
   "chatAssistant": {

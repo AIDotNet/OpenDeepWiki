@@ -17,7 +17,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   getSettings,
   updateSettings,
+  listProviderModels,
   SystemSetting,
+  ProviderModel,
 } from "@/lib/admin-api";
 import {
   Loader2,
@@ -27,6 +29,8 @@ import {
   Shield,
   Bot,
   Globe,
+  Zap,
+  Info,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "@/hooks/use-translations";
@@ -38,6 +42,24 @@ interface SettingGroup {
   settings: SystemSetting[];
 }
 
+const PROVIDER_PRESETS: Record<string, { label: string; endpoint: string; requestType: string }> = {
+  gemini: {
+    label: "Google Gemini",
+    endpoint: "https://generativelanguage.googleapis.com/v1beta/openai/",
+    requestType: "OpenAI",
+  },
+  openai: {
+    label: "OpenAI",
+    endpoint: "https://api.openai.com/v1",
+    requestType: "OpenAI",
+  },
+  anthropic: {
+    label: "Anthropic",
+    endpoint: "https://api.anthropic.com",
+    requestType: "Anthropic",
+  },
+};
+
 export default function AdminSettingsPage() {
   const [settings, setSettings] = useState<SystemSetting[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,6 +67,17 @@ export default function AdminSettingsPage() {
   const [activeCategory, setActiveCategory] = useState("general");
   const [editedValues, setEditedValues] = useState<Record<string, string>>({});
   const t = useTranslations();
+
+  // Quick Setup state
+  const [selectedProvider, setSelectedProvider] = useState<string>("");
+  const [quickSetupApiKey, setQuickSetupApiKey] = useState("");
+  const [providerModels, setProviderModels] = useState<ProviderModel[]>([]);
+  const [loadingModels, setLoadingModels] = useState(false);
+  const [selectedModels, setSelectedModels] = useState({
+    catalog: "",
+    content: "",
+    translation: "",
+  });
 
   const categoryIcons: Record<string, React.ReactNode> = {
     general: <Globe className="h-4 w-4" />,
@@ -183,6 +216,56 @@ export default function AdminSettingsPage() {
       setSaving(false);
     }
   };
+
+  // Quick Setup: Load models from provider
+  const handleLoadModels = async () => {
+    const preset = PROVIDER_PRESETS[selectedProvider];
+    if (!preset || !quickSetupApiKey) return;
+
+    setLoadingModels(true);
+    setProviderModels([]);
+    setSelectedModels({ catalog: "", content: "", translation: "" });
+
+    try {
+      const models = await listProviderModels(preset.endpoint, quickSetupApiKey, preset.requestType);
+      setProviderModels(models);
+      toast.success(t('admin.settings.quickSetup.modelsLoaded', { count: models.length }));
+    } catch {
+      toast.error(t('admin.settings.quickSetup.loadFailed'));
+    } finally {
+      setLoadingModels(false);
+    }
+  };
+
+  // Quick Setup: Apply selected configuration to all settings
+  const handleApplyQuickSetup = () => {
+    const preset = PROVIDER_PRESETS[selectedProvider];
+    if (!preset) return;
+
+    const settingsMap: Record<string, string> = {
+      WIKI_CATALOG_MODEL: selectedModels.catalog,
+      WIKI_CATALOG_ENDPOINT: preset.endpoint,
+      WIKI_CATALOG_API_KEY: quickSetupApiKey,
+      WIKI_CATALOG_REQUEST_TYPE: preset.requestType,
+      WIKI_CONTENT_MODEL: selectedModels.content,
+      WIKI_CONTENT_ENDPOINT: preset.endpoint,
+      WIKI_CONTENT_API_KEY: quickSetupApiKey,
+      WIKI_CONTENT_REQUEST_TYPE: preset.requestType,
+      WIKI_TRANSLATION_MODEL: selectedModels.translation,
+      WIKI_TRANSLATION_ENDPOINT: preset.endpoint,
+      WIKI_TRANSLATION_API_KEY: quickSetupApiKey,
+      WIKI_TRANSLATION_REQUEST_TYPE: preset.requestType,
+    };
+
+    for (const [key, value] of Object.entries(settingsMap)) {
+      handleFieldChange(key, value);
+    }
+
+    toast.success(t('admin.settings.quickSetup.applied'));
+  };
+
+  const canLoadModels = selectedProvider && quickSetupApiKey;
+  const canApply = selectedModels.catalog && selectedModels.content && selectedModels.translation;
 
   const categories = useMemo(() => [...new Set(settings.map((s) => s.category))], [settings]);
 
@@ -351,7 +434,174 @@ export default function AdminSettingsPage() {
                 const categorySettings = settingsByCategory[cat] ?? [];
                 const groupedSettings = groupedSettingsByCategory[cat] ?? [{ id: "default", settings: categorySettings }];
                 return (
-                  <TabsContent key={cat} value={cat} className="mt-0">
+                  <TabsContent key={cat} value={cat} className="mt-0 space-y-6">
+                    {/* Quick Setup card - only shown on AI tab */}
+                    {cat === "ai" && (
+                      <Card className="border-primary/30 bg-gradient-to-r from-primary/5 to-background p-6">
+                        <div className="flex items-center gap-2 mb-4">
+                          <Zap className="h-5 w-5 text-primary" />
+                          <h3 className="text-lg font-semibold">{t('admin.settings.quickSetup.title')}</h3>
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-5">
+                          {t('admin.settings.quickSetup.description')}
+                        </p>
+
+                        <div className="grid gap-4 md:grid-cols-2">
+                          {/* Provider selection */}
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">
+                              {t('admin.settings.quickSetup.provider')}
+                            </label>
+                            <Select
+                              value={selectedProvider || undefined}
+                              onValueChange={(value) => {
+                                setSelectedProvider(value);
+                                setProviderModels([]);
+                                setSelectedModels({ catalog: "", content: "", translation: "" });
+                              }}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder={t('admin.settings.quickSetup.selectProvider')} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Object.entries(PROVIDER_PRESETS).map(([key, preset]) => (
+                                  <SelectItem key={key} value={key}>
+                                    {preset.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {/* API Key */}
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">
+                              {t('admin.settings.quickSetup.apiKey')}
+                            </label>
+                            <div className="flex gap-2">
+                              <Input
+                                type="password"
+                                value={quickSetupApiKey}
+                                onChange={(e) => setQuickSetupApiKey(e.target.value)}
+                                placeholder={t('admin.settings.quickSetup.apiKeyPlaceholder')}
+                              />
+                              <Button
+                                onClick={handleLoadModels}
+                                disabled={!canLoadModels || loadingModels}
+                                variant="outline"
+                              >
+                                {loadingModels ? (
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : null}
+                                {t('admin.settings.quickSetup.loadModels')}
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Model selection - shown after models are loaded */}
+                        {providerModels.length > 0 && (
+                          <div className="mt-5 space-y-4">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="secondary">
+                                {t('admin.settings.quickSetup.modelsLoaded', { count: providerModels.length })}
+                              </Badge>
+                            </div>
+
+                            <div className="grid gap-4 md:grid-cols-3">
+                              {/* Catalog Model */}
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium">
+                                  {t('admin.settings.quickSetup.catalogModel')}
+                                </label>
+                                <Select
+                                  value={selectedModels.catalog || undefined}
+                                  onValueChange={(value) =>
+                                    setSelectedModels((prev) => ({ ...prev, catalog: value }))
+                                  }
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder={t('admin.settings.quickSetup.selectModel')} />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {providerModels.map((model) => (
+                                      <SelectItem key={model.id} value={model.id}>
+                                        {model.displayName}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <p className="flex items-start gap-1 text-xs text-muted-foreground">
+                                  <Info className="h-3 w-3 mt-0.5 shrink-0" />
+                                  {t('admin.settings.quickSetup.catalogModelHint')}
+                                </p>
+                              </div>
+
+                              {/* Content Model */}
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium">
+                                  {t('admin.settings.quickSetup.contentModel')}
+                                </label>
+                                <Select
+                                  value={selectedModels.content || undefined}
+                                  onValueChange={(value) =>
+                                    setSelectedModels((prev) => ({ ...prev, content: value }))
+                                  }
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder={t('admin.settings.quickSetup.selectModel')} />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {providerModels.map((model) => (
+                                      <SelectItem key={model.id} value={model.id}>
+                                        {model.displayName}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <p className="flex items-start gap-1 text-xs text-muted-foreground">
+                                  <Info className="h-3 w-3 mt-0.5 shrink-0" />
+                                  {t('admin.settings.quickSetup.contentModelHint')}
+                                </p>
+                              </div>
+
+                              {/* Translation Model */}
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium">
+                                  {t('admin.settings.quickSetup.translationModel')}
+                                </label>
+                                <Select
+                                  value={selectedModels.translation || undefined}
+                                  onValueChange={(value) =>
+                                    setSelectedModels((prev) => ({ ...prev, translation: value }))
+                                  }
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder={t('admin.settings.quickSetup.selectModel')} />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {providerModels.map((model) => (
+                                      <SelectItem key={model.id} value={model.id}>
+                                        {model.displayName}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <p className="flex items-start gap-1 text-xs text-muted-foreground">
+                                  <Info className="h-3 w-3 mt-0.5 shrink-0" />
+                                  {t('admin.settings.quickSetup.translationModelHint')}
+                                </p>
+                              </div>
+                            </div>
+
+                            <Button onClick={handleApplyQuickSetup} disabled={!canApply}>
+                              {t('admin.settings.quickSetup.apply')}
+                            </Button>
+                          </div>
+                        )}
+                      </Card>
+                    )}
+
                     <Card className="p-6">
                       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-4">
                         <div>

@@ -171,6 +171,27 @@
       "OpenAI": "OpenAI",
       "OpenAIResponses": "OpenAI Responses",
       "Anthropic": "Anthropic"
+    },
+    "quickSetup": {
+      "title": "공급자 빠른 설정",
+      "description": "공급자를 선택하고 API 키를 입력한 후 사용 가능한 모델을 불러옵니다.",
+      "provider": "공급자",
+      "selectProvider": "공급자 선택",
+      "apiKey": "API 키",
+      "apiKeyPlaceholder": "API 키를 입력하세요",
+      "loadModels": "모델 불러오기",
+      "loadingModels": "모델을 불러오는 중...",
+      "catalogModel": "카탈로그 모델",
+      "contentModel": "콘텐츠 모델",
+      "translationModel": "번역 모델",
+      "selectModel": "모델 선택",
+      "apply": "설정 적용",
+      "applied": "설정이 적용되었습니다. 아래에서 확인 후 변경사항 저장을 클릭하세요.",
+      "loadFailed": "모델을 불러오지 못했습니다. API 키를 확인하고 다시 시도하세요.",
+      "modelsLoaded": "{count}개 모델 로드됨",
+      "catalogModelHint": "문서 구조와 탐색 트리를 생성합니다. 빠르고 저렴한 모델로도 충분합니다.",
+      "contentModelHint": "코드 분석이 포함된 실제 문서 콘텐츠를 생성합니다. 최고 품질을 위해 가장 강력한 모델을 사용하세요.",
+      "translationModelHint": "생성된 문서를 다른 언어로 번역합니다. 빠르고 저렴한 모델로 충분합니다."
     }
   },
   "chatAssistant": {
