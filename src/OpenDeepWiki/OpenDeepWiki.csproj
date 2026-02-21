@@ -39,6 +39,7 @@
         <PackageReference Include="Serilog.Enrichers.Process" />
         <PackageReference Include="Serilog.Expressions" />
         <PackageReference Include="YamlDotNet" />
+        <PackageReference Include="ModelContextProtocol.AspNetCore" />
     </ItemGroup>
 
     <ItemGroup>

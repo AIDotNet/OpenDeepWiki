@@ -42,8 +42,7 @@
     <PackageVersion Include="Microsoft.Extensions.AI.OpenAI" Version="9.9.0-preview.1.25458.4" />
     <PackageVersion Include="Microsoft.SemanticKernel.Abstractions" Version="1.65.0" />
     <PackageVersion Include="Microsoft.SemanticKernel.Core" Version="1.65.0" />
-    <PackageVersion Include="ModelContextProtocol.Core" Version="0.6.0-preview.1" />
-    <PackageVersion Include="ModelContextProtocolServer.Sse" Version="0.6.0" />
+    <PackageVersion Include="ModelContextProtocol" Version="0.8.0-preview.1" />
     <PackageVersion Include="MySql.EntityFrameworkCore" Version="10.0.0-rc" />
     <PackageVersion Include="OpenAI" Version="2.8.0" />
     <PackageVersion Include="Scalar.AspNetCore" Version="2.12.36" />
@@ -101,7 +100,7 @@
     <PackageVersion Include="FastService" Version="0.2.2" />
     <PackageVersion Include="FastService.Analyzers" Version="0.2.2" />
     <!-- 协议支持 -->
-    <PackageVersion Include="ModelContextProtocol.AspNetCore" Version="0.6.0-preview.1" />
+    <PackageVersion Include="ModelContextProtocol.AspNetCore" Version="0.8.0-preview.1" />
     <PackageVersion Include="SharpToken" Version="2.0.4" />
     <!-- Thor 框架相关包 (来自子模块) -->
     <PackageVersion Include="System.ComponentModel.Annotations" Version="5.0.0" />
