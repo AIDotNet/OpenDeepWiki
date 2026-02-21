@@ -167,6 +167,36 @@ export default function AdminSettingsPage() {
         values[s.key] = s.value || "";
       });
       setEditedValues(values);
+
+      // Pre-populate Quick Setup from saved settings
+      const savedEndpoint = values["WIKI_CATALOG_ENDPOINT"] || "";
+      const savedApiKey = values["WIKI_CATALOG_API_KEY"] || "";
+      const savedCatalogModel = values["WIKI_CATALOG_MODEL"] || "";
+      const savedContentModel = values["WIKI_CONTENT_MODEL"] || "";
+      const savedTranslationModel = values["WIKI_TRANSLATION_MODEL"] || "";
+
+      // Detect provider from endpoint
+      const detectedProvider = Object.entries(PROVIDER_PRESETS).find(
+        ([, preset]) => savedEndpoint.replace(/\/$/, "") === preset.endpoint.replace(/\/$/, "")
+      );
+
+      if (detectedProvider) {
+        setSelectedProvider(detectedProvider[0]);
+        setQuickSetupApiKey(savedApiKey);
+        setSelectedModels({
+          catalog: savedCatalogModel,
+          content: savedContentModel,
+          translation: savedTranslationModel,
+        });
+
+        // Create synthetic model entries so dropdowns show current values
+        const currentModels = new Set([savedCatalogModel, savedContentModel, savedTranslationModel].filter(Boolean));
+        if (currentModels.size > 0) {
+          setProviderModels(
+            Array.from(currentModels).map((id) => ({ id, displayName: id }))
+          );
+        }
+      }
     } catch (error) {
       console.error("Failed to fetch settings:", error);
       toast.error(t('admin.toast.fetchSettingsFailed'));
@@ -223,12 +253,22 @@ export default function AdminSettingsPage() {
     if (!preset || !quickSetupApiKey) return;
 
     setLoadingModels(true);
-    setProviderModels([]);
-    setSelectedModels({ catalog: "", content: "", translation: "" });
+
+    // Preserve current selections so they survive the reload
+    const prevSelections = { ...selectedModels };
 
     try {
       const models = await listProviderModels(preset.endpoint, quickSetupApiKey, preset.requestType);
       setProviderModels(models);
+
+      // Keep previous selections if they exist in the new list
+      const modelIds = new Set(models.map((m) => m.id));
+      setSelectedModels({
+        catalog: modelIds.has(prevSelections.catalog) ? prevSelections.catalog : "",
+        content: modelIds.has(prevSelections.content) ? prevSelections.content : "",
+        translation: modelIds.has(prevSelections.translation) ? prevSelections.translation : "",
+      });
+
       toast.success(t('admin.settings.quickSetup.modelsLoaded', { count: models.length }));
     } catch (err) {
       const message = err instanceof Error ? err.message : t('admin.settings.quickSetup.loadFailed');
