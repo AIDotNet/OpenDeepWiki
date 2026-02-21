@@ -725,6 +725,7 @@ public class ChatAssistantService : IChatAssistantService
             Type = SSEEventType.Done,
             Data = new { inputTokens, outputTokens }
         };
+    }
 
     private async Task RecordTokenUsageAsync(
         int inputTokens,
@@ -781,7 +782,6 @@ public class ChatAssistantService : IChatAssistantService
         return repositoryIds.Count == 1 ? repositoryIds[0] : null;
     }
 
-    }
     /// <summary>
     /// Gets the model configuration by ID.
     /// </summary>

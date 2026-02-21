@@ -419,7 +419,8 @@ static void LoadEnvFile(IConfigurationBuilder configuration)
     var envPaths = new[]
     {
         Path.Combine(Directory.GetCurrentDirectory(), ".env"),
-        Path.Combine(AppContext.BaseDirectory, ".env")
+        Path.Combine(AppContext.BaseDirectory, ".env"),
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".env"),
     };
 
     foreach (var envPath in envPaths)
