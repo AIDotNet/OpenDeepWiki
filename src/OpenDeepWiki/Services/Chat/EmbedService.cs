@@ -137,30 +137,30 @@ public class EmbedService : IEmbedService
     {
         if (string.IsNullOrWhiteSpace(appId))
         {
-            return (false, "INVALID_APP_ID", "AppId不能为空");
+            return (false, "INVALID_APP_ID", "AppId cannot be empty");
         }
 
         var app = await _chatAppService.GetAppByAppIdAsync(appId, cancellationToken);
 
         if (app == null)
         {
-            return (false, "INVALID_APP_ID", "应用不存在");
+            return (false, "INVALID_APP_ID", "Application not found");
         }
 
         if (!app.IsActive)
         {
-            return (false, "APP_INACTIVE", "应用已停用");
+            return (false, "APP_INACTIVE", "Application is inactive");
         }
 
         // Check if AI configuration is complete
         if (string.IsNullOrWhiteSpace(app.ApiKey))
         {
-            return (false, "CONFIG_MISSING", "应用未配置API密钥");
+            return (false, "CONFIG_MISSING", "Application API key not configured");
         }
 
         if (app.AvailableModels.Count == 0 && string.IsNullOrWhiteSpace(app.DefaultModel))
         {
-            return (false, "CONFIG_MISSING", "应用未配置可用模型");
+            return (false, "CONFIG_MISSING", "No available models configured for application");
         }
 
         return (true, null, null);
@@ -176,7 +176,7 @@ public class EmbedService : IEmbedService
 
         if (app == null)
         {
-            return (false, "INVALID_APP_ID", "应用不存在");
+            return (false, "INVALID_APP_ID", "Application not found");
         }
 
         // If domain validation is not enabled, allow all domains
@@ -188,13 +188,13 @@ public class EmbedService : IEmbedService
         // If domain validation is enabled but no domain provided
         if (string.IsNullOrWhiteSpace(domain))
         {
-            return (false, "DOMAIN_NOT_ALLOWED", "无法获取请求来源域名");
+            return (false, "DOMAIN_NOT_ALLOWED", "Unable to determine request origin domain");
         }
 
         // Check if domain is in allowed list
         if (app.AllowedDomains.Count == 0)
         {
-            return (false, "DOMAIN_NOT_ALLOWED", "未配置允许的域名");
+            return (false, "DOMAIN_NOT_ALLOWED", "No allowed domains configured");
         }
 
         var normalizedDomain = NormalizeDomain(domain);
@@ -202,7 +202,7 @@ public class EmbedService : IEmbedService
 
         if (!isAllowed)
         {
-            return (false, "DOMAIN_NOT_ALLOWED", $"域名 {domain} 不在允许列表中");
+            return (false, "DOMAIN_NOT_ALLOWED", $"Domain {domain} is not in the allowed list");
         }
 
         return (true, null, null);
@@ -245,7 +245,7 @@ public class EmbedService : IEmbedService
             {
                 Valid = false,
                 ErrorCode = "INVALID_APP_ID",
-                ErrorMessage = "应用不存在"
+                ErrorMessage = "Application not found"
             };
         }
 
@@ -299,7 +299,7 @@ public class EmbedService : IEmbedService
                 Type = SSEEventType.Error,
                 Data = SSEErrorResponse.CreateNonRetryable(
                     ChatErrorCodes.INVALID_APP_ID,
-                    "应用不存在")
+                    "Application not found")
             };
             yield break;
         }
@@ -319,7 +319,7 @@ public class EmbedService : IEmbedService
                 Type = SSEEventType.Error,
                 Data = SSEErrorResponse.CreateNonRetryable(
                     ChatErrorCodes.MODEL_UNAVAILABLE,
-                    "所选模型不可用")
+                    "Selected model is unavailable")
             };
             yield break;
         }

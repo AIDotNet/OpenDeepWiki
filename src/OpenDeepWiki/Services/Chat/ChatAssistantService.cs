@@ -335,7 +335,7 @@ public class ChatAssistantService : IChatAssistantService
                 Type = SSEEventType.Error,
                 Data = SSEErrorResponse.CreateNonRetryable(
                     ChatErrorCodes.FEATURE_DISABLED,
-                    "对话助手功能未启用")
+                    "Chat assistant is not enabled")
             };
             yield break;
         }
@@ -350,7 +350,7 @@ public class ChatAssistantService : IChatAssistantService
                 Type = SSEEventType.Error,
                 Data = SSEErrorResponse.CreateNonRetryable(
                     ChatErrorCodes.MODEL_UNAVAILABLE,
-                    "模型不可用，请选择其他模型")
+                    "Model unavailable, please select a different model")
             };
             yield break;
         }
@@ -1047,8 +1047,8 @@ public class ChatAssistantService : IChatAssistantService
             {
                 var title = !string.IsNullOrEmpty(msg.QuotedText.Title)
                     ? msg.QuotedText.Title
-                    : "引用内容";
-                var quotedContent = $"引用来源：{title}\n<select_text>\n{msg.QuotedText.Text}\n</select_text>";
+                    : "Quoted content";
+                var quotedContent = $"Source: {title}\n<select_text>\n{msg.QuotedText.Text}\n</select_text>";
                 contents.Add(new TextContent(quotedContent));
             }
 

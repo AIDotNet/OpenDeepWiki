@@ -146,17 +146,17 @@ public class ChatShareService : IChatShareService
 
         if (request.Messages.Count == 0)
         {
-            throw new InvalidOperationException("无法分享空对话");
+            throw new InvalidOperationException("Cannot share an empty conversation");
         }
 
         if (request.Messages.Count > MaxMessages)
         {
-            throw new InvalidOperationException($"单次分享最多支持 {MaxMessages} 条消息");
+            throw new InvalidOperationException($"Maximum {MaxMessages} messages per share");
         }
 
         if (string.IsNullOrWhiteSpace(request.ModelId))
         {
-            throw new InvalidOperationException("缺少模型信息，无法创建分享");
+            throw new InvalidOperationException("Missing model information, cannot create share");
         }
 
         var snapshotPayload = new ChatShareSnapshotPayload
@@ -169,7 +169,7 @@ public class ChatShareService : IChatShareService
         var snapshotJson = JsonSerializer.Serialize(snapshotPayload, SerializerOptions);
         if (snapshotJson.Length > MaxSnapshotSizeBytes)
         {
-            throw new InvalidOperationException("分享内容过大，请精简对话后重试");
+            throw new InvalidOperationException("Share content too large, please reduce the conversation and try again");
         }
 
         var title = !string.IsNullOrWhiteSpace(request.Title)
@@ -292,7 +292,7 @@ public class ChatShareService : IChatShareService
             return content.Length > 40 ? content[..40] + "…" : content;
         }
 
-        return "AI 对话分享";
+        return "AI Conversation Share";
     }
 
     private async Task<string> GenerateShareIdAsync(CancellationToken cancellationToken)
@@ -309,7 +309,7 @@ public class ChatShareService : IChatShareService
             }
         }
 
-        throw new InvalidOperationException("无法生成唯一的分享ID，请稍后重试");
+        throw new InvalidOperationException("Unable to generate unique share ID, please try again later");
     }
 
     private class ChatShareSnapshotPayload

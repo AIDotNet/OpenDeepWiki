@@ -129,7 +129,7 @@ public class McpToolConverter : IMcpToolConverter
             {
                 var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
                 _logger.LogError("MCP call failed: {StatusCode} - {Error}", response.StatusCode, errorContent);
-                return JsonSerializer.Serialize(new { error = true, message = $"MCP调用失败: {response.StatusCode}" });
+                return JsonSerializer.Serialize(new { error = true, message = $"MCP call failed: {response.StatusCode}" });
             }
 
             var result = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -138,7 +138,7 @@ public class McpToolConverter : IMcpToolConverter
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error calling MCP server: {Name}", config.Name);
-            return JsonSerializer.Serialize(new { error = true, message = $"MCP调用错误: {ex.Message}" });
+            return JsonSerializer.Serialize(new { error = true, message = $"MCP call error: {ex.Message}" });
         }
     }
 
