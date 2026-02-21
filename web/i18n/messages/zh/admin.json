@@ -186,7 +186,7 @@
       "translationModel": "翻译模型",
       "selectModel": "选择模型",
       "apply": "应用配置",
-      "applied": "设置已应用。请在下方检查并点击保存更改。",
+      "applied": "供应商设置已保存。",
       "loadFailed": "加载模型失败。请检查 API 密钥后重试。",
       "modelsLoaded": "已加载 {count} 个模型",
       "catalogModelHint": "生成文档结构和导航树。快速、低成本的模型即可胜任。",

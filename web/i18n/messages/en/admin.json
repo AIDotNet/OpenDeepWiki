@@ -186,7 +186,7 @@
       "translationModel": "Translation Model",
       "selectModel": "Select a model",
       "apply": "Apply Configuration",
-      "applied": "Settings applied. Review below and click Save Changes.",
+      "applied": "Provider settings saved successfully.",
       "loadFailed": "Failed to load models. Check your API key and try again.",
       "modelsLoaded": "{count} models loaded",
       "catalogModelHint": "Generates document structure and navigation tree. A fast, cheaper model works well here.",

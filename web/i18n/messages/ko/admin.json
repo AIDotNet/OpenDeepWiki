@@ -186,7 +186,7 @@
       "translationModel": "번역 모델",
       "selectModel": "모델 선택",
       "apply": "설정 적용",
-      "applied": "설정이 적용되었습니다. 아래에서 확인 후 변경사항 저장을 클릭하세요.",
+      "applied": "공급자 설정이 저장되었습니다.",
       "loadFailed": "모델을 불러오지 못했습니다. API 키를 확인하고 다시 시도하세요.",
       "modelsLoaded": "{count}개 모델 로드됨",
       "catalogModelHint": "문서 구조와 탐색 트리를 생성합니다. 빠르고 저렴한 모델로도 충분합니다.",

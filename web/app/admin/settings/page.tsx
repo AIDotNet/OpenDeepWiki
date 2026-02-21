@@ -238,8 +238,10 @@ export default function AdminSettingsPage() {
     }
   };
 
-  // Quick Setup: Apply selected configuration to all settings
-  const handleApplyQuickSetup = () => {
+  // Quick Setup: Apply selected configuration and save immediately
+  const [applyingQuickSetup, setApplyingQuickSetup] = useState(false);
+
+  const handleApplyQuickSetup = async () => {
     const preset = PROVIDER_PRESETS[selectedProvider];
     if (!preset) return;
 
@@ -258,11 +260,26 @@ export default function AdminSettingsPage() {
       WIKI_TRANSLATION_REQUEST_TYPE: preset.requestType,
     };
 
+    // Update local state
     for (const [key, value] of Object.entries(settingsMap)) {
       handleFieldChange(key, value);
     }
 
-    toast.success(t('admin.settings.quickSetup.applied'));
+    // Save directly to backend
+    setApplyingQuickSetup(true);
+    try {
+      const changedSettings = Object.entries(settingsMap).map(([key, value]) => ({
+        key,
+        value,
+      }));
+      await updateSettings(changedSettings);
+      toast.success(t('admin.settings.quickSetup.applied'));
+      fetchData();
+    } catch {
+      toast.error(t('admin.toast.saveFailed'));
+    } finally {
+      setApplyingQuickSetup(false);
+    }
   };
 
   const canLoadModels = selectedProvider && quickSetupApiKey;
@@ -595,7 +612,10 @@ export default function AdminSettingsPage() {
                               </div>
                             </div>
 
-                            <Button onClick={handleApplyQuickSetup} disabled={!canApply}>
+                            <Button onClick={handleApplyQuickSetup} disabled={!canApply || applyingQuickSetup}>
+                              {applyingQuickSetup ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              ) : null}
                               {t('admin.settings.quickSetup.apply')}
                             </Button>
                           </div>
