@@ -59,6 +59,7 @@ const PLATFORM_OPTIONS = [
   { value: "feishu", labelKey: "admin.chatProviders.platformFeishu" },
   { value: "qq", labelKey: "admin.chatProviders.platformQq" },
   { value: "wechat", labelKey: "admin.chatProviders.platformWechat" },
+  { value: "slack", labelKey: "admin.chatProviders.platformSlack" },
   { value: "custom", labelKey: "admin.chatProviders.platformCustom" },
 ];
 
@@ -100,6 +101,12 @@ const PLATFORM_FIELDS: Record<string, PlatformFieldDefinition[]> = {
     { key: "ApiBaseUrl", labelKey: "admin.chatProviders.fieldApiBaseUrl", type: "text" },
     { key: "TokenCacheSeconds", labelKey: "admin.chatProviders.fieldTokenCacheSeconds", type: "number" },
     { key: "EncryptMode", labelKey: "admin.chatProviders.fieldEncryptMode", type: "text" },
+  ],
+  slack: [
+    { key: "BotToken", labelKey: "admin.chatProviders.fieldBotToken", type: "password", required: true },
+    { key: "SigningSecret", labelKey: "admin.chatProviders.fieldSigningSecret", type: "password", required: true },
+    { key: "ApiBaseUrl", labelKey: "admin.chatProviders.fieldApiBaseUrl", type: "text" },
+    { key: "ReplyInThread", labelKey: "admin.chatProviders.fieldReplyInThread", type: "switch" },
   ],
 };
 

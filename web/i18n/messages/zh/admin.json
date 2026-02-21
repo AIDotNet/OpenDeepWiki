@@ -228,7 +228,11 @@
     "fieldHeartbeatInterval": "心跳间隔 (ms)",
     "fieldReconnectInterval": "重连间隔 (ms)",
     "fieldMaxReconnectAttempts": "最大重连次数",
-    "fieldEncryptMode": "加密模式"
+    "fieldEncryptMode": "加密模式",
+    "platformSlack": "Slack",
+    "fieldBotToken": "Bot Token",
+    "fieldSigningSecret": "Signing Secret",
+    "fieldReplyInThread": "在线程中回复"
   },
   "mcps": {
     "title": "MCPs 管理",

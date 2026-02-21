@@ -228,7 +228,11 @@
     "fieldHeartbeatInterval": "Heartbeat Interval (ms)",
     "fieldReconnectInterval": "Reconnect Interval (ms)",
     "fieldMaxReconnectAttempts": "Max Reconnect Attempts",
-    "fieldEncryptMode": "Encryption Mode"
+    "fieldEncryptMode": "Encryption Mode",
+    "platformSlack": "Slack",
+    "fieldBotToken": "Bot Token",
+    "fieldSigningSecret": "Signing Secret",
+    "fieldReplyInThread": "Reply in Thread"
   },
   "mcps": {
     "title": "MCPs Management",
