@@ -291,7 +291,12 @@
     "modelIdPlaceholder": "如: gpt-4o",
     "endpointPlaceholder": "可选，留空使用默认端点",
     "modelDesc": "模型描述",
-    "deleteWarning": "确定要删除此模型配置吗？此操作无法撤销。"
+    "deleteWarning": "确定要删除此模型配置吗？此操作无法撤销。",
+    "loadModels": "加载模型",
+    "modelsLoaded": "已加载模型: {count}",
+    "loadModelsFailed": "从提供商加载模型失败",
+    "selectModel": "选择模型",
+    "orTypeManually": "或手动输入模型 ID"
   },
   "common": {
     "refresh": "刷新",

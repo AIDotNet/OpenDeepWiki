@@ -291,7 +291,12 @@
     "modelIdPlaceholder": "예: gpt-4o",
     "endpointPlaceholder": "선택사항, 기본 엔드포인트 사용 시 비워두세요",
     "modelDesc": "모델 설명",
-    "deleteWarning": "이 모델 설정을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."
+    "deleteWarning": "이 모델 설정을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+    "loadModels": "모델 불러오기",
+    "modelsLoaded": "모델 로드됨: {count}",
+    "loadModelsFailed": "제공업체에서 모델을 불러오지 못했습니다",
+    "selectModel": "모델 선택",
+    "orTypeManually": "또는 모델 ID를 직접 입력"
   },
   "common": {
     "refresh": "새로고침",

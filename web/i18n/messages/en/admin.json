@@ -291,7 +291,12 @@
     "modelIdPlaceholder": "e.g., gpt-4o",
     "endpointPlaceholder": "Optional, leave empty for default endpoint",
     "modelDesc": "Model description",
-    "deleteWarning": "Are you sure you want to delete this model configuration? This action cannot be undone."
+    "deleteWarning": "Are you sure you want to delete this model configuration? This action cannot be undone.",
+    "loadModels": "Load Models",
+    "modelsLoaded": "Models loaded: {count}",
+    "loadModelsFailed": "Failed to load models from provider",
+    "selectModel": "Select a model",
+    "orTypeManually": "Or type model ID manually"
   },
   "common": {
     "refresh": "Refresh",

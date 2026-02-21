@@ -291,7 +291,12 @@
     "modelIdPlaceholder": "例: gpt-4o",
     "endpointPlaceholder": "任意、デフォルトエンドポイントを使用する場合は空白",
     "modelDesc": "モデルの説明",
-    "deleteWarning": "このモデル設定を削除しますか？この操作は元に戻せません。"
+    "deleteWarning": "このモデル設定を削除しますか？この操作は元に戻せません。",
+    "loadModels": "モデルを読み込む",
+    "modelsLoaded": "モデル読み込み完了: {count}",
+    "loadModelsFailed": "プロバイダーからのモデル読み込みに失敗しました",
+    "selectModel": "モデルを選択",
+    "orTypeManually": "またはモデルIDを手入力"
   },
   "common": {
     "refresh": "更新",

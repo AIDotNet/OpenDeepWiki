@@ -35,7 +35,9 @@ import {
   createModelConfig,
   updateModelConfig,
   deleteModelConfig,
+  listProviderModels,
   ModelConfig,
+  ProviderModel,
 } from "@/lib/admin-api";
 import {
   Loader2,
@@ -47,9 +49,18 @@ import {
   CheckCircle,
   XCircle,
   Star,
+  Download,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "@/hooks/use-translations";
+
+const PROVIDER_PRESETS: Record<string, { endpoint: string; requestType: string }> = {
+  OpenAI: { endpoint: "https://api.openai.com/v1", requestType: "OpenAI" },
+  Anthropic: { endpoint: "https://api.anthropic.com", requestType: "Anthropic" },
+  Google: { endpoint: "https://generativelanguage.googleapis.com/v1beta/openai/", requestType: "OpenAI" },
+  AzureOpenAI: { endpoint: "", requestType: "AzureOpenAI" },
+  Custom: { endpoint: "", requestType: "OpenAI" },
+};
 
 export default function AdminModelsPage() {
   const [configs, setConfigs] = useState<ModelConfig[]>([]);
@@ -67,6 +78,8 @@ export default function AdminModelsPage() {
     isActive: true,
     description: "",
   });
+  const [providerModels, setProviderModels] = useState<ProviderModel[]>([]);
+  const [loadingModels, setLoadingModels] = useState(false);
   const t = useTranslations();
 
   const providers = [
@@ -94,18 +107,66 @@ export default function AdminModelsPage() {
     fetchData();
   }, [fetchData]);
 
+  const handleProviderChange = (provider: string) => {
+    const preset = PROVIDER_PRESETS[provider];
+    setFormData({
+      ...formData,
+      provider,
+      endpoint: preset?.endpoint || "",
+      modelId: "",
+    });
+    setProviderModels([]);
+  };
+
+  const handleLoadModels = async () => {
+    const preset = PROVIDER_PRESETS[formData.provider];
+    const endpoint = formData.endpoint || preset?.endpoint;
+    if (!endpoint || !formData.apiKey) return;
+
+    setLoadingModels(true);
+    try {
+      const requestType = preset?.requestType || "OpenAI";
+      const models = await listProviderModels(endpoint, formData.apiKey, requestType);
+      setProviderModels(models);
+
+      // Keep current modelId if it exists in new list
+      const modelIds = new Set(models.map((m) => m.id));
+      if (formData.modelId && !modelIds.has(formData.modelId)) {
+        setFormData((prev) => ({ ...prev, modelId: "" }));
+      }
+
+      toast.success(t('admin.models.modelsLoaded', { count: String(models.length) }));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : t('admin.models.loadModelsFailed');
+      toast.error(message);
+    } finally {
+      setLoadingModels(false);
+    }
+  };
+
+  const handleModelSelect = (modelId: string) => {
+    const model = providerModels.find((m) => m.id === modelId);
+    setFormData((prev) => ({
+      ...prev,
+      modelId,
+      // Auto-fill display name if empty
+      name: prev.name || (model?.displayName ?? modelId),
+    }));
+  };
+
   const openCreateDialog = () => {
     setEditingConfig(null);
     setFormData({
       name: "",
       provider: "OpenAI",
       modelId: "",
-      endpoint: "",
+      endpoint: PROVIDER_PRESETS["OpenAI"].endpoint,
       apiKey: "",
       isDefault: false,
       isActive: true,
       description: "",
     });
+    setProviderModels([]);
     setShowDialog(true);
   };
 
@@ -121,6 +182,12 @@ export default function AdminModelsPage() {
       isActive: config.isActive,
       description: config.description || "",
     });
+    // Create synthetic model entry so current model appears in dropdown
+    if (config.modelId) {
+      setProviderModels([{ id: config.modelId, displayName: config.name || config.modelId }]);
+    } else {
+      setProviderModels([]);
+    }
     setShowDialog(true);
   };
 
@@ -177,6 +244,8 @@ export default function AdminModelsPage() {
     }
   };
 
+  const canLoadModels = formData.endpoint && formData.apiKey;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -193,7 +262,6 @@ export default function AdminModelsPage() {
         </div>
       </div>
 
-      {/* 配置列表 */}
       {loading ? (
         <div className="flex h-64 items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -280,7 +348,7 @@ export default function AdminModelsPage() {
         </div>
       )}
 
-      {/* 新增/编辑对话框 */}
+      {/* Create/Edit Dialog */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
@@ -288,48 +356,22 @@ export default function AdminModelsPage() {
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium">{t('admin.models.displayName')} *</label>
-              <Input
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder={t('admin.models.namePlaceholder')}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium">{t('admin.models.provider')} *</label>
-                <Select
-                  value={formData.provider}
-                  onValueChange={(v) => setFormData({ ...formData, provider: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {providers.map((p) => (
-                      <SelectItem key={p.value} value={p.value}>
-                        {p.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-sm font-medium">{t('admin.models.modelId')} *</label>
-                <Input
-                  value={formData.modelId}
-                  onChange={(e) => setFormData({ ...formData, modelId: e.target.value })}
-                  placeholder={t('admin.models.modelIdPlaceholder')}
-                />
-              </div>
-            </div>
-            <div>
-              <label className="text-sm font-medium">{t('admin.models.apiEndpoint')}</label>
-              <Input
-                value={formData.endpoint}
-                onChange={(e) => setFormData({ ...formData, endpoint: e.target.value })}
-                placeholder={t('admin.models.endpointPlaceholder')}
-              />
+              <label className="text-sm font-medium">{t('admin.models.provider')} *</label>
+              <Select
+                value={formData.provider}
+                onValueChange={handleProviderChange}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {providers.map((p) => (
+                    <SelectItem key={p.value} value={p.value}>
+                      {p.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <label className="text-sm font-medium">{t('admin.models.apiKey')}</label>
@@ -338,6 +380,71 @@ export default function AdminModelsPage() {
                 value={formData.apiKey}
                 onChange={(e) => setFormData({ ...formData, apiKey: e.target.value })}
                 placeholder={t('admin.mcps.optional')}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">{t('admin.models.apiEndpoint')}</label>
+              <div className="flex gap-2">
+                <Input
+                  value={formData.endpoint}
+                  onChange={(e) => setFormData({ ...formData, endpoint: e.target.value })}
+                  placeholder={t('admin.models.endpointPlaceholder')}
+                  className="flex-1"
+                />
+                <Button
+                  variant="outline"
+                  onClick={handleLoadModels}
+                  disabled={!canLoadModels || loadingModels}
+                >
+                  {loadingModels ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="mr-2 h-4 w-4" />
+                  )}
+                  {t('admin.models.loadModels')}
+                </Button>
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium">{t('admin.models.modelId')} *</label>
+              {providerModels.length > 0 ? (
+                <div className="space-y-2">
+                  <Select
+                    value={formData.modelId}
+                    onValueChange={handleModelSelect}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={t('admin.models.selectModel')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {providerModels.map((m) => (
+                        <SelectItem key={m.id} value={m.id}>
+                          {m.displayName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">{t('admin.models.orTypeManually')}</p>
+                  <Input
+                    value={formData.modelId}
+                    onChange={(e) => setFormData({ ...formData, modelId: e.target.value })}
+                    placeholder={t('admin.models.modelIdPlaceholder')}
+                  />
+                </div>
+              ) : (
+                <Input
+                  value={formData.modelId}
+                  onChange={(e) => setFormData({ ...formData, modelId: e.target.value })}
+                  placeholder={t('admin.models.modelIdPlaceholder')}
+                />
+              )}
+            </div>
+            <div>
+              <label className="text-sm font-medium">{t('admin.models.displayName')} *</label>
+              <Input
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder={t('admin.models.namePlaceholder')}
               />
             </div>
             <div>
@@ -373,7 +480,7 @@ export default function AdminModelsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* 删除确认对话框 */}
+      {/* Delete confirmation dialog */}
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
