@@ -230,8 +230,9 @@ export default function AdminSettingsPage() {
       const models = await listProviderModels(preset.endpoint, quickSetupApiKey, preset.requestType);
       setProviderModels(models);
       toast.success(t('admin.settings.quickSetup.modelsLoaded', { count: models.length }));
-    } catch {
-      toast.error(t('admin.settings.quickSetup.loadFailed'));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : t('admin.settings.quickSetup.loadFailed');
+      toast.error(message);
     } finally {
       setLoadingModels(false);
     }

@@ -119,6 +119,10 @@ public static class AdminSettingsEndpoints
                         if (string.IsNullOrEmpty(id))
                             continue;
 
+                        // Strip "models/" prefix (Gemini returns IDs like "models/gemini-2.5-flash")
+                        if (id.StartsWith("models/", StringComparison.OrdinalIgnoreCase))
+                            id = id["models/".Length..];
+
                         // Anthropic provides display_name; OpenAI-compatible typically does not
                         string? displayName = null;
                         if (item.TryGetProperty("display_name", out var displayNameProp) &&
@@ -167,7 +171,7 @@ public static class AdminSettingsEndpoints
     /// <summary>
     /// Request body for listing provider models.
     /// </summary>
-    private record ListProviderModelsRequest(
+    internal record ListProviderModelsRequest(
         string Endpoint,
         string ApiKey,
         string RequestType
@@ -176,5 +180,5 @@ public static class AdminSettingsEndpoints
     /// <summary>
     /// Model info returned from a provider.
     /// </summary>
-    private record ProviderModelInfo(string Id, string DisplayName);
+    internal record ProviderModelInfo(string Id, string DisplayName);
 }
