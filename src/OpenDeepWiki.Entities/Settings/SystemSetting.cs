@@ -3,30 +3,30 @@ using System.ComponentModel.DataAnnotations;
 namespace OpenDeepWiki.Entities;
 
 /// <summary>
-/// 系统设置实体
+/// System setting entity.
 /// </summary>
 public class SystemSetting : AggregateRoot<string>
 {
     /// <summary>
-    /// 设置键
+    /// Setting key.
     /// </summary>
     [Required]
     [StringLength(100)]
     public string Key { get; set; } = string.Empty;
 
     /// <summary>
-    /// 设置值
+    /// Setting value.
     /// </summary>
     public string? Value { get; set; }
 
     /// <summary>
-    /// 设置描述
+    /// Setting description.
     /// </summary>
     [StringLength(500)]
     public string? Description { get; set; }
 
     /// <summary>
-    /// 设置分类（general, ai, security 等）
+    /// Setting category (general, ai, security, etc.).
     /// </summary>
     [StringLength(50)]
     public string Category { get; set; } = "general";

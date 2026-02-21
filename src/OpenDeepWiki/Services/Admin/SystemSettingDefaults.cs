@@ -9,64 +9,75 @@ using OpenDeepWiki.Services.Wiki;
 namespace OpenDeepWiki.Services.Admin;
 
 /// <summary>
-/// 系统设置帮助类，用于从环境变量初始化默认设置
+/// Helper class for initializing default system settings from environment variables.
 /// </summary>
 public static class SystemSettingDefaults
 {
     /// <summary>
-    /// Wiki生成器相关的默认设置
+    /// Default settings for the wiki generator.
     /// </summary>
-    public static readonly (string Key, string Category, string Description)[] WikiGeneratorDefaults = 
+    public static readonly (string Key, string Category, string Description)[] WikiGeneratorDefaults =
     [
-        ("WIKI_CATALOG_MODEL", "ai", "目录生成使用的AI模型"),
-        ("WIKI_CATALOG_ENDPOINT", "ai", "目录生成API端点"),
-        ("WIKI_CATALOG_API_KEY", "ai", "目录生成API密钥"),
-        ("WIKI_CATALOG_REQUEST_TYPE", "ai", "目录生成请求类型"),
-        ("WIKI_CONTENT_MODEL", "ai", "内容生成使用的AI模型"),
-        ("WIKI_CONTENT_ENDPOINT", "ai", "内容生成API端点"),
-        ("WIKI_CONTENT_API_KEY", "ai", "内容生成API密钥"),
-        ("WIKI_CONTENT_REQUEST_TYPE", "ai", "内容生成请求类型"),
-        ("WIKI_TRANSLATION_MODEL", "ai", "翻译使用的AI模型"),
-        ("WIKI_TRANSLATION_ENDPOINT", "ai", "翻译API端点"),
-        ("WIKI_TRANSLATION_API_KEY", "ai", "翻译API密钥"),
-        ("WIKI_TRANSLATION_REQUEST_TYPE", "ai", "翻译请求类型"),
-        ("WIKI_LANGUAGES", "ai", "支持的语言列表（逗号分隔）"),
-        ("WIKI_PARALLEL_COUNT", "ai", "并行生成文档数量"),
-        ("WIKI_MAX_OUTPUT_TOKENS", "ai", "最大输出Token数量"),
-        ("WIKI_DOCUMENT_GENERATION_TIMEOUT_MINUTES", "ai", "文档生成超时时间（分钟）"),
-        ("WIKI_TRANSLATION_TIMEOUT_MINUTES", "ai", "翻译超时时间（分钟）"),
-        ("WIKI_TITLE_TRANSLATION_TIMEOUT_MINUTES", "ai", "标题翻译超时时间（分钟）"),
-        ("WIKI_README_MAX_LENGTH", "ai", "README内容最大长度"),
-        ("WIKI_DIRECTORY_TREE_MAX_DEPTH", "ai", "目录树最大深度"),
-        ("WIKI_MAX_RETRY_ATTEMPTS", "ai", "最大重试次数"),
-        ("WIKI_RETRY_DELAY_MS", "ai", "重试延迟时间（毫秒）"),
-        ("WIKI_PROMPTS_DIRECTORY", "ai", "提示模板目录")
+        ("WIKI_CATALOG_MODEL", "ai", "AI model used for catalog generation"),
+        ("WIKI_CATALOG_ENDPOINT", "ai", "API endpoint for catalog generation"),
+        ("WIKI_CATALOG_API_KEY", "ai", "API key for catalog generation"),
+        ("WIKI_CATALOG_REQUEST_TYPE", "ai", "Request type for catalog generation"),
+        ("WIKI_CONTENT_MODEL", "ai", "AI model used for content generation"),
+        ("WIKI_CONTENT_ENDPOINT", "ai", "API endpoint for content generation"),
+        ("WIKI_CONTENT_API_KEY", "ai", "API key for content generation"),
+        ("WIKI_CONTENT_REQUEST_TYPE", "ai", "Request type for content generation"),
+        ("WIKI_TRANSLATION_MODEL", "ai", "AI model used for translation"),
+        ("WIKI_TRANSLATION_ENDPOINT", "ai", "API endpoint for translation"),
+        ("WIKI_TRANSLATION_API_KEY", "ai", "API key for translation"),
+        ("WIKI_TRANSLATION_REQUEST_TYPE", "ai", "Request type for translation"),
+        ("WIKI_LANGUAGES", "ai", "Supported languages (comma-separated)"),
+        ("WIKI_PARALLEL_COUNT", "ai", "Number of parallel document generation tasks"),
+        ("WIKI_MAX_OUTPUT_TOKENS", "ai", "Maximum output token count"),
+        ("WIKI_DOCUMENT_GENERATION_TIMEOUT_MINUTES", "ai", "Document generation timeout (minutes)"),
+        ("WIKI_TRANSLATION_TIMEOUT_MINUTES", "ai", "Translation timeout (minutes)"),
+        ("WIKI_TITLE_TRANSLATION_TIMEOUT_MINUTES", "ai", "Title translation timeout (minutes)"),
+        ("WIKI_README_MAX_LENGTH", "ai", "Maximum README content length"),
+        ("WIKI_DIRECTORY_TREE_MAX_DEPTH", "ai", "Maximum directory tree depth"),
+        ("WIKI_MAX_RETRY_ATTEMPTS", "ai", "Maximum retry attempts"),
+        ("WIKI_RETRY_DELAY_MS", "ai", "Retry delay (milliseconds)"),
+        ("WIKI_PROMPTS_DIRECTORY", "ai", "Prompt templates directory")
     ];
 
     /// <summary>
-    /// 初始化系统设置默认值（仅在数据库中不存在对应设置时生效）
+    /// Initialize default system settings (only for keys not already in the database).
     /// </summary>
     public static async Task InitializeDefaultsAsync(IConfiguration configuration, IContext context)
     {
-        var existingKeys = await context.SystemSettings
+        var existingSettings = await context.SystemSettings
             .Where(s => !s.IsDeleted)
-            .Select(s => s.Key)
             .ToListAsync();
 
-        var settingsToAdd = new List<SystemSetting>();
+        var existingByKey = existingSettings.ToDictionary(s => s.Key);
 
-        // 准备 WikiGeneratorOptions 的默认值，方便在没有环境变量时也能写入
+        var settingsToAdd = new List<SystemSetting>();
+        var hasChanges = false;
+
+        // Prepare WikiGeneratorOptions defaults so values can be written even without env vars
         var wikiOptionDefaults = new WikiGeneratorOptions();
         var wikiSection = configuration.GetSection(WikiGeneratorOptions.SectionName);
         wikiSection.Bind(wikiOptionDefaults);
 
-        // 将 PostConfigure 内的环境变量覆盖也应用到默认选项，确保与运行时一致
+        // Apply environment variable overrides to match runtime behavior
         ApplyEnvironmentOverrides(wikiOptionDefaults, configuration);
 
-        // 处理Wiki生成器相关设置
+        // Process wiki generator settings
         foreach (var (key, category, description) in WikiGeneratorDefaults)
         {
-            if (!existingKeys.Contains(key))
+            if (existingByKey.TryGetValue(key, out var existing))
+            {
+                // Update description if it changed (e.g. translated from Chinese to English)
+                if (existing.Description != description)
+                {
+                    existing.Description = description;
+                    hasChanges = true;
+                }
+            }
+            else
             {
                 var envValue = GetEnvironmentOrConfigurationValue(configuration, key);
                 var fallbackValue = GetOptionDefaultValue(wikiOptionDefaults, key);
@@ -87,28 +98,33 @@ public static class SystemSettingDefaults
         if (settingsToAdd.Count > 0)
         {
             context.SystemSettings.AddRange(settingsToAdd);
+            hasChanges = true;
+        }
+
+        if (hasChanges)
+        {
             await context.SaveChangesAsync();
         }
     }
 
     /// <summary>
-    /// 从环境变量或配置中获取值
+    /// Get value from environment variable or configuration.
     /// </summary>
     private static string? GetEnvironmentOrConfigurationValue(IConfiguration configuration, string key)
     {
-        // 优先从环境变量获取
+        // Prefer environment variable
         var envValue = Environment.GetEnvironmentVariable(key);
         if (!string.IsNullOrWhiteSpace(envValue))
         {
             return envValue;
         }
 
-        // 从配置中获取（支持appsettings.json等）
+        // Fall back to configuration (appsettings.json etc.)
         return configuration[key];
     }
 
     /// <summary>
-    /// 将环境变量中的值应用到 WikiGeneratorOptions，以保持与运行时一致
+    /// Apply environment variable values to WikiGeneratorOptions for runtime consistency.
     /// </summary>
     private static void ApplyEnvironmentOverrides(WikiGeneratorOptions options, IConfiguration configuration)
     {
@@ -123,7 +139,7 @@ public static class SystemSettingDefaults
     }
 
     /// <summary>
-    /// 将系统设置应用到WikiGeneratorOptions
+    /// Apply system settings to WikiGeneratorOptions.
     /// </summary>
     public static async Task ApplyToWikiGeneratorOptions(WikiGeneratorOptions options, IAdminSettingsService settingsService)
     {
@@ -138,7 +154,7 @@ public static class SystemSettingDefaults
     }
 
     /// <summary>
-    /// 从 WikiGeneratorOptions 中获取默认值（字符串）
+    /// Get the default value from WikiGeneratorOptions as a string.
     /// </summary>
     private static string? GetOptionDefaultValue(WikiGeneratorOptions options, string key)
     {
@@ -172,7 +188,7 @@ public static class SystemSettingDefaults
     }
 
     /// <summary>
-    /// 将单个设置应用到WikiGeneratorOptions
+    /// Apply a single setting to WikiGeneratorOptions.
     /// </summary>
     public static void ApplySettingToOption(WikiGeneratorOptions options, string key, string value)
     {

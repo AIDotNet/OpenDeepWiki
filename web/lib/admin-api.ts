@@ -823,6 +823,24 @@ export async function updateSettings(settings: { key: string; value: string }[])
   });
 }
 
+export interface ProviderModel {
+  id: string;
+  displayName: string;
+}
+
+export async function listProviderModels(
+  endpoint: string,
+  apiKey: string,
+  requestType: string
+): Promise<ProviderModel[]> {
+  const url = buildApiUrl("/api/admin/settings/list-provider-models");
+  const result = await fetchWithAuth(url, {
+    method: "POST",
+    body: JSON.stringify({ endpoint, apiKey, requestType }),
+  });
+  return result.data?.models || [];
+}
+
 
 // ==================== Department API ====================
 
