@@ -16,6 +16,7 @@
   "success": "成功",
   "user": "ユーザー",
   "backToHome": "ホームに戻る",
+  "openMenu": "メニューを開く",
   "submitting": "送信中...",
   "submitFailed": "送信に失敗しました",
   "pleaseLogin": "ログインしてください",
