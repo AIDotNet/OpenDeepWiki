@@ -1,52 +1,34 @@
 using System.Collections.Concurrent;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OpenDeepWiki.Chat.Abstractions;
 using OpenDeepWiki.Chat.Callbacks;
 using OpenDeepWiki.Chat.Providers;
 using OpenDeepWiki.Chat.Queue;
-using OpenDeepWiki.Chat.Sessions;
 
 namespace OpenDeepWiki.Chat.Routing;
 
 /// <summary>
 /// 消息路由器实现
 /// 负责将消息路由到正确的 Provider，支持 Provider 注册和消息路由
+/// Registered as Singleton; uses IServiceScopeFactory to resolve scoped dependencies.
 /// </summary>
 public class MessageRouter : IMessageRouter
 {
     private readonly ILogger<MessageRouter> _logger;
-    private readonly ISessionManager _sessionManager;
-    private readonly IMessageQueue _messageQueue;
-    private readonly IMessageCallback _messageCallback;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly ConcurrentDictionary<string, IMessageProvider> _providers;
     private readonly MessageRouterOptions _options;
 
     public MessageRouter(
         ILogger<MessageRouter> logger,
-        ISessionManager sessionManager,
-        IMessageQueue messageQueue,
-        IMessageCallback messageCallback,
+        IServiceScopeFactory scopeFactory,
         MessageRouterOptions? options = null)
     {
         _logger = logger;
-        _sessionManager = sessionManager;
-        _messageQueue = messageQueue;
-        _messageCallback = messageCallback;
+        _scopeFactory = scopeFactory;
         _providers = new ConcurrentDictionary<string, IMessageProvider>(StringComparer.OrdinalIgnoreCase);
         _options = options ?? new MessageRouterOptions();
-    }
-
-    /// <summary>
-    /// 用于测试的简化构造函数
-    /// </summary>
-    public MessageRouter(ILogger<MessageRouter> logger)
-    {
-        _logger = logger;
-        _sessionManager = null!;
-        _messageQueue = null!;
-        _messageCallback = null!;
-        _providers = new ConcurrentDictionary<string, IMessageProvider>(StringComparer.OrdinalIgnoreCase);
-        _options = new MessageRouterOptions();
     }
 
     /// <inheritdoc />
@@ -78,24 +60,20 @@ public class MessageRouter : IMessageRouter
         _logger.LogDebug("Routing incoming message {MessageId} from platform {Platform}",
             message.MessageId, platform);
 
-        // 获取或创建会话
-        var session = await _sessionManager.GetOrCreateSessionAsync(
-            message.SenderId, platform, cancellationToken);
+        // Enqueue message for async processing by ChatMessageProcessingWorker.
+        // Session management is handled by the worker to avoid duplicate history entries.
+        using var scope = _scopeFactory.CreateScope();
+        var messageQueue = scope.ServiceProvider.GetRequiredService<IMessageQueue>();
 
-        // 将消息添加到会话历史
-        session.AddMessage(message);
-        await _sessionManager.UpdateSessionAsync(session, cancellationToken);
-
-        // 将消息入队等待处理
         var queuedMessage = new QueuedMessage(
             Id: Guid.NewGuid().ToString(),
             Message: message,
-            SessionId: session.SessionId,
+            SessionId: string.Empty, // Worker will resolve session
             TargetUserId: message.SenderId,
             Type: QueuedMessageType.Incoming
         );
 
-        await _messageQueue.EnqueueAsync(queuedMessage, cancellationToken);
+        await messageQueue.EnqueueAsync(queuedMessage, cancellationToken);
         _logger.LogDebug("Message {MessageId} enqueued for processing", message.MessageId);
     }
 
@@ -130,8 +108,12 @@ public class MessageRouter : IMessageRouter
         _logger.LogDebug("Routing outgoing message {MessageId} to user {UserId} on platform {Platform}",
             message.MessageId, targetUserId, platform);
 
+        // Create a scope to resolve scoped dependencies (MessageCallback)
+        using var scope = _scopeFactory.CreateScope();
+        var messageCallback = scope.ServiceProvider.GetRequiredService<IMessageCallback>();
+
         // 通过回调管理器发送消息
-        await _messageCallback.SendAsync(platform, targetUserId, message, cancellationToken);
+        await messageCallback.SendAsync(platform, targetUserId, message, cancellationToken);
     }
 
     /// <inheritdoc />

@@ -168,15 +168,37 @@ public class ChatMessageProcessingWorker : BackgroundService
         var response = await agentExecutor.ExecuteAsync(
             queuedMessage.Message, session, stoppingToken);
 
+        // Reply target: use ReceiverId (channel) when available, fall back to SenderId (DM)
+        var replyTarget = !string.IsNullOrEmpty(queuedMessage.Message.ReceiverId)
+            ? queuedMessage.Message.ReceiverId
+            : queuedMessage.Message.SenderId;
+
         if (response.Success && response.Messages.Any())
         {
             // 发送响应消息
             foreach (var responseMessage in response.Messages)
             {
+                // Propagate metadata from original message (e.g. thread_ts for Slack threading)
+                var messageToSend = responseMessage;
+                if (queuedMessage.Message.Metadata != null && responseMessage.Metadata == null)
+                {
+                    messageToSend = new ChatMessage
+                    {
+                        MessageId = responseMessage.MessageId,
+                        SenderId = responseMessage.SenderId,
+                        ReceiverId = responseMessage.ReceiverId,
+                        Content = responseMessage.Content,
+                        MessageType = responseMessage.MessageType,
+                        Platform = responseMessage.Platform,
+                        Timestamp = responseMessage.Timestamp,
+                        Metadata = new Dictionary<string, object>(queuedMessage.Message.Metadata)
+                    };
+                }
+
                 var sendResult = await messageCallback.SendAsync(
                     queuedMessage.Message.Platform,
-                    queuedMessage.Message.SenderId,
-                    responseMessage,
+                    replyTarget,
+                    messageToSend,
                     stoppingToken);
 
                 if (!sendResult.Success)
@@ -195,16 +217,19 @@ public class ChatMessageProcessingWorker : BackgroundService
             {
                 MessageId = Guid.NewGuid().ToString(),
                 SenderId = "system",
-                ReceiverId = queuedMessage.Message.SenderId,
-                Content = response.ErrorMessage ?? "处理消息时发生错误，请稍后重试。",
+                ReceiverId = replyTarget,
+                Content = response.ErrorMessage ?? "An error occurred while processing your message, please try again later.",
                 MessageType = ChatMessageType.Text,
                 Platform = queuedMessage.Message.Platform,
-                Timestamp = DateTimeOffset.UtcNow
+                Timestamp = DateTimeOffset.UtcNow,
+                Metadata = queuedMessage.Message.Metadata != null
+                    ? new Dictionary<string, object>(queuedMessage.Message.Metadata)
+                    : null
             };
 
             await messageCallback.SendAsync(
                 queuedMessage.Message.Platform,
-                queuedMessage.Message.SenderId,
+                replyTarget,
                 errorMessage,
                 stoppingToken);
         }
