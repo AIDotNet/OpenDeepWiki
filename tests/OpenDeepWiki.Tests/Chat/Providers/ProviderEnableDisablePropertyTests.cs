@@ -112,7 +112,7 @@ public class ProviderEnableDisablePropertyTests
             count =>
             {
                 var logger = NullLogger<MessageRouter>.Instance;
-                var router = new MessageRouter(logger);
+                var router = new MessageRouter(logger, null!);
                 var platforms = Enumerable.Range(1, count)
                     .Select(i => $"platform_{i}")
                     .ToList();

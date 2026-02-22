@@ -2,6 +2,7 @@ using FsCheck;
 using FsCheck.Fluent;
 using FsCheck.Xunit;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using OpenDeepWiki.Chat.Abstractions;
@@ -59,7 +60,7 @@ public class ProviderRoutingPropertyTests
             GeneratePlatformCount().ToArbitrary(),
             count =>
             {
-                var router = new MessageRouter(_logger);
+                var router = new MessageRouter(_logger, null!);
                 var platforms = Enumerable.Range(1, count)
                     .Select(i => $"platform_{i}")
                     .ToList();
@@ -94,7 +95,7 @@ public class ProviderRoutingPropertyTests
             GeneratePlatformCount().ToArbitrary(),
             count =>
             {
-                var router = new MessageRouter(_logger);
+                var router = new MessageRouter(_logger, null!);
                 var platforms = Enumerable.Range(1, count)
                     .Select(i => $"platform_{i}")
                     .ToList();
@@ -122,7 +123,7 @@ public class ProviderRoutingPropertyTests
             GenerateUniquePlatformId().ToArbitrary(),
             (count, unregisteredPlatform) =>
             {
-                var router = new MessageRouter(_logger);
+                var router = new MessageRouter(_logger, null!);
                 var platforms = Enumerable.Range(1, count)
                     .Select(i => $"registered_{i}")
                     .ToList();
@@ -154,7 +155,7 @@ public class ProviderRoutingPropertyTests
             GenerateValidPlatform().ToArbitrary(),
             (count, queryPlatform) =>
             {
-                var router = new MessageRouter(_logger);
+                var router = new MessageRouter(_logger, null!);
                 var platforms = Enumerable.Range(1, count)
                     .Select(i => $"platform_{i}")
                     .ToList();
@@ -183,7 +184,7 @@ public class ProviderRoutingPropertyTests
             GeneratePlatformCount().ToArbitrary(),
             count =>
             {
-                var router = new MessageRouter(_logger);
+                var router = new MessageRouter(_logger, null!);
                 var platforms = Enumerable.Range(1, count)
                     .Select(i => $"platform_{i}")
                     .ToList();
@@ -217,7 +218,7 @@ public class ProviderRoutingPropertyTests
             GenerateUniquePlatformId().ToArbitrary(),
             platformId =>
             {
-                var router = new MessageRouter(_logger);
+                var router = new MessageRouter(_logger, null!);
                 
                 // 注册第一个 Provider
                 var provider1 = CreateTestProvider(platformId, "Provider 1");
@@ -242,7 +243,7 @@ public class ProviderRoutingPropertyTests
     [Fact]
     public void PlatformIdMatching_ShouldBeCaseInsensitive()
     {
-        var router = new MessageRouter(_logger);
+        var router = new MessageRouter(_logger, null!);
         
         // 注册小写平台
         var provider = CreateTestProvider("feishu", "Feishu Provider");
@@ -270,7 +271,7 @@ public class ProviderRoutingPropertyTests
     [InlineData("   ")]
     public void EmptyPlatformId_ShouldReturnNull(string? platformId)
     {
-        var router = new MessageRouter(_logger);
+        var router = new MessageRouter(_logger, null!);
         
         var result = router.GetProvider(platformId!);
         

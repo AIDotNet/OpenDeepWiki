@@ -5,6 +5,9 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Protocols;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
+using Microsoft.IdentityModel.Tokens;
 using OpenDeepWiki.EFCore;
 using OpenDeepWiki.Entities;
 using OpenDeepWiki.Services.Auth;
@@ -24,6 +27,7 @@ public class McpOAuthServer
     private readonly ILogger<McpOAuthServer> _logger;
     private readonly string _googleClientId;
     private readonly string _googleClientSecret;
+    private readonly ConfigurationManager<OpenIdConnectConfiguration> _googleOidcConfigManager;
 
     // In-memory stores for OAuth state (short-lived, lost on restart = clients re-auth)
     private static readonly ConcurrentDictionary<string, PendingAuthorization> PendingAuthorizations = new();
@@ -57,6 +61,12 @@ public class McpOAuthServer
                               ?? configuration["Google:ClientSecret"]
                               ?? throw new InvalidOperationException(
                                   "GOOGLE_CLIENT_SECRET is required for MCP OAuth authorization server");
+
+        // Initialize Google OIDC configuration manager for ID token signature validation
+        _googleOidcConfigManager = new ConfigurationManager<OpenIdConnectConfiguration>(
+            "https://accounts.google.com/.well-known/openid-configuration",
+            new OpenIdConnectConfigurationRetriever(),
+            new HttpDocumentRetriever(httpClientFactory.CreateClient()));
     }
 
     /// <summary>
@@ -211,7 +221,7 @@ public class McpOAuthServer
         var tokenJson = await tokenResponse.Content.ReadAsStringAsync();
         var tokenData = JsonSerializer.Deserialize<JsonElement>(tokenJson);
 
-        // Extract user info from the ID token
+        // Validate and extract user info from the Google ID token
         var idToken = tokenData.GetProperty("id_token").GetString();
         if (string.IsNullOrEmpty(idToken))
         {
@@ -219,10 +229,39 @@ public class McpOAuthServer
             return Results.BadRequest(new { error = "server_error", error_description = "No ID token from Google" });
         }
 
+        // Validate Google ID token signature using Google's JWKS public keys
         var handler = new JwtSecurityTokenHandler();
-        var jwt = handler.ReadJwtToken(idToken);
-        var email = jwt.Claims.FirstOrDefault(c => c.Type == "email")?.Value;
-        var name = jwt.Claims.FirstOrDefault(c => c.Type == "name")?.Value ?? email;
+        var oidcConfig = await _googleOidcConfigManager.GetConfigurationAsync(CancellationToken.None);
+        var validationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuers = new[] { "https://accounts.google.com", "accounts.google.com" },
+            ValidateAudience = true,
+            ValidAudience = _googleClientId,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKeys = oidcConfig.SigningKeys,
+        };
+
+        TokenValidationResult validationResult;
+        try
+        {
+            validationResult = await handler.ValidateTokenAsync(idToken, validationParameters);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "MCP OAuth callback: Google ID token validation failed");
+            return Results.BadRequest(new { error = "server_error", error_description = "ID token validation failed" });
+        }
+
+        if (!validationResult.IsValid)
+        {
+            _logger.LogError("MCP OAuth callback: Google ID token is invalid: {Exception}", validationResult.Exception?.Message);
+            return Results.BadRequest(new { error = "server_error", error_description = "ID token validation failed" });
+        }
+
+        var email = validationResult.ClaimsIdentity.FindFirst("email")?.Value;
+        var name = validationResult.ClaimsIdentity.FindFirst("name")?.Value ?? email;
 
         if (string.IsNullOrEmpty(email))
         {
