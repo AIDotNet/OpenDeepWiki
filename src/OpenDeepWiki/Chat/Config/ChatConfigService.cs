@@ -13,25 +13,29 @@ public class ChatConfigService : IChatConfigService
 {
     private readonly IContext _context;
     private readonly IConfigEncryption _encryption;
+    private readonly IConfigChangeNotifier _changeNotifier;
     private readonly ILogger<ChatConfigService> _logger;
     private readonly List<Action<string>> _changeCallbacks = new();
     private readonly object _callbackLock = new();
-    
+
     // 必需的配置字段（按平台）
     private static readonly Dictionary<string, string[]> RequiredFields = new()
     {
         ["feishu"] = new[] { "AppId", "AppSecret" },
         ["qq"] = new[] { "AppId", "Token" },
-        ["wechat"] = new[] { "AppId", "AppSecret", "Token", "EncodingAesKey" }
+        ["wechat"] = new[] { "AppId", "AppSecret", "Token", "EncodingAesKey" },
+        ["slack"] = new[] { "BotToken", "SigningSecret" }
     };
     
     public ChatConfigService(
         IContext context,
         IConfigEncryption encryption,
+        IConfigChangeNotifier changeNotifier,
         ILogger<ChatConfigService> logger)
     {
         _context = context;
         _encryption = encryption;
+        _changeNotifier = changeNotifier;
         _logger = logger;
     }
     
@@ -113,9 +117,9 @@ public class ChatConfigService : IChatConfigService
             _context.ChatProviderConfigs.Remove(entity);
             await _context.SaveChangesAsync(cancellationToken);
             _logger.LogInformation("Deleted config for platform: {Platform}", platform);
-            
+
             // 触发变更通知
-            NotifyConfigChanged(platform);
+            NotifyConfigChanged(platform, ConfigChangeType.Deleted);
         }
     }
     
@@ -263,14 +267,15 @@ public class ChatConfigService : IChatConfigService
     /// <summary>
     /// 通知配置变更
     /// </summary>
-    private void NotifyConfigChanged(string platform)
+    private void NotifyConfigChanged(string platform, ConfigChangeType changeType = ConfigChangeType.Updated)
     {
+        // Fire local scoped callbacks (existing behavior)
         List<Action<string>> callbacks;
         lock (_callbackLock)
         {
             callbacks = _changeCallbacks.ToList();
         }
-        
+
         foreach (var callback in callbacks)
         {
             try
@@ -281,6 +286,16 @@ public class ChatConfigService : IChatConfigService
             {
                 _logger.LogError(ex, "Error in config change callback for platform: {Platform}", platform);
             }
+        }
+
+        // Fire global singleton notifier so ProviderConfigApplicator picks up changes immediately
+        try
+        {
+            _changeNotifier.NotifyChange(platform, changeType);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error firing global config change notification for platform: {Platform}", platform);
         }
     }
     

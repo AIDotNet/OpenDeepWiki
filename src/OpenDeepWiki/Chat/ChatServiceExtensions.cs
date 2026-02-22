@@ -183,7 +183,10 @@ public static class ChatServiceExtensions
         {
             services.AddHostedService<ConfigReloadService>();
         }
-        
+
+        // Apply DB config to providers after they are initialized
+        services.AddHostedService<ProviderConfigApplicator>();
+
         return services;
     }
     

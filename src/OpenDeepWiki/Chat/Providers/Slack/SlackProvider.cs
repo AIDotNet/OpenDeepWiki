@@ -8,17 +8,21 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using OpenDeepWiki.Chat.Abstractions;
+using OpenDeepWiki.Chat.Config;
 
 namespace OpenDeepWiki.Chat.Providers.Slack;
 
 /// <summary>
 /// Slack messaging Provider implementation.
 /// Uses Slack Events API for receiving messages and Web API for sending.
+/// Supports runtime configuration from database via IConfigurableProvider.
 /// </summary>
-public class SlackProvider : BaseMessageProvider
+public class SlackProvider : BaseMessageProvider, IConfigurableProvider
 {
     private readonly HttpClient _httpClient;
-    private readonly SlackProviderOptions _slackOptions;
+    private readonly SlackProviderOptions _envOptions;
+    private volatile SlackProviderOptions _activeOptions;
+    private bool? _dbIsEnabled;
     private string? _botUserId;
 
     private static readonly HashSet<ChatMessageType> SupportedMessageTypes = new()
@@ -45,6 +49,8 @@ public class SlackProvider : BaseMessageProvider
 
     public override string PlatformId => "slack";
     public override string DisplayName => "Slack";
+    public override bool IsEnabled => _dbIsEnabled ?? base.IsEnabled;
+    public string ConfigSource { get; private set; } = "environment";
 
     public SlackProvider(
         ILogger<SlackProvider> logger,
@@ -53,8 +59,104 @@ public class SlackProvider : BaseMessageProvider
         : base(logger, options)
     {
         _httpClient = httpClient;
-        _slackOptions = options.Value;
+        _envOptions = CloneOptions(options.Value);
+        _activeOptions = options.Value;
     }
+
+    #region IConfigurableProvider
+
+    /// <summary>
+    /// Apply configuration from database. Creates a new options instance and swaps
+    /// the volatile reference atomically for thread safety.
+    /// </summary>
+    public void ApplyConfig(ProviderConfigDto config)
+    {
+        var newOptions = new SlackProviderOptions
+        {
+            Enabled = config.IsEnabled,
+            MessageInterval = config.MessageInterval,
+            MaxRetryCount = config.MaxRetryCount,
+            RetryDelayBase = _activeOptions.RetryDelayBase,
+            RequestTimeout = _activeOptions.RequestTimeout,
+        };
+
+        if (!string.IsNullOrEmpty(config.ConfigData))
+        {
+            try
+            {
+                var configDict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(config.ConfigData);
+                if (configDict != null)
+                {
+                    if (configDict.TryGetValue("BotToken", out var botToken))
+                        newOptions.BotToken = botToken.GetString() ?? string.Empty;
+                    if (configDict.TryGetValue("SigningSecret", out var signingSecret))
+                        newOptions.SigningSecret = signingSecret.GetString() ?? string.Empty;
+                    if (configDict.TryGetValue("AppLevelToken", out var appToken))
+                        newOptions.AppLevelToken = appToken.GetString();
+                    if (configDict.TryGetValue("ApiBaseUrl", out var apiBase) && !string.IsNullOrEmpty(apiBase.GetString()))
+                        newOptions.ApiBaseUrl = apiBase.GetString()!;
+                    if (configDict.TryGetValue("ReplyInThread", out var replyInThread))
+                        newOptions.ReplyInThread = replyInThread.ValueKind == JsonValueKind.True;
+                    if (configDict.TryGetValue("WebhookTimestampToleranceSeconds", out var tolerance) &&
+                        tolerance.TryGetInt32(out var toleranceValue))
+                        newOptions.WebhookTimestampToleranceSeconds = toleranceValue;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Failed to parse Slack ConfigData JSON, keeping current config");
+                return;
+            }
+        }
+
+        _dbIsEnabled = config.IsEnabled;
+        _activeOptions = newOptions;
+        ConfigSource = "database";
+
+        Logger.LogInformation("SlackProvider config applied from database. Enabled={Enabled}", config.IsEnabled);
+
+        // Re-initialize to validate the new token and resolve bot user ID
+        _ = Task.Run(async () =>
+        {
+            try { await InitializeAsync(); }
+            catch (Exception ex) { Logger.LogError(ex, "Failed to re-initialize SlackProvider after config change"); }
+        });
+    }
+
+    /// <summary>
+    /// Reset to environment variable defaults (when DB config is deleted).
+    /// </summary>
+    public void ResetToDefaults()
+    {
+        _dbIsEnabled = null;
+        _activeOptions = CloneOptions(_envOptions);
+        ConfigSource = "environment";
+
+        Logger.LogInformation("SlackProvider config reset to environment variable defaults");
+
+        _ = Task.Run(async () =>
+        {
+            try { await InitializeAsync(); }
+            catch (Exception ex) { Logger.LogError(ex, "Failed to re-initialize SlackProvider after config reset"); }
+        });
+    }
+
+    private static SlackProviderOptions CloneOptions(SlackProviderOptions source) => new()
+    {
+        Enabled = source.Enabled,
+        MessageInterval = source.MessageInterval,
+        MaxRetryCount = source.MaxRetryCount,
+        RetryDelayBase = source.RetryDelayBase,
+        RequestTimeout = source.RequestTimeout,
+        BotToken = source.BotToken,
+        SigningSecret = source.SigningSecret,
+        AppLevelToken = source.AppLevelToken,
+        ApiBaseUrl = source.ApiBaseUrl,
+        ReplyInThread = source.ReplyInThread,
+        WebhookTimestampToleranceSeconds = source.WebhookTimestampToleranceSeconds
+    };
+
+    #endregion
 
     /// <summary>
     /// Initialize provider: verify bot token and resolve bot user ID.
@@ -63,7 +165,8 @@ public class SlackProvider : BaseMessageProvider
     {
         await base.InitializeAsync(cancellationToken);
 
-        if (string.IsNullOrEmpty(_slackOptions.BotToken))
+        var opts = _activeOptions;
+        if (string.IsNullOrEmpty(opts.BotToken))
         {
             Logger.LogWarning("Slack BotToken not configured, provider will not be fully functional");
             return;
@@ -71,8 +174,8 @@ public class SlackProvider : BaseMessageProvider
 
         try
         {
-            var request = new HttpRequestMessage(HttpMethod.Post, $"{_slackOptions.ApiBaseUrl}/auth.test");
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _slackOptions.BotToken);
+            var request = new HttpRequestMessage(HttpMethod.Post, $"{opts.ApiBaseUrl}/auth.test");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", opts.BotToken);
 
             var response = await _httpClient.SendAsync(request, cancellationToken);
             var content = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -105,6 +208,8 @@ public class SlackProvider : BaseMessageProvider
     {
         try
         {
+            var opts = _activeOptions;
+
             request.EnableBuffering();
             using var reader = new StreamReader(request.Body, Encoding.UTF8, leaveOpen: true);
             var body = await reader.ReadToEndAsync(cancellationToken);
@@ -118,7 +223,7 @@ public class SlackProvider : BaseMessageProvider
             }
 
             // Verify request signature
-            if (string.IsNullOrEmpty(_slackOptions.SigningSecret))
+            if (string.IsNullOrEmpty(opts.SigningSecret))
             {
                 Logger.LogWarning("Slack SigningSecret not configured, skipping signature verification");
                 return new WebhookValidationResult(true);
@@ -137,7 +242,7 @@ public class SlackProvider : BaseMessageProvider
             if (long.TryParse(timestamp, out var ts))
             {
                 var requestAge = DateTimeOffset.UtcNow.ToUnixTimeSeconds() - ts;
-                if (Math.Abs(requestAge) > _slackOptions.WebhookTimestampToleranceSeconds)
+                if (Math.Abs(requestAge) > opts.WebhookTimestampToleranceSeconds)
                 {
                     return new WebhookValidationResult(false,
                         ErrorMessage: "Request timestamp too old");
@@ -146,7 +251,7 @@ public class SlackProvider : BaseMessageProvider
 
             // Compute expected signature: v0=HMAC-SHA256(signing_secret, "v0:{timestamp}:{body}")
             var sigBasestring = $"v0:{timestamp}:{body}";
-            var computedSignature = ComputeSignature(_slackOptions.SigningSecret, sigBasestring);
+            var computedSignature = ComputeSignature(opts.SigningSecret, sigBasestring);
 
             if (!CryptographicOperations.FixedTimeEquals(
                 Encoding.UTF8.GetBytes(computedSignature),
@@ -283,7 +388,9 @@ public class SlackProvider : BaseMessageProvider
         string targetUserId,
         CancellationToken cancellationToken = default)
     {
-        return await SendWithRetryAsync(async () =>
+        var opts = _activeOptions;
+
+        return await SendWithRetryAsync(opts, async () =>
         {
             var processedMessage = DegradeMessage(message, SupportedMessageTypes);
 
@@ -293,7 +400,7 @@ public class SlackProvider : BaseMessageProvider
             };
 
             // Handle thread replies
-            if (_slackOptions.ReplyInThread && message.Metadata != null)
+            if (opts.ReplyInThread && message.Metadata != null)
             {
                 if (message.Metadata.TryGetValue("thread_ts", out var threadTs))
                 {
@@ -329,7 +436,7 @@ public class SlackProvider : BaseMessageProvider
                     break;
             }
 
-            var url = $"{_slackOptions.ApiBaseUrl}/chat.postMessage";
+            var url = $"{opts.ApiBaseUrl}/chat.postMessage";
             var httpRequest = new HttpRequestMessage(HttpMethod.Post, url)
             {
                 Content = new StringContent(
@@ -337,7 +444,7 @@ public class SlackProvider : BaseMessageProvider
                     Encoding.UTF8,
                     "application/json")
             };
-            httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _slackOptions.BotToken);
+            httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", opts.BotToken);
 
             var response = await _httpClient.SendAsync(httpRequest, cancellationToken);
             var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -412,11 +519,12 @@ public class SlackProvider : BaseMessageProvider
     }
 
     private async Task<SendResult> SendWithRetryAsync(
+        SlackProviderOptions opts,
         Func<Task<SendResult>> sendFunc,
         CancellationToken cancellationToken)
     {
-        var maxRetries = _slackOptions.MaxRetryCount;
-        var retryDelayBase = _slackOptions.RetryDelayBase;
+        var maxRetries = opts.MaxRetryCount;
+        var retryDelayBase = opts.RetryDelayBase;
 
         for (var attempt = 0; attempt <= maxRetries; attempt++)
         {
