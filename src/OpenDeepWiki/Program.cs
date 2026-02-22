@@ -11,6 +11,7 @@ using OpenDeepWiki.Endpoints.Admin;
 using OpenDeepWiki.Infrastructure;
 using OpenDeepWiki.Services.Admin;
 using OpenDeepWiki.Services.Auth;
+using OpenDeepWiki.Services.GitHub;
 using OpenDeepWiki.Services.Chat;
 using OpenDeepWiki.Services.MindMap;
 using OpenDeepWiki.Services.Notifications;
@@ -302,6 +303,11 @@ try
     // 注册处理日志服务（使用 Singleton，因为它内部使用 IServiceScopeFactory 创建独立 scope）
     builder.Services.AddSingleton<IProcessingLogService, ProcessingLogService>();
 
+    // 注册 GitHub App 服务
+    builder.Services.AddSingleton<GitHubAppCredentialCache>();
+    builder.Services.AddScoped<IGitHubAppService, GitHubAppService>();
+    builder.Services.AddScoped<IAdminGitHubImportService, AdminGitHubImportService>();
+
     // 注册管理端服务
     builder.Services.AddScoped<IAdminStatisticsService, AdminStatisticsService>();
     builder.Services.AddScoped<IAdminRepositoryService, AdminRepositoryService>();
@@ -397,6 +403,10 @@ try
         var settingsService = scope.ServiceProvider.GetRequiredService<IAdminSettingsService>();
         var wikiOptions = scope.ServiceProvider.GetRequiredService<IOptions<WikiGeneratorOptions>>();
         await SystemSettingDefaults.ApplyToWikiGeneratorOptions(wikiOptions.Value, settingsService);
+
+        // Load GitHub App credentials from DB into the in-memory cache
+        var githubCache = app.Services.GetRequiredService<GitHubAppCredentialCache>();
+        await githubCache.LoadFromDbAsync(settingsService);
     }
 
     // 启用 CORS
@@ -457,8 +467,7 @@ static void LoadEnvFile(IConfigurationBuilder configuration)
     var envPaths = new[]
     {
         Path.Combine(Directory.GetCurrentDirectory(), ".env"),
-        Path.Combine(AppContext.BaseDirectory, ".env"),
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".env"),
+        Path.Combine(AppContext.BaseDirectory, ".env")
     };
 
     foreach (var envPath in envPaths)
