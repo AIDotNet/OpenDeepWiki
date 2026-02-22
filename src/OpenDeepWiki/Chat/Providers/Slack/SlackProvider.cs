@@ -52,6 +52,17 @@ public class SlackProvider : BaseMessageProvider, IConfigurableProvider
     public override bool IsEnabled => _dbIsEnabled ?? base.IsEnabled;
     public string ConfigSource { get; private set; } = "environment";
 
+    /// <summary>
+    /// The currently active Bot Token (from DB config or env vars).
+    /// Used by ChatUserResolver to call Slack APIs for user identity resolution.
+    /// </summary>
+    public string ActiveBotToken => _activeOptions.BotToken;
+
+    /// <summary>
+    /// The currently active API base URL (from DB config or env vars).
+    /// </summary>
+    public string ActiveApiBaseUrl => _activeOptions.ApiBaseUrl;
+
     public SlackProvider(
         ILogger<SlackProvider> logger,
         IOptions<SlackProviderOptions> options,
