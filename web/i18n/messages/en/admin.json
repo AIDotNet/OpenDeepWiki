@@ -232,7 +232,10 @@
     "platformSlack": "Slack",
     "fieldBotToken": "Bot Token",
     "fieldSigningSecret": "Signing Secret",
-    "fieldReplyInThread": "Reply in Thread"
+    "fieldReplyInThread": "Reply in Thread",
+    "hintBotToken": "Slack App > OAuth & Permissions > Bot User OAuth Token (xoxb-...)",
+    "hintSigningSecret": "Slack App > Basic Information > App Credentials > Signing Secret",
+    "hintApiBaseUrl": "Default: https://slack.com/api"
   },
   "mcps": {
     "title": "MCPs Management",

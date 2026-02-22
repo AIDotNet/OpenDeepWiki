@@ -232,7 +232,10 @@
     "platformSlack": "Slack",
     "fieldBotToken": "Bot Token",
     "fieldSigningSecret": "Signing Secret",
-    "fieldReplyInThread": "스레드에서 답장"
+    "fieldReplyInThread": "스레드에서 답장",
+    "hintBotToken": "Slack App > OAuth & Permissions > Bot User OAuth Token (xoxb-...)",
+    "hintSigningSecret": "Slack App > Basic Information > App Credentials > Signing Secret",
+    "hintApiBaseUrl": "Default: https://slack.com/api"
   },
   "mcps": {
     "title": "MCP 관리",
