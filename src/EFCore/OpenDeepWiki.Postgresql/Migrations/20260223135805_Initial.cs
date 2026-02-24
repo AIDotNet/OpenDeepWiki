@@ -251,6 +251,87 @@ namespace OpenDeepWiki.Postgresql.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "McpDailyStatistics",
+                columns: table => new
+                {
+                    Id = table.Column<string>(type: "text", nullable: false),
+                    McpProviderId = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    Date = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    RequestCount = table.Column<long>(type: "bigint", nullable: false),
+                    SuccessCount = table.Column<long>(type: "bigint", nullable: false),
+                    ErrorCount = table.Column<long>(type: "bigint", nullable: false),
+                    TotalDurationMs = table.Column<long>(type: "bigint", nullable: false),
+                    InputTokens = table.Column<long>(type: "bigint", nullable: false),
+                    OutputTokens = table.Column<long>(type: "bigint", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    IsDeleted = table.Column<bool>(type: "boolean", nullable: false),
+                    Version = table.Column<byte[]>(type: "bytea", rowVersion: true, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_McpDailyStatistics", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "McpProviders",
+                columns: table => new
+                {
+                    Id = table.Column<string>(type: "text", nullable: false),
+                    Name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    Description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    ServerUrl = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    TransportType = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    RequiresApiKey = table.Column<bool>(type: "boolean", nullable: false),
+                    ApiKeyObtainUrl = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    SystemApiKey = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    ModelConfigId = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    RequestTypes = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
+                    AllowedTools = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
+                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
+                    SortOrder = table.Column<int>(type: "integer", nullable: false),
+                    IconUrl = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    MaxRequestsPerDay = table.Column<int>(type: "integer", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    IsDeleted = table.Column<bool>(type: "boolean", nullable: false),
+                    Version = table.Column<byte[]>(type: "bytea", rowVersion: true, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_McpProviders", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "McpUsageLogs",
+                columns: table => new
+                {
+                    Id = table.Column<string>(type: "text", nullable: false),
+                    UserId = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    McpProviderId = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    ToolName = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    RequestSummary = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    ResponseStatus = table.Column<int>(type: "integer", nullable: false),
+                    DurationMs = table.Column<long>(type: "bigint", nullable: false),
+                    InputTokens = table.Column<int>(type: "integer", nullable: false),
+                    OutputTokens = table.Column<int>(type: "integer", nullable: false),
+                    IpAddress = table.Column<string>(type: "character varying(45)", maxLength: 45, nullable: true),
+                    UserAgent = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    ErrorMessage = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    IsDeleted = table.Column<bool>(type: "boolean", nullable: false),
+                    Version = table.Column<byte[]>(type: "bytea", rowVersion: true, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_McpUsageLogs", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "ModelConfigs",
                 columns: table => new
                 {
@@ -1186,6 +1267,58 @@ namespace OpenDeepWiki.Postgresql.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_McpDailyStatistics_Date",
+                table: "McpDailyStatistics",
+                column: "Date");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_McpDailyStatistics_McpProviderId_Date",
+                table: "McpDailyStatistics",
+                columns: new[] { "McpProviderId", "Date" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_McpProviders_IsActive",
+                table: "McpProviders",
+                column: "IsActive");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_McpProviders_Name",
+                table: "McpProviders",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_McpProviders_SortOrder",
+                table: "McpProviders",
+                column: "SortOrder");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_McpUsageLogs_CreatedAt",
+                table: "McpUsageLogs",
+                column: "CreatedAt");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_McpUsageLogs_McpProviderId_CreatedAt",
+                table: "McpUsageLogs",
+                columns: new[] { "McpProviderId", "CreatedAt" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_McpUsageLogs_ResponseStatus",
+                table: "McpUsageLogs",
+                column: "ResponseStatus");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_McpUsageLogs_ToolName",
+                table: "McpUsageLogs",
+                column: "ToolName");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_McpUsageLogs_UserId_CreatedAt",
+                table: "McpUsageLogs",
+                columns: new[] { "UserId", "CreatedAt" });
+
+            migrationBuilder.CreateIndex(
                 name: "IX_ModelConfigs_Name",
                 table: "ModelConfigs",
                 column: "Name",
@@ -1390,6 +1523,15 @@ namespace OpenDeepWiki.Postgresql.Migrations
 
             migrationBuilder.DropTable(
                 name: "McpConfigs");
+
+            migrationBuilder.DropTable(
+                name: "McpDailyStatistics");
+
+            migrationBuilder.DropTable(
+                name: "McpProviders");
+
+            migrationBuilder.DropTable(
+                name: "McpUsageLogs");
 
             migrationBuilder.DropTable(
                 name: "ModelConfigs");

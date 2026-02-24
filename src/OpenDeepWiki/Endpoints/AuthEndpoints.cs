@@ -31,6 +31,7 @@ public static class AuthEndpoints
                 return Results.BadRequest(new { success = false, message = ex.Message });
             }
         })
+        .AllowAnonymous()
         .WithName("Login")
         .WithSummary("用户登录")
         .Produces<LoginResponse>(200)
@@ -54,6 +55,7 @@ public static class AuthEndpoints
                 return Results.BadRequest(new { success = false, message = ex.Message });
             }
         })
+        .AllowAnonymous()
         .WithName("Register")
         .WithSummary("用户注册")
         .Produces<LoginResponse>(200)

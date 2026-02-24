@@ -1009,3 +1009,143 @@ export async function updateChatAssistantConfig(
   });
   return result.data;
 }
+
+// ==================== MCP Provider API ====================
+
+export interface McpProvider {
+  id: string;
+  name: string;
+  description?: string;
+  serverUrl: string;
+  transportType: string;
+  requiresApiKey: boolean;
+  apiKeyObtainUrl?: string;
+  hasSystemApiKey: boolean;
+  modelConfigId?: string;
+  modelConfigName?: string;
+  isActive: boolean;
+  sortOrder: number;
+  iconUrl?: string;
+  maxRequestsPerDay: number;
+  createdAt: string;
+}
+
+export interface McpProviderRequest {
+  name: string;
+  description?: string;
+  serverUrl: string;
+  transportType: string;
+  requiresApiKey: boolean;
+  apiKeyObtainUrl?: string;
+  systemApiKey?: string;
+  modelConfigId?: string;
+  isActive: boolean;
+  sortOrder: number;
+  iconUrl?: string;
+  maxRequestsPerDay: number;
+}
+
+export interface McpUsageLog {
+  id: string;
+  userId?: string;
+  userName?: string;
+  mcpProviderId?: string;
+  mcpProviderName?: string;
+  toolName: string;
+  requestSummary?: string;
+  responseStatus: number;
+  durationMs: number;
+  inputTokens: number;
+  outputTokens: number;
+  ipAddress?: string;
+  errorMessage?: string;
+  createdAt: string;
+}
+
+export interface McpUsageLogFilter {
+  mcpProviderId?: string;
+  userId?: string;
+  toolName?: string;
+  page: number;
+  pageSize: number;
+}
+
+export interface PagedResult<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface McpDailyUsage {
+  date: string;
+  requestCount: number;
+  successCount: number;
+  errorCount: number;
+  inputTokens: number;
+  outputTokens: number;
+}
+
+export interface McpUsageStatistics {
+  dailyUsages: McpDailyUsage[];
+  totalRequests: number;
+  totalSuccessful: number;
+  totalErrors: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+}
+
+export async function getMcpProviders(): Promise<McpProvider[]> {
+  const url = buildApiUrl("/api/admin/mcp-providers");
+  const result = await fetchWithAuth(url);
+  return result.data;
+}
+
+export async function createMcpProvider(
+  data: McpProviderRequest
+): Promise<McpProvider> {
+  const url = buildApiUrl("/api/admin/mcp-providers");
+  const result = await fetchWithAuth(url, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+  return result.data;
+}
+
+export async function updateMcpProvider(
+  id: string,
+  data: McpProviderRequest
+): Promise<void> {
+  const url = buildApiUrl(`/api/admin/mcp-providers/${id}`);
+  await fetchWithAuth(url, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteMcpProvider(id: string): Promise<void> {
+  const url = buildApiUrl(`/api/admin/mcp-providers/${id}`);
+  await fetchWithAuth(url, { method: "DELETE" });
+}
+
+export async function getMcpUsageLogs(
+  filter: McpUsageLogFilter
+): Promise<PagedResult<McpUsageLog>> {
+  const params = new URLSearchParams();
+  if (filter.mcpProviderId) params.set("mcpProviderId", filter.mcpProviderId);
+  if (filter.userId) params.set("userId", filter.userId);
+  if (filter.toolName) params.set("toolName", filter.toolName);
+  params.set("page", String(filter.page));
+  params.set("pageSize", String(filter.pageSize));
+  const url = buildApiUrl(`/api/admin/mcp-providers/usage-logs?${params}`);
+  const result = await fetchWithAuth(url);
+  return result.data;
+}
+
+export async function getMcpUsageStatistics(
+  days: number
+): Promise<McpUsageStatistics> {
+  const url = buildApiUrl(`/api/admin/statistics/mcp-usage?days=${days}`);
+  const result = await fetchWithAuth(url);
+  return result.data;
+}

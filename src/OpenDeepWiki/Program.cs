@@ -20,6 +20,7 @@ using OpenDeepWiki.Services.Prompts;
 using OpenDeepWiki.Services.Recommendation;
 using OpenDeepWiki.Services.Repositories;
 using OpenDeepWiki.Services.Translation;
+using OpenDeepWiki.Services.Mcp;
 using OpenDeepWiki.Services.UserProfile;
 using OpenDeepWiki.Services.Wiki;
 using Scalar.AspNetCore;
@@ -92,7 +93,7 @@ try
             ?? "OpenDeepWiki-Default-Secret-Key-Please-Change-In-Production-Environment-2024";
     }
 
-    var authBuilder = builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         .AddJwtBearer(options =>
         {
             options.TokenValidationParameters = new TokenValidationParameters
@@ -108,24 +109,9 @@ try
             };
         });
 
-    // MCP Google auth scheme (only when GOOGLE_CLIENT_ID is configured)
-    var hasMcpAuth = !string.IsNullOrEmpty(builder.Configuration["GOOGLE_CLIENT_ID"]);
-    if (hasMcpAuth)
-    {
-        authBuilder.AddMcpGoogleAuth(builder.Configuration);
-    }
-
     builder.Services.AddAuthorization(options =>
     {
         options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
-        if (hasMcpAuth)
-        {
-            options.AddPolicy(McpAuthConfiguration.McpPolicyName, policy =>
-                policy.AddAuthenticationSchemes(
-                        JwtBearerDefaults.AuthenticationScheme,
-                        McpAuthConfiguration.McpGoogleScheme)
-                    .RequireAuthenticatedUser());
-        }
     });
 
     // 注册认证服务
@@ -373,39 +359,55 @@ try
     // Requirements: 13.5, 13.6, 14.2, 14.7, 17.1, 17.2, 17.4 - 嵌入脚本验证和对话
     builder.Services.AddScoped<IEmbedService, EmbedService>();
 
-    // MCP server registration (requires GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET)
-    var mcpEnabled = !string.IsNullOrEmpty(builder.Configuration["GOOGLE_CLIENT_ID"])
-                     && !string.IsNullOrEmpty(builder.Configuration["GOOGLE_CLIENT_SECRET"]);
+    // 注册 MCP 提供商管理服务
+    builder.Services.AddScoped<IAdminMcpProviderService, AdminMcpProviderService>();
+    builder.Services.AddScoped<IMcpUsageLogService, McpUsageLogService>();
+    builder.Services.AddHostedService<McpStatisticsAggregationService>();
+
+    // MCP server registration (official MCP server + scope via ConfigureSessionOptions)
+    var mcpEnabled = builder.Configuration.GetValue("MCP_ENABLED", true);
     if (mcpEnabled)
     {
-        builder.Services.AddScoped<IMcpUserResolver, McpUserResolver>();
-        builder.Services.AddSingleton<McpOAuthServer>();
-        builder.Services.AddHostedService<McpOAuthCleanupService>();
         builder.Services.AddMcpServer()
-            .WithHttpTransport()
+            .WithHttpTransport(options =>
+            {
+                options.ConfigureSessionOptions = (httpContext, mcpServer, _) =>
+                {
+                    var segments = httpContext.Request.Path.Value?.Split('/', StringSplitOptions.RemoveEmptyEntries)
+                                   ?? Array.Empty<string>();
+                    string? owner = null;
+                    string? repo = null;
+                    if (segments.Length >= 4
+                        && string.Equals(segments[0], "api", StringComparison.OrdinalIgnoreCase)
+                        && string.Equals(segments[1], "mcp", StringComparison.OrdinalIgnoreCase))
+                    {
+                        owner = Uri.UnescapeDataString(segments[2]);
+                        repo = Uri.UnescapeDataString(segments[3]);
+                    }
+
+                    McpRepositoryScopeAccessor.SetScope(mcpServer, owner, repo);
+                    return Task.CompletedTask;
+                };
+            })
             .WithTools<McpRepositoryTools>();
     }
 
     var app = builder.Build();
 
-    // 初始化数据库
-    await DbInitializer.InitializeAsync(app.Services);
-
-    // 应用数据库中的系统设置到配置（覆盖环境变量和appsettings.json的值）
-    using (var scope = app.Services.CreateScope())
-    {
-        var settingsService = scope.ServiceProvider.GetRequiredService<IAdminSettingsService>();
-        var wikiOptions = scope.ServiceProvider.GetRequiredService<IOptions<WikiGeneratorOptions>>();
-        await SystemSettingDefaults.ApplyToWikiGeneratorOptions(wikiOptions.Value, settingsService);
-    }
-
-    // 启用 CORS
+    // Configure the HTTP request pipeline.
     app.UseCors("AllowAll");
 
-    // Add Serilog request logging
-    app.UseSerilogLogging();
+    // 添加静态文件支持（用于 Skill assets 等）
+    app.UseStaticFiles();
 
-    // Configure the HTTP request pipeline.
+    // Configure forwarded headers for reverse proxy scenarios
+    app.UseForwardedHeaders(new ForwardedHeadersOptions
+    {
+        ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor
+                           | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto
+                           | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedHost
+    });
+
     if (app.Environment.IsDevelopment())
     {
         app.MapOpenApi();
@@ -415,13 +417,13 @@ try
     app.UseAuthentication();
     app.UseAuthorization();
 
-    // MCP server endpoints (only when fully configured with OAuth)
+    // MCP server endpoints (official MCP server + scope via ConfigureSessionOptions)
     if (mcpEnabled)
     {
-        app.MapMcpOAuthEndpoints();
+        app.UseMcpUsageLogging("/api/mcp");
         app.UseSseKeepAlive("/api/mcp");
-        app.MapProtectedResourceMetadata();
-        app.MapMcp("/api/mcp").RequireAuthorization(McpAuthConfiguration.McpPolicyName);
+        app.MapMcp("/api/mcp");
+        app.MapMcp("/api/mcp/{owner}/{repo}");
     }
 
     app.MapMiniApis();
@@ -435,6 +437,13 @@ try
 
     app.MapSystemEndpoints();
     app.MapIncrementalUpdateEndpoints();
+    app.MapMcpProviderEndpoints();
+
+    // 初始化数据库（创建默认数据）
+    using (var scope = app.Services.CreateScope())
+    {
+        await DbInitializer.InitializeAsync(scope.ServiceProvider);
+    }
 
     app.Run();
 }

@@ -37,6 +37,18 @@ public static class AdminStatisticsEndpoints
         .WithName("GetTokenUsageStatistics")
         .WithSummary("获取 Token 消耗统计");
 
+        // 获取 MCP 使用统计
+        statisticsGroup.MapGet("/mcp-usage", async (
+            [FromQuery] int days,
+            [FromServices] IAdminMcpProviderService mcpService) =>
+        {
+            if (days <= 0) days = 7;
+            var result = await mcpService.GetMcpUsageStatisticsAsync(days);
+            return Results.Ok(new { success = true, data = result });
+        })
+        .WithName("GetMcpUsageStatistics")
+        .WithSummary("获取 MCP 使用统计");
+
         return group;
     }
 }

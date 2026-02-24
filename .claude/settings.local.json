@@ -21,7 +21,8 @@
       "Bash(bash:*)",
       "mcp__MCP_DOCKER__code-mode",
       "Bash(List files in repo root)",
-      "Bash(rg:*)"
+      "Bash(rg:*)",
+      "Bash(cd:*)"
     ],
     "deny": [],
     "ask": []

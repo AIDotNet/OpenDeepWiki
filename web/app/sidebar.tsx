@@ -8,6 +8,7 @@ import {
     Bookmark,
     Building2,
     AppWindow,
+    Zap,
 } from "lucide-react";
 import {
     Sidebar,
@@ -56,6 +57,7 @@ const itemKeys = [
     { key: "bookmarks", url: "/bookmarks", icon: Bookmark, requireAuth: true },
     { key: "organizations", url: "/organizations", icon: Building2, requireAuth: false },
     { key: "apps", url: "/apps", icon: AppWindow, requireAuth: true },
+    { key: "mcp", url: "/mcp", icon: Zap, requireAuth: false },
 ];
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {

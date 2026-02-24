@@ -60,6 +60,7 @@ const getNavItems = (t: (key: string) => string): NavItem[] => [
       { href: "/admin/tools/mcps", label: t("common.admin.mcps") },
       { href: "/admin/tools/skills", label: t("common.admin.skills") },
       { href: "/admin/tools/models", label: t("common.admin.models") },
+      { href: "/admin/mcp-providers", label: t("admin.mcpProviders.title") },
     ],
   },
   {

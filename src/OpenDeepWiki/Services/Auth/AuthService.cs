@@ -29,18 +29,18 @@ public class AuthService : IAuthService
 
         if (user == null)
         {
-            throw new UnauthorizedAccessException("邮箱或密码错误");
+            throw new Exception("邮箱或密码错误");
         }
 
         // 验证密码
         if (!VerifyPassword(request.Password, user.Password))
         {
-            throw new UnauthorizedAccessException("邮箱或密码错误");
+            throw new Exception("邮箱或密码错误");
         }
 
         if (user.Status != 1)
         {
-            throw new UnauthorizedAccessException("账号已被禁用或待验证");
+            throw new Exception("账号已被禁用或待验证");
         }
 
         // 更新最后登录时间

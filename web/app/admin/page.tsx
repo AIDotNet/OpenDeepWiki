@@ -6,8 +6,10 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   getDashboardStatistics,
   getTokenUsageStatistics,
+  getMcpUsageStatistics,
   DashboardStatistics,
   TokenUsageStatistics,
+  McpUsageStatistics,
 } from "@/lib/admin-api";
 import {
   BarChart,
@@ -18,7 +20,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import { Loader2, GitBranch, Users, Coins, TrendingUp } from "lucide-react";
+import { Loader2, GitBranch, Users, Coins, TrendingUp, Globe } from "lucide-react";
 import { useTranslations } from "@/hooks/use-translations";
 import { useLocale } from "next-intl";
 
@@ -97,6 +99,7 @@ function CustomTooltip({
 export default function AdminDashboardPage() {
   const [dashboardStats, setDashboardStats] = useState<DashboardStatistics | null>(null);
   const [tokenStats, setTokenStats] = useState<TokenUsageStatistics | null>(null);
+  const [mcpStats, setMcpStats] = useState<McpUsageStatistics | null>(null);
   const [loading, setLoading] = useState(true);
   const [days, setDays] = useState(7);
   const t = useTranslations();
@@ -112,6 +115,12 @@ export default function AdminDashboardPage() {
         ]);
         setDashboardStats(dashboard);
         setTokenStats(token);
+        try {
+          const mcp = await getMcpUsageStatistics(days);
+          setMcpStats(mcp);
+        } catch {
+          // MCP stats may not be available if MCP is not configured
+        }
       } catch (error) {
         console.error("Failed to fetch statistics:", error);
       } finally {
@@ -150,6 +159,12 @@ export default function AdminDashboardPage() {
   const totalRepoProcessed = dashboardStats?.repositoryStats.reduce((sum, s) => sum + s.processedCount, 0) || 0;
   const totalNewUsers = dashboardStats?.userStats.reduce((sum, s) => sum + s.newUserCount, 0) || 0;
 
+  const mcpChartData = mcpStats?.dailyUsages.map((stat) => ({
+    date: new Date(stat.date).toLocaleDateString(locale === 'zh' ? 'zh-CN' : locale, { month: "short", day: "numeric" }),
+    [t('admin.dashboard.mcpRequests')]: stat.requestCount,
+    [t('admin.dashboard.mcpErrors')]: stat.errorCount,
+  })) || [];
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -164,7 +179,7 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* 统计卡片 */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <Card className="p-6">
           <div className="flex items-center gap-4">
             <div className="rounded-full bg-blue-100 p-3 dark:bg-blue-900">
@@ -206,6 +221,17 @@ export default function AdminDashboardPage() {
             <div>
               <p className="text-sm text-muted-foreground">{t('admin.dashboard.tokenUsage')}</p>
               <p className="text-2xl font-bold">{(tokenStats?.totalTokens || 0).toLocaleString()}</p>
+            </div>
+          </div>
+        </Card>
+        <Card className="p-6">
+          <div className="flex items-center gap-4">
+            <div className="rounded-full bg-cyan-100 p-3 dark:bg-cyan-900">
+              <Globe className="h-6 w-6 text-cyan-600 dark:text-cyan-400" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">{t('admin.dashboard.mcpTotal')}</p>
+              <p className="text-2xl font-bold">{(mcpStats?.totalRequests || 0).toLocaleString()}</p>
             </div>
           </div>
         </Card>
@@ -262,6 +288,33 @@ export default function AdminDashboardPage() {
               />
               <Legend wrapperStyle={{ paddingTop: 16 }} />
               <Bar dataKey={t('admin.dashboard.newUsers')} fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+
+        {/* MCP 使用图表 */}
+        <Card className="p-6">
+          <h3 className="mb-4 text-lg font-semibold">{t('admin.dashboard.mcpTrend')}</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={mcpChartData} barCategoryGap="20%">
+              <XAxis
+                dataKey="date"
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: '#888', fontSize: 12 }}
+              />
+              <YAxis
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: '#888', fontSize: 12 }}
+              />
+              <Tooltip
+                cursor={{ fill: 'rgba(0,0,0,0.04)' }}
+                content={<CustomTooltip totalLabel={t('admin.dashboard.total')} />}
+              />
+              <Legend wrapperStyle={{ paddingTop: 16 }} />
+              <Bar dataKey={t('admin.dashboard.mcpRequests')} fill="#06b6d4" radius={[4, 4, 0, 0]} />
+              <Bar dataKey={t('admin.dashboard.mcpErrors')} fill="#ef4444" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </Card>
