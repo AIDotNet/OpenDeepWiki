@@ -175,6 +175,27 @@
       "OpenAI": "OpenAI",
       "OpenAIResponses": "OpenAI Responses",
       "Anthropic": "Anthropic"
+    },
+    "quickSetup": {
+      "title": "供应商快速设置",
+      "description": "选择供应商，输入 API 密钥，加载可用模型。",
+      "provider": "供应商",
+      "selectProvider": "选择供应商",
+      "apiKey": "API 密钥",
+      "apiKeyPlaceholder": "输入您的 API 密钥",
+      "loadModels": "加载模型",
+      "loadingModels": "正在加载模型...",
+      "catalogModel": "目录模型",
+      "contentModel": "内容模型",
+      "translationModel": "翻译模型",
+      "selectModel": "选择模型",
+      "apply": "应用配置",
+      "applied": "供应商设置已保存。",
+      "loadFailed": "加载模型失败。请检查 API 密钥后重试。",
+      "modelsLoaded": "已加载 {count} 个模型",
+      "catalogModelHint": "生成文档结构和导航树。快速、低成本的模型即可胜任。",
+      "contentModelHint": "生成包含代码分析的实际文档内容。建议使用最强大的模型以获得最佳质量。",
+      "translationModelHint": "将生成的文档翻译为其他语言。快速、低成本的模型即可满足需求。"
     }
   },
   "chatAssistant": {
