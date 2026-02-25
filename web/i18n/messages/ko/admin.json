@@ -232,7 +232,14 @@
     "fieldHeartbeatInterval": "하트비트 간격 (ms)",
     "fieldReconnectInterval": "재연결 간격 (ms)",
     "fieldMaxReconnectAttempts": "최대 재연결 횟수",
-    "fieldEncryptMode": "암호화 모드"
+    "fieldEncryptMode": "암호화 모드",
+    "platformSlack": "Slack",
+    "fieldBotToken": "Bot Token",
+    "fieldSigningSecret": "Signing Secret",
+    "fieldReplyInThread": "스레드에서 답장",
+    "hintBotToken": "Slack App > OAuth & Permissions > Bot User OAuth Token (xoxb-...)",
+    "hintSigningSecret": "Slack App > Basic Information > App Credentials > Signing Secret",
+    "hintApiBaseUrl": "Default: https://slack.com/api"
   },
   "mcpProviders": {
     "title": "MCP 제공자",

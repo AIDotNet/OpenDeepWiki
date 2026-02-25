@@ -3,8 +3,8 @@ using System.Net.Http.Headers;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using OpenDeepWiki.Chat.Providers.Slack;
+using OpenDeepWiki.Chat.Routing;
 using OpenDeepWiki.EFCore;
 
 namespace OpenDeepWiki.Chat.Execution;
@@ -24,11 +24,13 @@ public interface IChatUserResolver
 /// <summary>
 /// Resolves Slack (and other platform) user IDs to DeepWiki user IDs by email matching.
 /// Singleton service with in-memory caching.
+/// Reads Slack config from the live SlackProvider (via IMessageRouter) so that
+/// database-backed config changes are picked up automatically.
 /// </summary>
 public class ChatUserResolver : IChatUserResolver
 {
     private readonly IContextFactory _contextFactory;
-    private readonly SlackProviderOptions _slackOptions;
+    private readonly IMessageRouter _messageRouter;
     private readonly HttpClient _httpClient;
     private readonly ILogger<ChatUserResolver> _logger;
 
@@ -38,12 +40,12 @@ public class ChatUserResolver : IChatUserResolver
 
     public ChatUserResolver(
         IContextFactory contextFactory,
-        IOptions<SlackProviderOptions> slackOptions,
+        IMessageRouter messageRouter,
         HttpClient httpClient,
         ILogger<ChatUserResolver> logger)
     {
         _contextFactory = contextFactory;
-        _slackOptions = slackOptions.Value;
+        _messageRouter = messageRouter;
         _httpClient = httpClient;
         _logger = logger;
     }
@@ -114,18 +116,30 @@ public class ChatUserResolver : IChatUserResolver
     /// <summary>
     /// Calls Slack users.info API to get the user's email address.
     /// Requires users:read.email OAuth scope on the Slack App.
+    /// Reads BotToken from the live SlackProvider registered in the router,
+    /// which reflects database-backed config updates.
     /// </summary>
     private async Task<string?> GetSlackUserEmailAsync(string slackUserId, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrEmpty(_slackOptions.BotToken))
+        var slackProvider = _messageRouter.GetProvider("slack") as SlackProvider;
+        if (slackProvider == null)
+        {
+            _logger.LogWarning("Slack provider not registered, cannot resolve user email");
+            return null;
+        }
+
+        var botToken = slackProvider.ActiveBotToken;
+        var apiBaseUrl = slackProvider.ActiveApiBaseUrl;
+
+        if (string.IsNullOrEmpty(botToken))
         {
             _logger.LogWarning("Slack BotToken not configured, cannot resolve user email");
             return null;
         }
 
-        var url = $"{_slackOptions.ApiBaseUrl}/users.info?user={slackUserId}";
+        var url = $"{apiBaseUrl}/users.info?user={slackUserId}";
         var request = new HttpRequestMessage(HttpMethod.Get, url);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _slackOptions.BotToken);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", botToken);
 
         var response = await _httpClient.SendAsync(request, cancellationToken);
         var content = await response.Content.ReadAsStringAsync(cancellationToken);

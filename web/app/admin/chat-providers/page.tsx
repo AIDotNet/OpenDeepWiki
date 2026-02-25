@@ -59,6 +59,7 @@ const PLATFORM_OPTIONS = [
   { value: "feishu", labelKey: "admin.chatProviders.platformFeishu" },
   { value: "qq", labelKey: "admin.chatProviders.platformQq" },
   { value: "wechat", labelKey: "admin.chatProviders.platformWechat" },
+  { value: "slack", labelKey: "admin.chatProviders.platformSlack" },
   { value: "custom", labelKey: "admin.chatProviders.platformCustom" },
 ];
 
@@ -69,6 +70,7 @@ interface PlatformFieldDefinition {
   labelKey: string;
   type: FieldType;
   required?: boolean;
+  placeholderKey?: string;
 }
 
 const PLATFORM_FIELDS: Record<string, PlatformFieldDefinition[]> = {
@@ -100,6 +102,12 @@ const PLATFORM_FIELDS: Record<string, PlatformFieldDefinition[]> = {
     { key: "ApiBaseUrl", labelKey: "admin.chatProviders.fieldApiBaseUrl", type: "text" },
     { key: "TokenCacheSeconds", labelKey: "admin.chatProviders.fieldTokenCacheSeconds", type: "number" },
     { key: "EncryptMode", labelKey: "admin.chatProviders.fieldEncryptMode", type: "text" },
+  ],
+  slack: [
+    { key: "BotToken", labelKey: "admin.chatProviders.fieldBotToken", type: "password", required: true, placeholderKey: "admin.chatProviders.hintBotToken" },
+    { key: "SigningSecret", labelKey: "admin.chatProviders.fieldSigningSecret", type: "password", required: true, placeholderKey: "admin.chatProviders.hintSigningSecret" },
+    { key: "ApiBaseUrl", labelKey: "admin.chatProviders.fieldApiBaseUrl", type: "text", placeholderKey: "admin.chatProviders.hintApiBaseUrl" },
+    { key: "ReplyInThread", labelKey: "admin.chatProviders.fieldReplyInThread", type: "switch" },
   ],
 };
 
@@ -345,6 +353,7 @@ export default function AdminChatProvidersPage() {
               <Input
                 type={field.type}
                 value={typeof value === "string" ? value : ""}
+                placeholder={field.placeholderKey ? t(field.placeholderKey) : undefined}
                 onChange={(event) =>
                   setFieldValues((prev) => ({ ...prev, [field.key]: event.target.value }))
                 }

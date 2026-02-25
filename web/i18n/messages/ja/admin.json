@@ -232,7 +232,14 @@
     "fieldHeartbeatInterval": "ハートビート間隔 (ms)",
     "fieldReconnectInterval": "再接続間隔 (ms)",
     "fieldMaxReconnectAttempts": "最大再接続回数",
-    "fieldEncryptMode": "暗号化モード"
+    "fieldEncryptMode": "暗号化モード",
+    "platformSlack": "Slack",
+    "fieldBotToken": "Bot Token",
+    "fieldSigningSecret": "Signing Secret",
+    "fieldReplyInThread": "スレッドで返信",
+    "hintBotToken": "Slack App > OAuth & Permissions > Bot User OAuth Token (xoxb-...)",
+    "hintSigningSecret": "Slack App > Basic Information > App Credentials > Signing Secret",
+    "hintApiBaseUrl": "Default: https://slack.com/api"
   },
   "mcpProviders": {
     "title": "MCPプロバイダー",

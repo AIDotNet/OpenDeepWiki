@@ -232,7 +232,14 @@
     "fieldHeartbeatInterval": "Heartbeat Interval (ms)",
     "fieldReconnectInterval": "Reconnect Interval (ms)",
     "fieldMaxReconnectAttempts": "Max Reconnect Attempts",
-    "fieldEncryptMode": "Encryption Mode"
+    "fieldEncryptMode": "Encryption Mode",
+    "platformSlack": "Slack",
+    "fieldBotToken": "Bot Token",
+    "fieldSigningSecret": "Signing Secret",
+    "fieldReplyInThread": "Reply in Thread",
+    "hintBotToken": "Slack App > OAuth & Permissions > Bot User OAuth Token (xoxb-...)",
+    "hintSigningSecret": "Slack App > Basic Information > App Credentials > Signing Secret",
+    "hintApiBaseUrl": "Default: https://slack.com/api"
   },
   "mcpProviders": {
     "title": "MCP Providers",
