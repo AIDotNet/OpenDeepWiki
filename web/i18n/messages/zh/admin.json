@@ -548,7 +548,15 @@
     "resetConfig": "Reset Configuration",
     "resetConfigConfirm": "Are you sure you want to reset the GitHub App configuration? This will remove all stored credentials. You will need to reconfigure the GitHub App to use this feature again.",
     "resetConfigSuccess": "GitHub App configuration has been reset",
-    "resetConfigFailed": "Failed to reset configuration"
+    "resetConfigFailed": "Failed to reset configuration",
+    "allPageSelected": "已选择此页面上的全部 {count} 个仓库。",
+    "selectAllMatching": "选择全部 {count} 个匹配的仓库",
+    "allMatchingSelected": "已选择全部 {count} 个匹配的仓库。",
+    "clearSelection": "清除选择",
+    "filterAll": "所有仓库",
+    "filterNotImported": "未导入",
+    "filterImported": "已导入",
+    "importStatus": "导入状态"
   },
   "common": {
     "refresh": "刷新",

@@ -548,7 +548,15 @@
     "resetConfig": "Reset Configuration",
     "resetConfigConfirm": "Are you sure you want to reset the GitHub App configuration? This will remove all stored credentials. You will need to reconfigure the GitHub App to use this feature again.",
     "resetConfigSuccess": "GitHub App configuration has been reset",
-    "resetConfigFailed": "Failed to reset configuration"
+    "resetConfigFailed": "Failed to reset configuration",
+    "allPageSelected": "All {count} repositories on this page are selected.",
+    "selectAllMatching": "Select all {count} matching repositories",
+    "allMatchingSelected": "All {count} matching repositories are selected.",
+    "clearSelection": "Clear selection",
+    "filterAll": "All Repositories",
+    "filterNotImported": "Not Imported",
+    "filterImported": "Already Imported",
+    "importStatus": "Import Status"
   },
   "common": {
     "refresh": "Refresh",

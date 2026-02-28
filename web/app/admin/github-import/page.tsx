@@ -83,6 +83,10 @@ export default function GitHubImportPage() {
   // Filters
   const [searchQuery, setSearchQuery] = useState("");
   const [languageFilter, setLanguageFilter] = useState<string>("all");
+  const [importStatusFilter, setImportStatusFilter] = useState<"all" | "not_imported" | "imported">("all");
+
+  // Gmail-style select scope
+  const [selectAllScope, setSelectAllScope] = useState<"page" | "all">("page");
 
   // Client-side pagination
   const [page, setPage] = useState(1);
@@ -233,6 +237,8 @@ export default function GitHubImportPage() {
       setImportResult(null);
       setSearchQuery("");
       setLanguageFilter("all");
+      setImportStatusFilter("all");
+      setSelectAllScope("page");
       setPage(1);
       fetchAllRepos();
     }
@@ -297,6 +303,7 @@ export default function GitHubImportPage() {
   };
 
   const toggleRepo = (fullName: string) => {
+    setSelectAllScope("page");
     setSelectedRepos((prev) => {
       const next = new Set(prev);
       if (next.has(fullName)) {
@@ -320,9 +327,11 @@ export default function GitHubImportPage() {
       if (languageFilter !== "all" && (r.language || "").toLowerCase() !== languageFilter.toLowerCase()) {
         return false;
       }
+      if (importStatusFilter === "not_imported" && r.alreadyImported) return false;
+      if (importStatusFilter === "imported" && !r.alreadyImported) return false;
       return true;
     });
-  }, [allRepos, searchQuery, languageFilter]);
+  }, [allRepos, searchQuery, languageFilter, importStatusFilter]);
 
   const importableFiltered = useMemo(
     () => filteredRepos.filter((r) => !r.alreadyImported),
@@ -342,17 +351,44 @@ export default function GitHubImportPage() {
     [allRepos]
   );
 
-  // Reset page when filters change
+  // Reset page and selection scope when filters change
   useEffect(() => {
     setPage(1);
-  }, [searchQuery, languageFilter]);
+    setSelectAllScope("page");
+  }, [searchQuery, languageFilter, importStatusFilter]);
+
+  // Page-level selection helpers
+  const importableOnPage = useMemo(
+    () => pagedRepos.filter((r) => !r.alreadyImported),
+    [pagedRepos]
+  );
+  const allPageSelected = importableOnPage.length > 0 && importableOnPage.every((r) => selectedRepos.has(r.fullName));
+  const somePageSelected = importableOnPage.some((r) => selectedRepos.has(r.fullName));
+  const hasMoreBeyondPage = importableFiltered.length > importableOnPage.length;
 
   const toggleSelectAll = () => {
-    if (selectedRepos.size === importableFiltered.length && importableFiltered.length > 0) {
+    if (allPageSelected) {
       setSelectedRepos(new Set());
+      setSelectAllScope("page");
     } else {
-      setSelectedRepos(new Set(importableFiltered.map((r) => r.fullName)));
+      const pageNames = new Set(importableOnPage.map((r) => r.fullName));
+      setSelectedRepos((prev) => {
+        const next = new Set(prev);
+        pageNames.forEach((name) => next.add(name));
+        return next;
+      });
+      setSelectAllScope("page");
     }
+  };
+
+  const handleSelectAllMatching = () => {
+    setSelectedRepos(new Set(importableFiltered.map((r) => r.fullName)));
+    setSelectAllScope("all");
+  };
+
+  const handleClearSelection = () => {
+    setSelectedRepos(new Set());
+    setSelectAllScope("page");
   };
 
   const handleImport = async () => {
@@ -625,25 +661,60 @@ export default function GitHubImportPage() {
                   ))}
                 </SelectContent>
               </Select>
+              <Select value={importStatusFilter} onValueChange={(v) => setImportStatusFilter(v as "all" | "not_imported" | "imported")}>
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder={t("admin.githubImport.filterAll")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("admin.githubImport.filterAll")}</SelectItem>
+                  <SelectItem value="not_imported">{t("admin.githubImport.filterNotImported")}</SelectItem>
+                  <SelectItem value="imported">{t("admin.githubImport.filterImported")}</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Select All */}
-            <div className="flex items-center gap-2 border-b pb-2">
-              <Checkbox
-                checked={
-                  importableFiltered.length > 0 &&
-                  selectedRepos.size === importableFiltered.length
-                }
-                onCheckedChange={toggleSelectAll}
-              />
-              <span className="text-sm font-medium">
-                {t("admin.githubImport.selectAll")}
-                {searchQuery || languageFilter !== "all"
-                  ? ` (${filteredRepos.length} ${t("admin.githubImport.matching")})`
-                  : ""}
-                {selectedRepos.size > 0 &&
-                  ` - ${selectedRepos.size} ${t("admin.githubImport.selected")}`}
-              </span>
+            <div className="border-b pb-2 space-y-0">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  checked={allPageSelected ? true : somePageSelected ? "indeterminate" : false}
+                  onCheckedChange={toggleSelectAll}
+                />
+                <span className="text-sm font-medium">
+                  {t("admin.githubImport.selectAll")}
+                  {selectedRepos.size > 0 &&
+                    ` - ${selectedRepos.size} ${t("admin.githubImport.selected")}`}
+                </span>
+              </div>
+              {/* Gmail-style banner */}
+              {allPageSelected && hasMoreBeyondPage && selectAllScope === "page" && (
+                <div className="mt-1 py-1.5 px-3 bg-blue-50 dark:bg-blue-950 text-sm text-center rounded">
+                  <span className="text-blue-800 dark:text-blue-200">
+                    {t("admin.githubImport.allPageSelected").replace("{count}", importableOnPage.length.toString())}
+                  </span>{" "}
+                  <button
+                    type="button"
+                    className="text-blue-600 dark:text-blue-400 font-medium hover:underline"
+                    onClick={handleSelectAllMatching}
+                  >
+                    {t("admin.githubImport.selectAllMatching").replace("{count}", importableFiltered.length.toString())}
+                  </button>
+                </div>
+              )}
+              {selectAllScope === "all" && (
+                <div className="mt-1 py-1.5 px-3 bg-blue-50 dark:bg-blue-950 text-sm text-center rounded">
+                  <span className="text-blue-800 dark:text-blue-200">
+                    {t("admin.githubImport.allMatchingSelected").replace("{count}", importableFiltered.length.toString())}
+                  </span>{" "}
+                  <button
+                    type="button"
+                    className="text-blue-600 dark:text-blue-400 font-medium hover:underline"
+                    onClick={handleClearSelection}
+                  >
+                    {t("admin.githubImport.clearSelection")}
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Repository List */}
@@ -653,7 +724,7 @@ export default function GitHubImportPage() {
               </div>
             ) : (
               <div className="space-y-1">
-                {pagedRepos.length === 0 && searchQuery && (
+                {pagedRepos.length === 0 && (searchQuery || languageFilter !== "all" || importStatusFilter !== "all") && (
                   <p className="text-sm text-muted-foreground text-center py-8">
                     {t("admin.githubImport.noResults")}
                   </p>

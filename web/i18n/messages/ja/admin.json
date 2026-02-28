@@ -548,7 +548,15 @@
     "resetConfig": "Reset Configuration",
     "resetConfigConfirm": "Are you sure you want to reset the GitHub App configuration? This will remove all stored credentials. You will need to reconfigure the GitHub App to use this feature again.",
     "resetConfigSuccess": "GitHub App configuration has been reset",
-    "resetConfigFailed": "Failed to reset configuration"
+    "resetConfigFailed": "Failed to reset configuration",
+    "allPageSelected": "このページの {count} 件のリポジトリがすべて選択されています。",
+    "selectAllMatching": "一致する {count} 件のリポジトリをすべて選択",
+    "allMatchingSelected": "一致する {count} 件のリポジトリがすべて選択されています。",
+    "clearSelection": "選択をクリア",
+    "filterAll": "すべてのリポジトリ",
+    "filterNotImported": "未インポート",
+    "filterImported": "インポート済み",
+    "importStatus": "インポート状態"
   },
   "common": {
     "refresh": "更新",
