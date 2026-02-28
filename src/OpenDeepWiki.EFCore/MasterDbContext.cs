@@ -47,6 +47,7 @@ public interface IContext : IDisposable
     DbSet<McpProvider> McpProviders { get; set; }
     DbSet<McpUsageLog> McpUsageLogs { get; set; }
     DbSet<McpDailyStatistics> McpDailyStatistics { get; set; }
+    DbSet<GitHubAppInstallation> GitHubAppInstallations { get; set; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
@@ -97,6 +98,7 @@ public abstract class MasterDbContext : DbContext, IContext
     public DbSet<McpProvider> McpProviders { get; set; } = null!;
     public DbSet<McpUsageLog> McpUsageLogs { get; set; } = null!;
     public DbSet<McpDailyStatistics> McpDailyStatistics { get; set; } = null!;
+    public DbSet<GitHubAppInstallation> GitHubAppInstallations { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -381,6 +383,16 @@ public abstract class MasterDbContext : DbContext, IContext
 
             // 日期索引
             builder.HasIndex(s => s.Date);
+        });
+
+        // GitHubAppInstallation 表配置
+        modelBuilder.Entity<GitHubAppInstallation>(entity =>
+        {
+            entity.HasIndex(e => e.InstallationId).IsUnique();
+            entity.HasOne(e => e.Department)
+                  .WithMany()
+                  .HasForeignKey(e => e.DepartmentId)
+                  .OnDelete(DeleteBehavior.SetNull);
         });
     }
 }

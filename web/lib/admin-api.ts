@@ -1167,3 +1167,146 @@ export async function getMcpUsageStatistics(
   const result = await fetchWithAuth(url);
   return result.data;
 }
+
+// ==================== GitHub Import API ====================
+
+export interface GitHubInstallation {
+  id: string;
+  installationId: number;
+  accountLogin: string;
+  accountType: string;
+  accountId: number;
+  avatarUrl?: string;
+  departmentId?: string;
+  departmentName?: string;
+  createdAt: string;
+}
+
+export interface GitHubStatus {
+  configured: boolean;
+  appName?: string;
+  installations: GitHubInstallation[];
+}
+
+export interface GitHubConfig {
+  hasAppId: boolean;
+  hasPrivateKey: boolean;
+  appId?: string;
+  appName?: string;
+  source: string;
+}
+
+export interface GitHubRepo {
+  id: number;
+  fullName: string;
+  name: string;
+  owner: string;
+  private: boolean;
+  description?: string;
+  language?: string;
+  stargazersCount: number;
+  forksCount: number;
+  defaultBranch: string;
+  cloneUrl: string;
+  htmlUrl: string;
+  alreadyImported: boolean;
+}
+
+export interface GitHubRepoList {
+  totalCount: number;
+  repositories: GitHubRepo[];
+  page: number;
+  perPage: number;
+}
+
+export interface BatchImportResult {
+  totalRequested: number;
+  imported: number;
+  skipped: number;
+  skippedRepos: string[];
+  importedRepos: string[];
+}
+
+export async function getGitHubStatus(): Promise<GitHubStatus> {
+  const url = buildApiUrl("/api/admin/github/status");
+  const result = await fetchWithAuth(url);
+  return result.data;
+}
+
+export async function getGitHubInstallUrl(): Promise<{ url: string }> {
+  const url = buildApiUrl("/api/admin/github/install-url");
+  const result = await fetchWithAuth(url);
+  return result.data;
+}
+
+export async function storeGitHubInstallation(installationId: number) {
+  const url = buildApiUrl("/api/admin/github/installations");
+  return fetchWithAuth(url, {
+    method: "POST",
+    body: JSON.stringify({ installationId }),
+  });
+}
+
+export async function disconnectGitHubInstallation(id: string) {
+  const url = buildApiUrl(`/api/admin/github/installations/${id}`);
+  return fetchWithAuth(url, { method: "DELETE" });
+}
+
+export async function getInstallationRepos(
+  installationId: number,
+  page: number,
+  perPage: number
+): Promise<GitHubRepoList> {
+  const url = buildApiUrl(
+    `/api/admin/github/installations/${installationId}/repos?page=${page}&perPage=${perPage}`
+  );
+  const result = await fetchWithAuth(url);
+  return result.data;
+}
+
+export async function batchImportRepos(request: {
+  installationId: number;
+  departmentId: string;
+  languageCode: string;
+  repos: Array<{
+    fullName: string;
+    name: string;
+    owner: string;
+    cloneUrl: string;
+    defaultBranch: string;
+    private: boolean;
+    language?: string;
+    stargazersCount: number;
+    forksCount: number;
+  }>;
+}): Promise<BatchImportResult> {
+  const url = buildApiUrl("/api/admin/github/batch-import");
+  const result = await fetchWithAuth(url, {
+    method: "POST",
+    body: JSON.stringify(request),
+  });
+  return result.data;
+}
+
+export async function getGitHubConfig(): Promise<GitHubConfig> {
+  const url = buildApiUrl("/api/admin/github/config");
+  const result = await fetchWithAuth(url);
+  return result.data;
+}
+
+export async function saveGitHubConfig(data: {
+  appId: string;
+  appName: string;
+  privateKey: string;
+}) {
+  const url = buildApiUrl("/api/admin/github/config");
+  return fetchWithAuth(url, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function resetGitHubConfig() {
+  const url = buildApiUrl("/api/admin/github/config");
+  return fetchWithAuth(url, { method: "DELETE" });
+}

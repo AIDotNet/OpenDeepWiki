@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   GitBranch,
+  Github,
   Settings,
   Shield,
   Users,
@@ -52,6 +53,11 @@ const getNavItems = (t: (key: string) => string): NavItem[] => [
     href: "/admin/repositories",
     icon: GitBranch,
     label: t("common.admin.repositories"),
+  },
+  {
+    href: "/admin/github-import",
+    icon: Github,
+    label: t("admin.githubImport.title"),
   },
   {
     label: t("common.admin.tools"),
