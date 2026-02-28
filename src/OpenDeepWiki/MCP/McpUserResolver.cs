@@ -69,9 +69,9 @@ public class McpUserResolver : IMcpUserResolver
             });
         }
 
-        // Also include public repos the user owns
+        // Also include all repos the user owns (public and private)
         var ownedPublicRepos = await _context.Repositories
-            .Where(r => r.OwnerUserId == userId && r.IsPublic && !r.IsDeleted)
+            .Where(r => r.OwnerUserId == userId && !r.IsDeleted)
             .Select(r => new McpRepositoryInfo
             {
                 Owner = r.OrgName,
@@ -101,6 +101,10 @@ public class McpUserResolver : IMcpUserResolver
             return false;
 
         if (repo.IsPublic)
+            return true;
+
+        // Owner always has access to their own repos
+        if (repo.OwnerUserId == userId)
             return true;
 
         // Check department assignment

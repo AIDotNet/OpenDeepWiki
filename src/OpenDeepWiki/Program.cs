@@ -307,6 +307,7 @@ try
     builder.Services.AddSingleton<GitHubAppCredentialCache>();
     builder.Services.AddScoped<IGitHubAppService, GitHubAppService>();
     builder.Services.AddScoped<IAdminGitHubImportService, AdminGitHubImportService>();
+    builder.Services.AddScoped<IUserGitHubImportService, UserGitHubImportService>();
 
     // Register admin services
     builder.Services.AddScoped<IAdminStatisticsService, AdminStatisticsService>();
@@ -439,6 +440,7 @@ try
     app.MapOAuthEndpoints();
     app.MapAdminEndpoints();
     app.MapOrganizationEndpoints();
+    app.MapGitHubImportEndpoints();
     app.MapChatAssistantEndpoints();
     app.MapChatAppEndpoints();
     app.MapEmbedEndpoints();

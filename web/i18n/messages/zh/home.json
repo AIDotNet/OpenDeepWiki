@@ -23,6 +23,18 @@
   },
   "searchPlaceholder": "在这里粘贴Github仓库链接或者通过关键词搜索",
   "addPrivateRepo": "添加私人仓库",
+  "importFromGitHub": "从 GitHub 导入",
+  "githubImport": {
+    "title": "从 GitHub 导入",
+    "description": "浏览并导入已连接的 GitHub 组织中的仓库",
+    "notAvailable": "GitHub 集成不可用。请联系管理员配置 GitHub App。",
+    "personalOnly": "仅个人可见",
+    "personalOnlyDesc": "仅您自己可见",
+    "selectDepartment": "分配到部门",
+    "selectDepartmentOrPersonal": "选择部门或保持个人可见",
+    "noDepartments": "您不在任何部门中。仓库将作为个人仓库导入。",
+    "backToPrivate": "返回私有仓库"
+  },
   "exploreTrending": "探索本周的 热门仓库",
   "mcpIntegration": "把 KeboolaDeepWiki MCP 接入你的开发工具 🔥",
   "private": {

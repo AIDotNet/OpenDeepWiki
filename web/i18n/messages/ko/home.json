@@ -23,6 +23,18 @@
   },
   "searchPlaceholder": "GitHub 저장소 링크를 붙여넣거나 키워드로 검색",
   "addPrivateRepo": "비공개 저장소 추가",
+  "importFromGitHub": "GitHub에서 가져오기",
+  "githubImport": {
+    "title": "GitHub에서 가져오기",
+    "description": "연결된 GitHub 조직에서 저장소를 검색하고 가져오기",
+    "notAvailable": "GitHub 통합을 사용할 수 없습니다. 관리자에게 GitHub App 구성을 요청하세요.",
+    "personalOnly": "개인 전용",
+    "personalOnlyDesc": "본인만 볼 수 있음",
+    "selectDepartment": "부서에 할당",
+    "selectDepartmentOrPersonal": "부서를 선택하거나 개인으로 유지",
+    "noDepartments": "소속된 부서가 없습니다. 저장소는 개인으로 가져옵니다.",
+    "backToPrivate": "비공개로 돌아가기"
+  },
   "exploreTrending": "이번 주 인기 저장소 탐색",
   "mcpIntegration": "개발 도구에 KeboolaDeepWiki MCP 통합 🔥",
   "private": {
