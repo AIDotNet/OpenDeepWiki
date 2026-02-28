@@ -23,8 +23,20 @@
   },
   "searchPlaceholder": "GitHubリポジトリのリンクを貼り付けるか、キーワードで検索",
   "addPrivateRepo": "プライベートリポジトリを追加",
+  "importFromGitHub": "GitHubからインポート",
+  "githubImport": {
+    "title": "GitHubからインポート",
+    "description": "接続されたGitHub組織からリポジトリを参照してインポート",
+    "notAvailable": "GitHub連携は利用できません。管理者にGitHub Appの設定をお問い合わせください。",
+    "personalOnly": "個人のみ",
+    "personalOnlyDesc": "自分だけが閲覧可能",
+    "selectDepartment": "部門に割り当て",
+    "selectDepartmentOrPersonal": "部門を選択するか個人のまま",
+    "noDepartments": "所属する部門がありません。リポジトリは個人として取り込まれます。",
+    "backToPrivate": "プライベートに戻る"
+  },
   "exploreTrending": "今週のトレンドリポジトリを探索",
-  "mcpIntegration": "OpenDeepWiki MCPを開発ツールに統合 🔥",
+  "mcpIntegration": "KeboolaDeepWiki MCPを開発ツールに統合 🔥",
   "private": {
     "visibility": {
       "public": "公開",

@@ -2,6 +2,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using OpenDeepWiki.Entities;
+using OpenDeepWiki.Entities.GitHub;
 using OpenDeepWiki.Entities.Tools;
 
 namespace OpenDeepWiki.EFCore;
@@ -21,6 +22,7 @@ public interface IContext : IDisposable
     DbSet<DocFile> DocFiles { get; set; }
     DbSet<DocCatalog> DocCatalogs { get; set; }
     DbSet<RepositoryAssignment> RepositoryAssignments { get; set; }
+    DbSet<GitHubAppInstallation> GitHubAppInstallations { get; set; }
     DbSet<UserBookmark> UserBookmarks { get; set; }
     DbSet<UserSubscription> UserSubscriptions { get; set; }
     DbSet<RepositoryProcessingLog> RepositoryProcessingLogs { get; set; }
@@ -71,6 +73,7 @@ public abstract class MasterDbContext : DbContext, IContext
     public DbSet<DocFile> DocFiles { get; set; } = null!;
     public DbSet<DocCatalog> DocCatalogs { get; set; } = null!;
     public DbSet<RepositoryAssignment> RepositoryAssignments { get; set; } = null!;
+    public DbSet<GitHubAppInstallation> GitHubAppInstallations { get; set; } = null!;
     public DbSet<UserBookmark> UserBookmarks { get; set; } = null!;
     public DbSet<UserSubscription> UserSubscriptions { get; set; } = null!;
     public DbSet<RepositoryProcessingLog> RepositoryProcessingLogs { get; set; } = null!;
@@ -382,5 +385,17 @@ public abstract class MasterDbContext : DbContext, IContext
             // 日期索引
             builder.HasIndex(s => s.Date);
         });
+
+        // GitHubAppInstallation unique index on InstallationId
+        modelBuilder.Entity<GitHubAppInstallation>()
+            .HasIndex(g => g.InstallationId)
+            .IsUnique();
+
+        // GitHubAppInstallation optional FK to Department
+        modelBuilder.Entity<GitHubAppInstallation>()
+            .HasOne<Department>()
+            .WithMany()
+            .HasForeignKey(g => g.DepartmentId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }
