@@ -4,12 +4,13 @@ using OpenDeepWiki.EFCore;
 using OpenDeepWiki.Entities;
 using OpenDeepWiki.Models;
 using OpenDeepWiki.Services.Auth;
+using OpenDeepWiki.Services.GitHub;
 
 namespace OpenDeepWiki.Services.Repositories;
 
 [MiniApi(Route = "/api/v1/repositories")]
 [Tags("仓库")]
-public class RepositoryService(IContext context, IGitPlatformService gitPlatformService, IUserContext userContext)
+public class RepositoryService(IContext context, IGitPlatformService gitPlatformService, IUserContext userContext, IGitHubAppService gitHubAppService)
 {
     [HttpPost("/submit")]
     public async Task<Repository> SubmitAsync([FromBody] RepositorySubmitRequest request)
@@ -22,7 +23,16 @@ public class RepositoryService(IContext context, IGitPlatformService gitPlatform
 
         if (!request.IsPublic && string.IsNullOrWhiteSpace(request.AuthAccount) && string.IsNullOrWhiteSpace(request.AuthPassword))
         {
-            throw new InvalidOperationException("仓库凭据为空时不允许设置为私有");
+            // Allow private repos without credentials if a GitHub App installation exists for the org
+            var hasAppInstallation = gitHubAppService.IsConfigured &&
+                !string.IsNullOrWhiteSpace(request.OrgName) &&
+                await context.GitHubAppInstallations.AnyAsync(
+                    i => i.AccountLogin == request.OrgName && !i.IsDeleted);
+
+            if (!hasAppInstallation)
+            {
+                throw new InvalidOperationException("Private repositories require credentials or a GitHub App installation for the organization");
+            }
         }
 
         // 校验是否已存在相同仓库（相同 GitUrl + BranchName）
@@ -261,16 +271,24 @@ public class RepositoryService(IContext context, IGitPlatformService gitPlatform
                 }, statusCode: StatusCodes.Status403Forbidden);
             }
 
-            // 无密码仓库不能设为私有
+            // Allow private repos without credentials if a GitHub App installation exists for the org
             if (!request.IsPublic && string.IsNullOrWhiteSpace(repository.AuthPassword))
             {
-                return Results.BadRequest(new UpdateVisibilityResponse
+                var hasAppInstallation = gitHubAppService.IsConfigured &&
+                    !string.IsNullOrWhiteSpace(repository.OrgName) &&
+                    await context.GitHubAppInstallations.AnyAsync(
+                        i => i.AccountLogin == repository.OrgName && !i.IsDeleted);
+
+                if (!hasAppInstallation)
                 {
-                    Id = request.RepositoryId,
-                    IsPublic = repository.IsPublic,
-                    Success = false,
-                    ErrorMessage = "仓库凭据为空时不允许设置为私有"
-                });
+                    return Results.BadRequest(new UpdateVisibilityResponse
+                    {
+                        Id = request.RepositoryId,
+                        IsPublic = repository.IsPublic,
+                        Success = false,
+                        ErrorMessage = "Private repositories require credentials or a GitHub App installation for the organization"
+                    });
+                }
             }
 
             // 更新可见性

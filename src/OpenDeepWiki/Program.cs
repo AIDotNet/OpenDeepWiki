@@ -21,6 +21,7 @@ using OpenDeepWiki.Services.Recommendation;
 using OpenDeepWiki.Services.Repositories;
 using OpenDeepWiki.Services.Translation;
 using OpenDeepWiki.Services.Mcp;
+using OpenDeepWiki.Services.GitHub;
 using OpenDeepWiki.Services.UserProfile;
 using OpenDeepWiki.Services.Wiki;
 using Scalar.AspNetCore;
@@ -288,6 +289,11 @@ try
     // 注册处理日志服务（使用 Singleton，因为它内部使用 IServiceScopeFactory 创建独立 scope）
     builder.Services.AddSingleton<IProcessingLogService, ProcessingLogService>();
 
+    // Register GitHub App services
+    builder.Services.AddSingleton<GitHubAppCredentialCache>();
+    builder.Services.AddScoped<IGitHubAppService, GitHubAppService>();
+    builder.Services.AddScoped<IAdminGitHubImportService, AdminGitHubImportService>();
+
     // 注册管理端服务
     builder.Services.AddScoped<IAdminStatisticsService, AdminStatisticsService>();
     builder.Services.AddScoped<IAdminRepositoryService, AdminRepositoryService>();
@@ -443,6 +449,22 @@ try
     using (var scope = app.Services.CreateScope())
     {
         await DbInitializer.InitializeAsync(scope.ServiceProvider);
+    }
+
+    // Load GitHub App credentials from DB into cache
+    using (var scope = app.Services.CreateScope())
+    {
+        var credCache = scope.ServiceProvider.GetRequiredService<GitHubAppCredentialCache>();
+        var settingsService = scope.ServiceProvider.GetRequiredService<IAdminSettingsService>();
+        try
+        {
+            await credCache.LoadFromDbAsync(settingsService);
+        }
+        catch (Exception ex)
+        {
+            var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+            logger.LogWarning(ex, "Failed to load GitHub App credentials from database at startup");
+        }
     }
 
     app.Run();
