@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useTranslations } from "@/hooks/use-translations";
-import { submitRepository, fetchGitBranches } from "@/lib/repository-api";
+import { submitRepository, fetchGitBranches, checkGitHubRepo } from "@/lib/repository-api";
 import type { RepositorySubmitRequest, GitBranchItem } from "@/types/repository";
 import { Loader2, GitBranch, Globe, Lock, Link2, FolderGit2, Search, Edit3 } from "lucide-react";
 import { toast } from "sonner";
@@ -98,6 +98,19 @@ export function RepositorySubmitForm({ onSuccess }: RepositorySubmitFormProps) {
       if (!result.isSupported) {
         setIsManualInput(true);
       }
+
+      // Check repo visibility and auto-set isPublic
+      const parsed = parseGitUrl(url.trim());
+      if (parsed) {
+        try {
+          const repoCheck = await checkGitHubRepo(parsed.orgName, parsed.repoName);
+          if (repoCheck.exists && repoCheck.isPrivate) {
+            setIsPublic(false);
+          }
+        } catch (checkError) {
+          console.error("Failed to check repo visibility:", checkError);
+        }
+      }
     } catch (error) {
       console.error("Failed to fetch branches:", error);
       setIsSupported(false);
@@ -158,8 +171,8 @@ export function RepositorySubmitForm({ onSuccess }: RepositorySubmitFormProps) {
     setIsSubmitting(true);
 
     try {
-      // 如果设置了密码则 isPublic 为 false，否则为 true
-      const effectiveIsPublic = !authPassword;
+      // Use the isPublic state which may have been auto-set by visibility check
+      const effectiveIsPublic = isPublic;
 
       const request: RepositorySubmitRequest = {
         gitUrl: gitUrl.trim(),

@@ -26,7 +26,8 @@ public record GitRepoInfo(
     int StarCount,
     int ForkCount,
     string? Language,
-    string? AvatarUrl
+    string? AvatarUrl,
+    bool IsPrivate = false
 );
 
 /// <summary>

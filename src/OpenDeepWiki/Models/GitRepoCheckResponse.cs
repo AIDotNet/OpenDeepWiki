@@ -46,6 +46,11 @@ public class GitRepoCheckResponse
     public string? AvatarUrl { get; set; }
 
     /// <summary>
+    /// 是否为私有仓库
+    /// </summary>
+    public bool IsPrivate { get; set; }
+
+    /// <summary>
     /// Git仓库地址
     /// </summary>
     public string? GitUrl { get; set; }
