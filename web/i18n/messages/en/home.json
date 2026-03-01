@@ -37,6 +37,27 @@
   },
   "exploreTrending": "Explore This Week's Trending Repos",
   "mcpIntegration": "Integrate KeboolaDeepWiki MCP into your dev tools 🔥",
+  "integrations": {
+    "title": "Integrations",
+    "description": "Connect DeepWiki with your development tools",
+    "slack": {
+      "title": "Slack Integration",
+      "connected": "Connected",
+      "notConnected": "Not connected",
+      "configure": "Configure Slack",
+      "contactAdmin": "Contact your administrator to configure Slack integration."
+    },
+    "mcp": {
+      "title": "MCP Server",
+      "description": "Use DeepWiki as an MCP server in your AI tools.",
+      "serverUrl": "Server URL",
+      "copied": "Copied!",
+      "copyUrl": "Copy URL",
+      "copyConfig": "Copy config",
+      "claudeDesktopHint": "Add this to your Claude Desktop configuration file (claude_desktop_config.json):",
+      "claudeAiHint": "In Claude.ai settings, add the MCP server URL above as a remote MCP server."
+    }
+  },
   "private": {
     "visibility": {
       "public": "Public",
