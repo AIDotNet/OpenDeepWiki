@@ -4,12 +4,13 @@ using OpenDeepWiki.EFCore;
 using OpenDeepWiki.Entities;
 using OpenDeepWiki.Models;
 using OpenDeepWiki.Services.Auth;
+using OpenDeepWiki.Services.Organizations;
 
 namespace OpenDeepWiki.Services.Repositories;
 
 [MiniApi(Route = "/api/v1/repositories")]
 [Tags("仓库")]
-public class RepositoryService(IContext context, IGitPlatformService gitPlatformService, IUserContext userContext)
+public class RepositoryService(IContext context, IGitPlatformService gitPlatformService, IUserContext userContext, IOrganizationService organizationService)
 {
     [HttpPost("/submit")]
     public async Task<Repository> SubmitAsync([FromBody] RepositorySubmitRequest request)
@@ -136,7 +137,11 @@ public class RepositoryService(IContext context, IGitPlatformService gitPlatform
 
         if (!string.IsNullOrWhiteSpace(ownerId))
         {
-            query = query.Where(r => r.OwnerUserId == ownerId);
+            // Get repos from user's departments to include alongside owned repos
+            var deptRepos = await organizationService.GetDepartmentRepositoriesAsync(ownerId);
+            var deptRepoIds = deptRepos.Select(r => r.RepositoryId).ToList();
+
+            query = query.Where(r => r.OwnerUserId == ownerId || deptRepoIds.Contains(r.Id));
         }
 
         if (status.HasValue)
