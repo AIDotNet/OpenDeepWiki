@@ -5,12 +5,13 @@ using OpenDeepWiki.Entities;
 using OpenDeepWiki.Models;
 using OpenDeepWiki.Services.Auth;
 using OpenDeepWiki.Services.GitHub;
+using OpenDeepWiki.Services.Organizations;
 
 namespace OpenDeepWiki.Services.Repositories;
 
 [MiniApi(Route = "/api/v1/repositories")]
 [Tags("Repository")]
-public class RepositoryService(IContext context, IGitPlatformService gitPlatformService, IUserContext userContext, IGitHubAppService gitHubAppService)
+public class RepositoryService(IContext context, IGitPlatformService gitPlatformService, IUserContext userContext, IGitHubAppService gitHubAppService, IOrganizationService organizationService)
 {
     [HttpPost("/submit")]
     public async Task<Repository> SubmitAsync([FromBody] RepositorySubmitRequest request)
@@ -61,6 +62,17 @@ public class RepositoryService(IContext context, IGitPlatformService gitPlatform
             }
         }
 
+        // Server-side visibility verification: check actual GitHub repo visibility
+        var effectiveIsPublic = request.IsPublic;
+        if (IsPublicPlatform(request.GitUrl) && !string.IsNullOrWhiteSpace(request.OrgName) && !string.IsNullOrWhiteSpace(request.RepoName))
+        {
+            var repoInfo = await gitPlatformService.CheckRepoExistsAsync(request.OrgName, request.RepoName);
+            if (repoInfo.Exists)
+            {
+                effectiveIsPublic = !repoInfo.IsPrivate;
+            }
+        }
+
         var repositoryId = Guid.NewGuid().ToString();
         var repository = new Repository
         {
@@ -71,7 +83,7 @@ public class RepositoryService(IContext context, IGitPlatformService gitPlatform
             OrgName = request.OrgName,
             AuthAccount = request.AuthAccount,
             AuthPassword = request.AuthPassword,
-            IsPublic = request.IsPublic,
+            IsPublic = effectiveIsPublic,
             Status = RepositoryStatus.Pending,
             StarCount = starCount,
             ForkCount = forkCount
@@ -146,7 +158,11 @@ public class RepositoryService(IContext context, IGitPlatformService gitPlatform
 
         if (!string.IsNullOrWhiteSpace(ownerId))
         {
-            query = query.Where(r => r.OwnerUserId == ownerId);
+            // Get repos from user's departments to include alongside owned repos
+            var deptRepos = await organizationService.GetDepartmentRepositoriesAsync(ownerId);
+            var deptRepoIds = deptRepos.Select(r => r.RepositoryId).ToList();
+
+            query = query.Where(r => r.OwnerUserId == ownerId || deptRepoIds.Contains(r.Id));
         }
 
         if (status.HasValue)
@@ -269,26 +285,6 @@ public class RepositoryService(IContext context, IGitPlatformService gitPlatform
                     Success = false,
                     ErrorMessage = "No permission to modify this repository"
                 }, statusCode: StatusCodes.Status403Forbidden);
-            }
-
-            // Allow private repos without credentials if a GitHub App installation exists for the org
-            if (!request.IsPublic && string.IsNullOrWhiteSpace(repository.AuthPassword))
-            {
-                var hasAppInstallation = gitHubAppService.IsConfigured &&
-                    !string.IsNullOrWhiteSpace(repository.OrgName) &&
-                    await context.GitHubAppInstallations.AnyAsync(
-                        i => i.AccountLogin == repository.OrgName && !i.IsDeleted);
-
-                if (!hasAppInstallation)
-                {
-                    return Results.BadRequest(new UpdateVisibilityResponse
-                    {
-                        Id = request.RepositoryId,
-                        IsPublic = repository.IsPublic,
-                        Success = false,
-                        ErrorMessage = "Private repositories require credentials or a GitHub App installation for the organization"
-                    });
-                }
             }
 
             // Update visibility

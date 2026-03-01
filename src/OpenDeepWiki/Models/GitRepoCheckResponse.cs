@@ -46,6 +46,11 @@ public class GitRepoCheckResponse
     public string? AvatarUrl { get; set; }
 
     /// <summary>
+    /// Whether the repository is private
+    /// </summary>
+    public bool IsPrivate { get; set; }
+
+    /// <summary>
     /// Git repository URL
     /// </summary>
     public string? GitUrl { get; set; }

@@ -60,13 +60,11 @@
   },
   "private": {
     "visibility": {
-      "public": "Public",
-      "private": "Private",
-      "setPublicSuccess": "Repository is now public",
-      "setPrivateSuccess": "Repository is now private",
-      "updateError": "Failed to update visibility",
-      "noPasswordError": "Cannot set repository without password to private",
-      "noPasswordTooltip": "This repository has no access password set and cannot be made private. Please add a password in repository settings first."
+      "shared": "Shared",
+      "restricted": "Restricted",
+      "setSharedSuccess": "Wiki is now shared with the organization",
+      "setRestrictedSuccess": "Wiki is now restricted to owner and department",
+      "updateError": "Failed to update visibility"
     }
   },
   "publicRepository": {

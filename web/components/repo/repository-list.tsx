@@ -119,7 +119,6 @@ function RepositoryCard({
             <VisibilityToggle
               repositoryId={repo.id}
               isPublic={repo.isPublic}
-              hasPassword={repo.hasPassword}
               onVisibilityChange={handleVisibilityChange}
             />
             {repo.statusName === "Completed" && (

@@ -75,7 +75,7 @@ export interface RepositoryItemResponse {
   status: number;
   statusName: RepositoryStatus;
   isPublic: boolean;
-  hasPassword: boolean;  // Whether a password is set, used to determine if it can be made private
+  hasPassword?: boolean;
   createdAt: string;
   updatedAt?: string;
   starCount?: number;
@@ -173,5 +173,6 @@ export interface GitRepoCheckResponse {
   forkCount: number;
   language: string | null;
   avatarUrl: string | null;
+  isPrivate: boolean;
   gitUrl: string | null;
 }

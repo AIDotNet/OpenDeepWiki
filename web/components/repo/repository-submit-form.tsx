@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useTranslations } from "@/hooks/use-translations";
-import { submitRepository, fetchGitBranches } from "@/lib/repository-api";
+import { submitRepository, fetchGitBranches, checkGitHubRepo } from "@/lib/repository-api";
 import type { RepositorySubmitRequest, GitBranchItem } from "@/types/repository";
 import { Loader2, GitBranch, Globe, Lock, Link2, FolderGit2, Search, Edit3 } from "lucide-react";
 import { toast } from "sonner";
@@ -83,7 +83,7 @@ export function RepositorySubmitForm({ onSuccess }: RepositorySubmitFormProps) {
       const result = await fetchGitBranches(url.trim());
       setBranches(result.branches);
       setIsSupported(result.isSupported);
-      
+
       // Set default branch if available
       if (result.defaultBranch) {
         setBranchName(result.defaultBranch);
@@ -93,10 +93,19 @@ export function RepositorySubmitForm({ onSuccess }: RepositorySubmitFormProps) {
           setBranchName(defaultBranch.name);
         }
       }
-      
+
       // If not supported, switch to manual input
       if (!result.isSupported) {
         setIsManualInput(true);
+      }
+
+      // Auto-detect visibility from GitHub API
+      const parsed = parseGitUrl(url.trim());
+      if (parsed) {
+        const repoInfo = await checkGitHubRepo(parsed.orgName, parsed.repoName);
+        if (repoInfo.exists && repoInfo.isPrivate) {
+          setIsPublic(false);
+        }
       }
     } catch (error) {
       console.error("Failed to fetch branches:", error);
@@ -158,8 +167,8 @@ export function RepositorySubmitForm({ onSuccess }: RepositorySubmitFormProps) {
     setIsSubmitting(true);
 
     try {
-      // If a password is set, isPublic is false; otherwise true
-      const effectiveIsPublic = !authPassword;
+      // Respect the toggle state (server-side also verifies against GitHub API)
+      const effectiveIsPublic = isPublic;
 
       const request: RepositorySubmitRequest = {
         gitUrl: gitUrl.trim(),

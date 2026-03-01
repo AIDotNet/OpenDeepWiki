@@ -388,8 +388,9 @@ public class GitPlatformService(IHttpClientFactory httpClientFactory, ILogger<Gi
             var avatarUrl = root.TryGetProperty("owner", out var ownerProp)
                 ? ownerProp.GetProperty("avatar_url").GetString()
                 : null;
+            var isPrivate = root.TryGetProperty("private", out var privateProp) && privateProp.GetBoolean();
 
-            return new GitRepoInfo(true, name, description, defaultBranch, starCount, forkCount, language, avatarUrl);
+            return new GitRepoInfo(true, name, description, defaultBranch, starCount, forkCount, language, avatarUrl, isPrivate);
         }
         catch (Exception ex)
         {

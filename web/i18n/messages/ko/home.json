@@ -60,13 +60,11 @@
   },
   "private": {
     "visibility": {
-      "public": "공개",
-      "private": "비공개",
-      "setPublicSuccess": "저장소가 공개되었습니다",
-      "setPrivateSuccess": "저장소가 비공개되었습니다",
-      "updateError": "가시성 업데이트에 실패했습니다",
-      "noPasswordError": "비밀번호가 없는 저장소는 비공개로 설정할 수 없습니다",
-      "noPasswordTooltip": "이 저장소에는 액세스 비밀번호가 설정되어 있지 않아 비공개로 설정할 수 없습니다. 먼저 저장소 설정에서 비밀번호를 추가하세요."
+      "shared": "조직 공유",
+      "restricted": "제한됨",
+      "setSharedSuccess": "위키가 이제 조직 전체에 공유됩니다",
+      "setRestrictedSuccess": "위키가 이제 소유자와 부서 멤버로 제한됩니다",
+      "updateError": "가시성 업데이트에 실패했습니다"
     }
   },
   "publicRepository": {

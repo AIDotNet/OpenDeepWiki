@@ -224,6 +224,7 @@ export async function checkGitHubRepo(
       forkCount: 0,
       language: null,
       avatarUrl: null,
+      isPrivate: false,
       gitUrl: null,
     };
   }

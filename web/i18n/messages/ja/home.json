@@ -60,13 +60,11 @@
   },
   "private": {
     "visibility": {
-      "public": "公開",
-      "private": "非公開",
-      "setPublicSuccess": "リポジトリが公開されました",
-      "setPrivateSuccess": "リポジトリが非公開になりました",
-      "updateError": "可視性の更新に失敗しました",
-      "noPasswordError": "パスワードのないリポジトリは非公開にできません",
-      "noPasswordTooltip": "このリポジトリにはアクセスパスワードが設定されていないため、非公開にできません。まずリポジトリ設定でパスワードを追加してください。"
+      "shared": "組織共有",
+      "restricted": "制限付き",
+      "setSharedSuccess": "ウィキが組織全体に共有されました",
+      "setRestrictedSuccess": "ウィキがオーナーと部門メンバーに制限されました",
+      "updateError": "可視性の更新に失敗しました"
     }
   },
   "publicRepository": {

@@ -78,6 +78,7 @@ public class IncrementalUpdateWorker : BackgroundService
         using var scope = _scopeFactory.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<IContext>();
         var updateService = scope.ServiceProvider.GetRequiredService<IIncrementalUpdateService>();
+        var gitPlatformService = scope.ServiceProvider.GetService<IGitPlatformService>();
 
         // 1. Process high-priority tasks first (manually triggered)
         var pendingTasks = await GetPendingTasksAsync(context, stoppingToken);
@@ -94,7 +95,7 @@ public class IncrementalUpdateWorker : BackgroundService
         }
 
         // 2. Check repositories that need scheduled updates
-        await CheckScheduledUpdatesAsync(context, stoppingToken);
+        await CheckScheduledUpdatesAsync(context, gitPlatformService, stoppingToken);
     }
 
     /// <summary>
@@ -213,6 +214,7 @@ public class IncrementalUpdateWorker : BackgroundService
     /// </summary>
     private async Task CheckScheduledUpdatesAsync(
         IContext context,
+        IGitPlatformService? gitPlatformService,
         CancellationToken stoppingToken)
     {
         var now = DateTime.UtcNow;
@@ -232,6 +234,12 @@ public class IncrementalUpdateWorker : BackgroundService
             if (stoppingToken.IsCancellationRequested)
             {
                 break;
+            }
+
+            // Sync visibility from GitHub API
+            if (gitPlatformService != null)
+            {
+                await SyncRepositoryVisibilityAsync(context, gitPlatformService, repository);
             }
 
             await CreateScheduledUpdateTasksAsync(context, repository, stoppingToken);
@@ -300,6 +308,63 @@ public class IncrementalUpdateWorker : BackgroundService
             _logger.LogError(ex,
                 "Failed to create scheduled update tasks. Repository: {Org}/{Repo}",
                 repository.OrgName, repository.RepoName);
+        }
+    }
+
+    /// <summary>
+    /// Sync repository visibility with the Git platform (e.g. GitHub API)
+    /// </summary>
+    private async Task SyncRepositoryVisibilityAsync(
+        IContext context,
+        IGitPlatformService gitPlatformService,
+        Repository repository)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(repository.OrgName) || string.IsNullOrWhiteSpace(repository.RepoName))
+                return;
+
+            // Only sync for supported platforms (GitHub, GitLab, Gitee)
+            if (!IsPublicPlatform(repository.GitUrl))
+                return;
+
+            var repoInfo = await gitPlatformService.CheckRepoExistsAsync(repository.OrgName, repository.RepoName);
+            if (!repoInfo.Exists)
+                return;
+
+            var shouldBePublic = !repoInfo.IsPrivate;
+            if (repository.IsPublic != shouldBePublic)
+            {
+                _logger.LogInformation(
+                    "Visibility mismatch detected for {Org}/{Repo}: DB IsPublic={DbIsPublic}, GitHub IsPrivate={GitHubIsPrivate}. Updating to IsPublic={NewIsPublic}",
+                    repository.OrgName, repository.RepoName, repository.IsPublic, repoInfo.IsPrivate, shouldBePublic);
+
+                repository.IsPublic = shouldBePublic;
+                await context.SaveChangesAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "Failed to sync visibility for {Org}/{Repo}",
+                repository.OrgName, repository.RepoName);
+        }
+    }
+
+    /// <summary>
+    /// Check if the platform supports fetching repository statistics
+    /// </summary>
+    private static bool IsPublicPlatform(string gitUrl)
+    {
+        try
+        {
+            var uri = new Uri(gitUrl);
+            var host = uri.Host.ToLowerInvariant();
+            return host is "github.com" or "gitee.com" or "gitlab.com";
+        }
+        catch
+        {
+            return false;
         }
     }
 }

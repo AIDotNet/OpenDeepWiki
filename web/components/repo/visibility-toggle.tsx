@@ -3,12 +3,7 @@
 import * as React from "react";
 import { Switch } from "@/components/ui/switch";
 import { Spinner } from "@/components/ui/spinner";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Globe, Lock, Info } from "lucide-react";
+import { Globe, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { updateRepositoryVisibility } from "@/lib/repository-api";
 import { toast } from "sonner";
@@ -17,7 +12,6 @@ import { useTranslations } from "@/hooks/use-translations";
 export interface VisibilityToggleProps {
   repositoryId: string;
   isPublic: boolean;
-  hasPassword: boolean;
   onVisibilityChange: (newIsPublic: boolean) => void;
   disabled?: boolean;
 }
@@ -25,7 +19,6 @@ export interface VisibilityToggleProps {
 export function VisibilityToggle({
   repositoryId,
   isPublic,
-  hasPassword,
   onVisibilityChange,
   disabled = false,
 }: VisibilityToggleProps) {
@@ -38,25 +31,10 @@ export function VisibilityToggle({
     setCurrentIsPublic(isPublic);
   }, [isPublic]);
 
-  // Determine if switching to private is allowed
-  // Can only be set to private when the repository has a password
-  const canSetPrivate = hasPassword;
-
-  // Determine if the switch should be disabled
-  // 1. Externally passed disabled prop
-  // 2. Currently loading
-  // 3. Currently public and no password (cannot switch to private)
-  const isDisabled = disabled || isLoading || (currentIsPublic && !canSetPrivate);
+  const isDisabled = disabled || isLoading;
 
   const handleToggle = async (checked: boolean) => {
-    // checked = true means public, checked = false means private
     const newIsPublic = checked;
-
-    // If trying to set to private but no password, block the operation
-    if (!newIsPublic && !canSetPrivate) {
-      toast.error(t("home.private.visibility.noPasswordError"));
-      return;
-    }
 
     setIsLoading(true);
 
@@ -71,8 +49,8 @@ export function VisibilityToggle({
         onVisibilityChange(response.isPublic);
         toast.success(
           response.isPublic
-            ? t("home.private.visibility.setPublicSuccess")
-            : t("home.private.visibility.setPrivateSuccess")
+            ? t("home.private.visibility.setSharedSuccess")
+            : t("home.private.visibility.setRestrictedSuccess")
         );
       } else {
         toast.error(response.errorMessage || t("home.private.visibility.updateError"));
@@ -85,52 +63,6 @@ export function VisibilityToggle({
     }
   };
 
-  // Render switch content
-  const renderSwitch = () => (
-    <div className="flex items-center gap-2">
-      {isLoading ? (
-        <Spinner className="h-4 w-4" />
-      ) : currentIsPublic ? (
-        <Globe className="h-4 w-4 text-muted-foreground" />
-      ) : (
-        <Lock className="h-4 w-4 text-muted-foreground" />
-      )}
-      <Switch
-        checked={currentIsPublic}
-        onCheckedChange={handleToggle}
-        disabled={isDisabled}
-        aria-label={currentIsPublic ? t("home.private.visibility.public") : t("home.private.visibility.private")}
-      />
-      <span className="text-sm text-muted-foreground">
-        {currentIsPublic ? t("home.private.visibility.public") : t("home.private.visibility.private")}
-      </span>
-    </div>
-  );
-
-  // If cannot be set to private (no password), show switch with tooltip
-  if (currentIsPublic && !canSetPrivate) {
-    return (
-      <Popover>
-        <PopoverTrigger asChild>
-          <div
-            className={cn(
-              "flex items-center gap-1 cursor-help",
-              isDisabled && "opacity-50"
-            )}
-          >
-            {renderSwitch()}
-            <Info className="h-3.5 w-3.5 text-muted-foreground" />
-          </div>
-        </PopoverTrigger>
-        <PopoverContent className="w-64 p-3" side="top">
-          <p className="text-sm text-muted-foreground">
-            {t("home.private.visibility.noPasswordTooltip")}
-          </p>
-        </PopoverContent>
-      </Popover>
-    );
-  }
-
   return (
     <div
       className={cn(
@@ -138,7 +70,24 @@ export function VisibilityToggle({
         isDisabled && "opacity-50"
       )}
     >
-      {renderSwitch()}
+      <div className="flex items-center gap-2">
+        {isLoading ? (
+          <Spinner className="h-4 w-4" />
+        ) : currentIsPublic ? (
+          <Globe className="h-4 w-4 text-muted-foreground" />
+        ) : (
+          <Lock className="h-4 w-4 text-muted-foreground" />
+        )}
+        <Switch
+          checked={currentIsPublic}
+          onCheckedChange={handleToggle}
+          disabled={isDisabled}
+          aria-label={currentIsPublic ? t("home.private.visibility.shared") : t("home.private.visibility.restricted")}
+        />
+        <span className="text-sm text-muted-foreground">
+          {currentIsPublic ? t("home.private.visibility.shared") : t("home.private.visibility.restricted")}
+        </span>
+      </div>
     </div>
   );
 }

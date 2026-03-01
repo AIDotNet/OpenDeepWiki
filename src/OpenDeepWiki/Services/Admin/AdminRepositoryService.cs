@@ -175,6 +175,10 @@ public class AdminRepositoryService : IAdminRepositoryService
 
         repo.StarCount = stats.StarCount;
         repo.ForkCount = stats.ForkCount;
+
+        // Also sync visibility from Git platform
+        await SyncVisibilityAsync(repo);
+
         repo.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
@@ -212,6 +216,9 @@ public class AdminRepositoryService : IAdminRepositoryService
                 repo.StarCount = stats.StarCount;
                 repo.ForkCount = stats.ForkCount;
                 repo.UpdatedAt = DateTime.UtcNow;
+
+                // Also sync visibility from Git platform
+                await SyncVisibilityAsync(repo);
 
                 itemResult.Success = true;
                 itemResult.StarCount = stats.StarCount;
@@ -692,5 +699,27 @@ public class AdminRepositoryService : IAdminRepositoryService
     private static string NormalizeDocPath(string path)
     {
         return path.Trim().Trim('/');
+    }
+
+    /// <summary>
+    /// Sync repository visibility with the Git platform API
+    /// </summary>
+    private async Task SyncVisibilityAsync(Repository repo)
+    {
+        if (string.IsNullOrWhiteSpace(repo.OrgName) || string.IsNullOrWhiteSpace(repo.RepoName))
+            return;
+
+        try
+        {
+            var repoInfo = await _gitPlatformService.CheckRepoExistsAsync(repo.OrgName, repo.RepoName);
+            if (repoInfo.Exists)
+            {
+                repo.IsPublic = !repoInfo.IsPrivate;
+            }
+        }
+        catch
+        {
+            // Best-effort: don't fail stats sync if visibility check fails
+        }
     }
 }

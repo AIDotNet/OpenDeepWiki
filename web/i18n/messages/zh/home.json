@@ -60,13 +60,11 @@
   },
   "private": {
     "visibility": {
-      "public": "公开",
-      "private": "私有",
-      "setPublicSuccess": "仓库已设为公开",
-      "setPrivateSuccess": "仓库已设为私有",
-      "updateError": "更新可见性失败",
-      "noPasswordError": "无法将没有密码的仓库设为私有",
-      "noPasswordTooltip": "此仓库没有设置访问密码，无法设为私有。请先在仓库设置中添加密码。"
+      "shared": "组织共享",
+      "restricted": "仅限成员",
+      "setSharedSuccess": "Wiki 现已对组织内所有人可见",
+      "setRestrictedSuccess": "Wiki 现已限制为所有者和部门成员可见",
+      "updateError": "更新可见性失败"
     }
   },
   "publicRepository": {
