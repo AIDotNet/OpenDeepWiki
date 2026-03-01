@@ -129,6 +129,7 @@
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
     <PackageVersion Include="FsCheck" Version="3.3.2" />
     <PackageVersion Include="FsCheck.Xunit" Version="3.3.2" />
+    <PackageVersion Include="Moq" Version="4.20.72" />
     <PackageVersion Include="YamlDotNet" Version="16.3.0" />
     <PackageVersion Include="BCrypt.Net-Next" Version="4.0.3" />
   </ItemGroup>

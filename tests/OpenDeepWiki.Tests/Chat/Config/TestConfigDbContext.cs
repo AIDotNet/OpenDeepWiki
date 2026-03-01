@@ -27,6 +27,7 @@ public class TestConfigDbContext : DbContext, IContext
     public DbSet<DocFile> DocFiles { get; set; } = null!;
     public DbSet<DocCatalog> DocCatalogs { get; set; } = null!;
     public DbSet<RepositoryAssignment> RepositoryAssignments { get; set; } = null!;
+    public DbSet<GitHubAppInstallation> GitHubAppInstallations { get; set; }
     public DbSet<UserBookmark> UserBookmarks { get; set; } = null!;
     public DbSet<UserSubscription> UserSubscriptions { get; set; } = null!;
     public DbSet<RepositoryProcessingLog> RepositoryProcessingLogs { get; set; } = null!;

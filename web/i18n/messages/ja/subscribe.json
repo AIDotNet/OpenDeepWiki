@@ -1,0 +1,20 @@
+{
+  "title": "購読",
+  "description": "更新を追っているリポジトリ",
+  "loginRequired": "購読を見るにはログインしてください",
+  "loginPrompt": "リポジトリの購読を管理するにはログインしてください",
+  "noSubscriptions": "まだ購読がありません",
+  "noSubscriptionsPrompt": "リポジトリを購読するとここに表示されます",
+  "unwatch": "購読解除",
+  "noDescription": "説明がありません",
+  "today": "今日",
+  "yesterday": "昨日",
+  "daysAgo": "{{count}}日前",
+  "weeksAgo": "{{count}}週間前",
+  "monthsAgo": "{{count}}か月前",
+  "pageOf": "{{total}}ページ中{{current}}ページ",
+  "previous": "前へ",
+  "next": "次へ",
+  "failedToLoad": "購読の読み込みに失敗しました",
+  "failedToUnsubscribe": "購読解除に失敗しました"
+}

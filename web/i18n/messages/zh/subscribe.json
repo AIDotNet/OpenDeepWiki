@@ -1,0 +1,20 @@
+{
+  "title": "订阅",
+  "description": "你关注更新的仓库",
+  "loginRequired": "请登录查看你的订阅",
+  "loginPrompt": "登录以管理你的仓库订阅",
+  "noSubscriptions": "还没有订阅",
+  "noSubscriptionsPrompt": "开始订阅仓库后会显示在这里",
+  "unwatch": "取消关注",
+  "noDescription": "暂无描述",
+  "today": "今天",
+  "yesterday": "昨天",
+  "daysAgo": "{{count}} 天前",
+  "weeksAgo": "{{count}} 周前",
+  "monthsAgo": "{{count}} 个月前",
+  "pageOf": "第 {{current}} 页 / 共 {{total}} 页",
+  "previous": "上一页",
+  "next": "下一页",
+  "failedToLoad": "订阅加载失败",
+  "failedToUnsubscribe": "取消订阅失败"
+}

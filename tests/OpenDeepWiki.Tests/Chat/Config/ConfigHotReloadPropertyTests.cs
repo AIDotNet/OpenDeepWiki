@@ -3,6 +3,7 @@ using FsCheck.Fluent;
 using FsCheck.Xunit;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Moq;
 using OpenDeepWiki.Chat.Config;
 using Xunit;
 
@@ -54,8 +55,9 @@ public class ConfigHotReloadPropertyTests
             EncryptionKey = "test-encryption-key-for-testing"
         });
         var encryption = new AesConfigEncryption(encryptionOptions);
+        var changeNotifier = new Mock<IConfigChangeNotifier>().Object;
         
-        return new ChatConfigService(context, encryption, logger);
+        return new ChatConfigService(context, encryption, changeNotifier, logger);
     }
     
     /// <summary>

@@ -437,7 +437,6 @@ try
     app.MapAuthEndpoints();
     app.MapOAuthEndpoints();
     app.MapAdminEndpoints();
-    app.MapAdminGitHubImportEndpoints();
     app.MapGitHubImportEndpoints();
     app.MapOrganizationEndpoints();
     app.MapChatAssistantEndpoints();

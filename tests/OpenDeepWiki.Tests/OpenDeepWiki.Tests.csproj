@@ -17,6 +17,7 @@
     </PackageReference>
     <PackageReference Include="FsCheck" />
     <PackageReference Include="FsCheck.Xunit" />
+    <PackageReference Include="Moq" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,0 +1,20 @@
+{
+  "title": "구독",
+  "description": "업데이트를 지켜보는 저장소",
+  "loginRequired": "구독을 보려면 로그인하세요",
+  "loginPrompt": "저장소 구독을 관리하려면 로그인하세요",
+  "noSubscriptions": "아직 구독이 없습니다",
+  "noSubscriptionsPrompt": "저장소를 구독하면 여기에서 확인할 수 있어요",
+  "unwatch": "구독 해제",
+  "noDescription": "설명이 없습니다",
+  "today": "오늘",
+  "yesterday": "어제",
+  "daysAgo": "{{count}}일 전",
+  "weeksAgo": "{{count}}주 전",
+  "monthsAgo": "{{count}}개월 전",
+  "pageOf": "{{total}}페이지 중 {{current}}페이지",
+  "previous": "이전",
+  "next": "다음",
+  "failedToLoad": "구독을 불러오지 못했습니다",
+  "failedToUnsubscribe": "구독 해제에 실패했습니다"
+}

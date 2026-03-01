@@ -1,0 +1,20 @@
+{
+  "title": "Subscribe",
+  "description": "Repositories you're watching for updates",
+  "loginRequired": "Please log in to view your subscriptions",
+  "loginPrompt": "Sign in to manage your repository subscriptions",
+  "noSubscriptions": "No subscriptions yet",
+  "noSubscriptionsPrompt": "Start subscribing to repositories to see them here",
+  "unwatch": "Unwatch",
+  "noDescription": "No description",
+  "today": "Today",
+  "yesterday": "Yesterday",
+  "daysAgo": "{{count}} days ago",
+  "weeksAgo": "{{count}} weeks ago",
+  "monthsAgo": "{{count}} months ago",
+  "pageOf": "Page {{current}} of {{total}}",
+  "previous": "Previous",
+  "next": "Next",
+  "failedToLoad": "Failed to load subscriptions",
+  "failedToUnsubscribe": "Failed to unsubscribe"
+}

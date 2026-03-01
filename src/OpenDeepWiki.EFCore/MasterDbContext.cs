@@ -1,8 +1,5 @@
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using OpenDeepWiki.Entities;
-using OpenDeepWiki.Entities.GitHub;
 using OpenDeepWiki.Entities.Tools;
 
 namespace OpenDeepWiki.EFCore;

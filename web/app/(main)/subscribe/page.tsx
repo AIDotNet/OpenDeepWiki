@@ -31,7 +31,7 @@ export default function SubscribePage() {
       setSubscriptions(response.items);
       setTotal(response.total);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load subscriptions");
+      setError(err instanceof Error ? err.message : t("subscribe.failedToLoad"));
     } finally {
       setIsLoading(false);
     }
@@ -55,10 +55,10 @@ export default function SubscribePage() {
         setSubscriptions(prev => prev.filter(s => s.repositoryId !== repositoryId));
         setTotal(prev => prev - 1);
       } else {
-        setError(response.errorMessage || "Failed to unsubscribe");
+        setError(response.errorMessage || t("subscribe.failedToUnsubscribe"));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to unsubscribe");
+      setError(err instanceof Error ? err.message : t("subscribe.failedToUnsubscribe"));
     } finally {
       setRemovingId(null);
     }
@@ -70,11 +70,11 @@ export default function SubscribePage() {
     const diffMs = now.getTime() - date.getTime();
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-    if (diffDays === 0) return "Today";
-    if (diffDays === 1) return "Yesterday";
-    if (diffDays < 7) return `${diffDays} days ago`;
-    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
-    return `${Math.floor(diffDays / 30)} months ago`;
+    if (diffDays === 0) return t("subscribe.today");
+    if (diffDays === 1) return t("subscribe.yesterday");
+    if (diffDays < 7) return t("subscribe.daysAgo", { count: diffDays });
+    if (diffDays < 30) return t("subscribe.weeksAgo", { count: Math.floor(diffDays / 7) });
+    return t("subscribe.monthsAgo", { count: Math.floor(diffDays / 30) });
   };
 
   const formatNumber = (num: number) => {
@@ -88,8 +88,8 @@ export default function SubscribePage() {
       <AppLayout activeItem={activeItem} onItemClick={setActiveItem}>
         <div className="flex flex-1 flex-col items-center justify-center gap-4 p-4 md:p-6">
           <Bell className="h-16 w-16 text-muted-foreground" />
-          <h2 className="text-xl font-semibold">Please log in to view your subscriptions</h2>
-          <p className="text-muted-foreground">Sign in to manage your repository subscriptions</p>
+          <h2 className="text-xl font-semibold">{t("subscribe.loginRequired")}</h2>
+          <p className="text-muted-foreground">{t("subscribe.loginPrompt")}</p>
         </div>
       </AppLayout>
     );
@@ -101,7 +101,7 @@ export default function SubscribePage() {
         <div className="space-y-2">
           <h1 className="text-3xl font-bold tracking-tight">{t("sidebar.subscribe")}</h1>
           <p className="text-muted-foreground">
-            Repositories you&apos;re watching for updates
+            {t("subscribe.description")}
           </p>
         </div>
 
@@ -118,8 +118,8 @@ export default function SubscribePage() {
         ) : subscriptions.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 gap-4">
             <Bell className="h-16 w-16 text-muted-foreground" />
-            <h2 className="text-xl font-semibold">No subscriptions yet</h2>
-            <p className="text-muted-foreground">Start subscribing to repositories to see them here</p>
+            <h2 className="text-xl font-semibold">{t("subscribe.noSubscriptions")}</h2>
+            <p className="text-muted-foreground">{t("subscribe.noSubscriptionsPrompt")}</p>
           </div>
         ) : (
           <>
@@ -149,14 +149,14 @@ export default function SubscribePage() {
                         ) : (
                           <>
                             <BellOff className="h-3 w-3" />
-                            Unwatch
+                            {t("subscribe.unwatch")}
                           </>
                         )}
                       </Button>
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm mb-3 line-clamp-2">{repo.description || "No description"}</p>
+                    <p className="text-sm mb-3 line-clamp-2">{repo.description || t("subscribe.noDescription")}</p>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3 text-sm text-muted-foreground">
                         <div className="flex items-center gap-1">
@@ -184,10 +184,10 @@ export default function SubscribePage() {
                   onClick={() => setPage(p => Math.max(1, p - 1))}
                   disabled={page === 1}
                 >
-                  Previous
+                  {t("subscribe.previous")}
                 </Button>
                 <span className="text-sm text-muted-foreground">
-                  Page {page} of {Math.ceil(total / pageSize)}
+                  {t("subscribe.pageOf", { current: page, total: Math.ceil(total / pageSize) })}
                 </span>
                 <Button
                   variant="outline"
@@ -195,7 +195,7 @@ export default function SubscribePage() {
                   onClick={() => setPage(p => p + 1)}
                   disabled={page >= Math.ceil(total / pageSize)}
                 >
-                  Next
+                  {t("subscribe.next")}
                 </Button>
               </div>
             )}

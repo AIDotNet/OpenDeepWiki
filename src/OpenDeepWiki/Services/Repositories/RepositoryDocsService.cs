@@ -487,12 +487,13 @@ public class RepositoryDocsService(IContext context, IGitPlatformService gitPlat
 
             // 设置文件名
             var fileName = $"{owner}-{repo}-{branchEntity.BranchName}-{language.LanguageCode}.zip";
-            
+
+            // 重置内存流并获取字节数组
+            memoryStream.Seek(0, SeekOrigin.Begin);
+            var zipBytes = memoryStream.ToArray();
+
             // 返回压缩包
-            return new FileContentResult(memoryStream.ToArray(), "application/zip")
-            {
-                FileDownloadName = fileName
-            };
+            return new FileContentResult(zipBytes, "application/zip") { FileDownloadName = fileName };
         }
         finally
         {

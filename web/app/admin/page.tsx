@@ -220,7 +220,9 @@ export default function AdminDashboardPage() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">{t('admin.dashboard.tokenUsage')}</p>
-              <p className="text-2xl font-bold">{(tokenStats?.totalTokens || 0).toLocaleString()}</p>
+              <p className="text-2xl font-bold">
+                {formatNumberWithUnits(tokenStats?.totalTokens || 0)}
+              </p>
             </div>
           </div>
         </Card>
