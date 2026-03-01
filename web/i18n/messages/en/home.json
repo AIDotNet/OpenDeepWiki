@@ -23,8 +23,20 @@
   },
   "searchPlaceholder": "Paste a GitHub repository link or search by keywords",
   "addPrivateRepo": "Add Private Repository",
+  "importFromGitHub": "Import from GitHub",
+  "githubImport": {
+    "title": "Import from GitHub",
+    "description": "Browse and import repositories from connected GitHub organizations",
+    "notAvailable": "GitHub integration is not available. Contact your administrator to configure the GitHub App.",
+    "personalOnly": "Personal only",
+    "personalOnlyDesc": "Only visible to you",
+    "selectDepartment": "Assign to department",
+    "selectDepartmentOrPersonal": "Select department or keep personal",
+    "noDepartments": "You are not in any departments. Repositories will be imported as personal.",
+    "backToPrivate": "Back to Private"
+  },
   "exploreTrending": "Explore This Week's Trending Repos",
-  "mcpIntegration": "Integrate OpenDeepWiki MCP into your dev tools 🔥",
+  "mcpIntegration": "Integrate KeboolaDeepWiki MCP into your dev tools 🔥",
   "private": {
     "visibility": {
       "public": "Public",

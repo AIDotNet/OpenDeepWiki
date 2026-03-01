@@ -11,6 +11,7 @@ using OpenDeepWiki.Endpoints.Admin;
 using OpenDeepWiki.Infrastructure;
 using OpenDeepWiki.Services.Admin;
 using OpenDeepWiki.Services.Auth;
+using OpenDeepWiki.Services.GitHub;
 using OpenDeepWiki.Services.Chat;
 using OpenDeepWiki.Services.MindMap;
 using OpenDeepWiki.Services.Notifications;
@@ -288,6 +289,12 @@ try
     // 注册处理日志服务（使用 Singleton，因为它内部使用 IServiceScopeFactory 创建独立 scope）
     builder.Services.AddSingleton<IProcessingLogService, ProcessingLogService>();
 
+    // Register GitHub App services
+    builder.Services.AddSingleton<GitHubAppCredentialCache>();
+    builder.Services.AddScoped<IGitHubAppService, GitHubAppService>();
+    builder.Services.AddScoped<IAdminGitHubImportService, AdminGitHubImportService>();
+    builder.Services.AddScoped<IUserGitHubImportService, UserGitHubImportService>();
+
     // 注册管理端服务
     builder.Services.AddScoped<IAdminStatisticsService, AdminStatisticsService>();
     builder.Services.AddScoped<IAdminRepositoryService, AdminRepositoryService>();
@@ -430,6 +437,8 @@ try
     app.MapAuthEndpoints();
     app.MapOAuthEndpoints();
     app.MapAdminEndpoints();
+    app.MapAdminGitHubImportEndpoints();
+    app.MapGitHubImportEndpoints();
     app.MapOrganizationEndpoints();
     app.MapChatAssistantEndpoints();
     app.MapChatAppEndpoints();

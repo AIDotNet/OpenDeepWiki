@@ -151,7 +151,7 @@ export async function updateRepositoryStatus(id: string, status: number): Promis
   });
 }
 
-// 同步单个仓库统计信息
+// Sync individual repository statistics
 export interface SyncStatsResult {
   success: boolean;
   message?: string;
@@ -165,7 +165,7 @@ export async function syncRepositoryStats(id: string): Promise<SyncStatsResult> 
   return result.data;
 }
 
-// 批量同步统计信息
+// Batch sync statistics
 export interface BatchSyncItemResult {
   id: string;
   repoName: string;
@@ -191,7 +191,7 @@ export async function batchSyncRepositoryStats(ids: string[]): Promise<BatchSync
   return result.data;
 }
 
-// 批量删除仓库
+// Batch delete repositories
 export interface BatchDeleteResult {
   totalCount: number;
   successCount: number;
@@ -566,7 +566,7 @@ export async function deleteMcpConfig(id: string): Promise<void> {
   await fetchWithAuth(url, { method: "DELETE" });
 }
 
-// ==================== Tools API - Skill (Agent Skills 标准) ====================
+// ==================== Tools API - Skill (Agent Skills Standard) ====================
 
 export interface SkillFileInfo {
   fileName: string;
@@ -635,7 +635,7 @@ export async function uploadSkill(file: File): Promise<SkillConfig> {
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new Error(error.message || `上传失败: ${response.status}`);
+    throw new Error(error.message || `Upload failed: ${response.status}`);
   }
 
   const result = await response.json();
@@ -755,13 +755,13 @@ export interface ChatProviderConfig {
 export async function getChatProviderConfigs(): Promise<ChatProviderStatus[]> {
   const url = buildApiUrl("/api/chat/admin/providers");
   const result = await fetchWithAuth(url);
-  return result.data;
+  return Array.isArray(result) ? result : result.data ?? [];
 }
 
 export async function getChatProviderConfig(platform: string): Promise<ChatProviderConfig> {
   const url = buildApiUrl(`/api/chat/admin/providers/${platform}`);
   const result = await fetchWithAuth(url);
-  return result.data;
+  return result.data ?? result;
 }
 
 export async function saveChatProviderConfig(data: ChatProviderConfig): Promise<void> {
@@ -1028,101 +1028,141 @@ export async function updateChatAssistantConfig(
   return result.data;
 }
 
-// ==================== MCP Provider API ====================
+// ==================== GitHub Import API ====================
 
-export interface McpProvider {
+export interface GitHubInstallation {
   id: string;
-  name: string;
-  description?: string;
-  serverUrl: string;
-  transportType: string;
-  requiresApiKey: boolean;
-  apiKeyObtainUrl?: string;
-  hasSystemApiKey: boolean;
-  modelConfigId?: string;
-  modelConfigName?: string;
-  isActive: boolean;
-  sortOrder: number;
-  iconUrl?: string;
-  maxRequestsPerDay: number;
+  installationId: number;
+  accountLogin: string;
+  accountType: string;
+  accountId: number;
+  avatarUrl?: string;
+  departmentId?: string;
+  departmentName?: string;
   createdAt: string;
 }
 
-export interface McpProviderRequest {
+export interface GitHubStatus {
+  configured: boolean;
+  appName?: string;
+  installations: GitHubInstallation[];
+}
+
+export interface GitHubConfig {
+  hasAppId: boolean;
+  hasPrivateKey: boolean;
+  appId?: string;
+  appName?: string;
+  source: string;
+}
+
+export interface GitHubRepo {
+  id: number;
+  fullName: string;
   name: string;
+  owner: string;
+  private: boolean;
   description?: string;
-  serverUrl: string;
-  transportType: string;
-  requiresApiKey: boolean;
-  apiKeyObtainUrl?: string;
-  systemApiKey?: string;
-  modelConfigId?: string;
-  isActive: boolean;
-  sortOrder: number;
-  iconUrl?: string;
-  maxRequestsPerDay: number;
+  language?: string;
+  stargazersCount: number;
+  forksCount: number;
+  defaultBranch: string;
+  cloneUrl: string;
+  htmlUrl: string;
+  alreadyImported: boolean;
 }
 
-export interface McpUsageLog {
-  id: string;
-  userId?: string;
-  userName?: string;
-  mcpProviderId?: string;
-  mcpProviderName?: string;
-  toolName: string;
-  requestSummary?: string;
-  responseStatus: number;
-  durationMs: number;
-  inputTokens: number;
-  outputTokens: number;
-  ipAddress?: string;
-  errorMessage?: string;
-  createdAt: string;
-}
-
-export interface McpUsageLogFilter {
-  mcpProviderId?: string;
-  userId?: string;
-  toolName?: string;
+export interface GitHubRepoList {
+  totalCount: number;
+  repositories: GitHubRepo[];
   page: number;
-  pageSize: number;
+  perPage: number;
 }
 
-export interface PagedResult<T> {
-  items: T[];
-  total: number;
-  page: number;
-  pageSize: number;
+export interface BatchImportResult {
+  totalRequested: number;
+  imported: number;
+  skipped: number;
+  skippedRepos: string[];
+  importedRepos: string[];
 }
 
-export interface McpDailyUsage {
-  date: string;
-  requestCount: number;
-  successCount: number;
-  errorCount: number;
-  inputTokens: number;
-  outputTokens: number;
-}
-
-export interface McpUsageStatistics {
-  dailyUsages: McpDailyUsage[];
-  totalRequests: number;
-  totalSuccessful: number;
-  totalErrors: number;
-  totalInputTokens: number;
-  totalOutputTokens: number;
-}
-
-export async function getMcpProviders(): Promise<McpProvider[]> {
-  const url = buildApiUrl("/api/admin/mcp-providers");
+export async function getGitHubStatus(): Promise<GitHubStatus> {
+  const url = buildApiUrl("/api/admin/github/status");
   const result = await fetchWithAuth(url);
   return result.data;
 }
 
-export async function createMcpProvider(
-  data: McpProviderRequest
-): Promise<McpProvider> {
-  const url = buildApiUrl("/api/admin/mcp-providers");
+export async function getGitHubInstallUrl(): Promise<{ url: string; appName: string }> {
+  const url = buildApiUrl("/api/admin/github/install-url");
+  const result = await fetchWithAuth(url);
+  return result.data;
+}
+
+export async function storeGitHubInstallation(installationId: number): Promise<GitHubInstallation> {
+  const url = buildApiUrl("/api/admin/github/installations");
+  const result = await fetchWithAuth(url, {
+    method: "POST",
+    body: JSON.stringify({ installationId }),
+  });
+  return result.data;
+}
+
+export async function disconnectGitHubInstallation(id: string): Promise<void> {
+  const url = buildApiUrl(`/api/admin/github/installations/${id}`);
+  await fetchWithAuth(url, { method: "DELETE" });
+}
+
+export async function getInstallationRepos(
+  installationId: number,
+  page: number = 1,
+  perPage: number = 30
+): Promise<GitHubRepoList> {
+  const params = new URLSearchParams({
+    page: page.toString(),
+    perPage: perPage.toString(),
+  });
+  const url = buildApiUrl(`/api/admin/github/installations/${installationId}/repos?${params}`);
+  const result = await fetchWithAuth(url);
+  return result.data;
+}
+
+export async function batchImportRepos(request: {
+  installationId: number;
+  departmentId: string;
+  languageCode: string;
+  repos: {
+    fullName: string;
+    name: string;
+    owner: string;
+    cloneUrl: string;
+    defaultBranch: string;
+    private: boolean;
+    language?: string;
+    stargazersCount: number;
+    forksCount: number;
+  }[];
+}): Promise<BatchImportResult> {
+  const url = buildApiUrl("/api/admin/github/batch-import");
+  const result = await fetchWithAuth(url, {
+    method: "POST",
+    body: JSON.stringify(request),
+  });
+  return result.data;
+}
+
+export async function getGitHubConfig(): Promise<GitHubConfig> {
+  const url = buildApiUrl("/api/admin/github/config");
+  const result = await fetchWithAuth(url);
+  return result.data;
+}
+
+export async function saveGitHubConfig(data: {
+  appId: string;
+  appName: string;
+  privateKey: string;
+}): Promise<GitHubConfig> {
+  const url = buildApiUrl("/api/admin/github/config");
   const result = await fetchWithAuth(url, {
     method: "POST",
     body: JSON.stringify(data),
@@ -1130,40 +1170,7 @@ export async function createMcpProvider(
   return result.data;
 }
 
-export async function updateMcpProvider(
-  id: string,
-  data: McpProviderRequest
-): Promise<void> {
-  const url = buildApiUrl(`/api/admin/mcp-providers/${id}`);
-  await fetchWithAuth(url, {
-    method: "PUT",
-    body: JSON.stringify(data),
-  });
-}
-
-export async function deleteMcpProvider(id: string): Promise<void> {
-  const url = buildApiUrl(`/api/admin/mcp-providers/${id}`);
+export async function resetGitHubConfig(): Promise<void> {
+  const url = buildApiUrl("/api/admin/github/config");
   await fetchWithAuth(url, { method: "DELETE" });
-}
-
-export async function getMcpUsageLogs(
-  filter: McpUsageLogFilter
-): Promise<PagedResult<McpUsageLog>> {
-  const params = new URLSearchParams();
-  if (filter.mcpProviderId) params.set("mcpProviderId", filter.mcpProviderId);
-  if (filter.userId) params.set("userId", filter.userId);
-  if (filter.toolName) params.set("toolName", filter.toolName);
-  params.set("page", String(filter.page));
-  params.set("pageSize", String(filter.pageSize));
-  const url = buildApiUrl(`/api/admin/mcp-providers/usage-logs?${params}`);
-  const result = await fetchWithAuth(url);
-  return result.data;
-}
-
-export async function getMcpUsageStatistics(
-  days: number
-): Promise<McpUsageStatistics> {
-  const url = buildApiUrl(`/api/admin/statistics/mcp-usage?days=${days}`);
-  const result = await fetchWithAuth(url);
-  return result.data;
 }
