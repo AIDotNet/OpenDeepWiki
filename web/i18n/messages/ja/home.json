@@ -37,6 +37,27 @@
   },
   "exploreTrending": "今週のトレンドリポジトリを探索",
   "mcpIntegration": "KeboolaDeepWiki MCPを開発ツールに統合 🔥",
+  "integrations": {
+    "title": "統合",
+    "description": "DeepWikiを開発ツールと接続",
+    "slack": {
+      "title": "Slack連携",
+      "connected": "接続済み",
+      "notConnected": "未接続",
+      "configure": "Slackを設定",
+      "contactAdmin": "Slack連携の設定については管理者にお問い合わせください。"
+    },
+    "mcp": {
+      "title": "MCPサーバー",
+      "description": "AIツールでDeepWikiをMCPサーバーとして使用できます。",
+      "serverUrl": "サーバーURL",
+      "copied": "コピーしました！",
+      "copyUrl": "URLをコピー",
+      "copyConfig": "設定をコピー",
+      "claudeDesktopHint": "Claude Desktopの設定ファイル (claude_desktop_config.json) に以下を追加してください：",
+      "claudeAiHint": "Claude.aiの設定で、上記のMCPサーバーURLをリモートMCPサーバーとして追加してください。"
+    }
+  },
   "private": {
     "visibility": {
       "public": "公開",

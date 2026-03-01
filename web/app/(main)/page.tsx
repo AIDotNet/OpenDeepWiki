@@ -6,6 +6,7 @@ import { AppLayout } from "@/components/app-layout";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, Plus, Flame, Puzzle } from "lucide-react";
+import { IntegrationsDialog } from "@/components/integrations-dialog";
 import { useTranslations } from "@/hooks/use-translations";
 import { RepositorySubmitForm } from "@/components/repo/repository-submit-form";
 import {
@@ -23,6 +24,7 @@ export default function Home() {
   const { user } = useAuth();
   const [activeItem, setActiveItem] = useState(t("sidebar.explore"));
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isIntegrationsOpen, setIsIntegrationsOpen] = useState(false);
   const [keyword, setKeyword] = useState("");
   const { isScrolled } = useScrollPosition(100);
 
@@ -100,11 +102,19 @@ export default function Home() {
               </Button>
             </div>
             <div className="flex justify-center">
-              <Button variant="ghost" className="gap-2 text-muted-foreground hover:text-foreground">
+              <Button
+                variant="ghost"
+                className="gap-2 text-muted-foreground hover:text-foreground"
+                onClick={() => setIsIntegrationsOpen(true)}
+              >
                 <Puzzle className="h-4 w-4" />
                 {t("home.mcpIntegration")}
               </Button>
             </div>
+            <IntegrationsDialog
+              open={isIntegrationsOpen}
+              onOpenChange={setIsIntegrationsOpen}
+            />
           </div>
         </div>
 

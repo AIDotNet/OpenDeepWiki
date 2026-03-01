@@ -37,6 +37,27 @@
   },
   "exploreTrending": "探索本周的 热门仓库",
   "mcpIntegration": "把 KeboolaDeepWiki MCP 接入你的开发工具 🔥",
+  "integrations": {
+    "title": "集成",
+    "description": "将 DeepWiki 与您的开发工具连接",
+    "slack": {
+      "title": "Slack 集成",
+      "connected": "已连接",
+      "notConnected": "未连接",
+      "configure": "配置 Slack",
+      "contactAdmin": "请联系管理员配置 Slack 集成。"
+    },
+    "mcp": {
+      "title": "MCP 服务器",
+      "description": "在您的 AI 工具中将 DeepWiki 用作 MCP 服务器。",
+      "serverUrl": "服务器地址",
+      "copied": "已复制！",
+      "copyUrl": "复制地址",
+      "copyConfig": "复制配置",
+      "claudeDesktopHint": "将以下内容添加到您的 Claude Desktop 配置文件 (claude_desktop_config.json)：",
+      "claudeAiHint": "在 Claude.ai 设置中，将上方的 MCP 服务器地址添加为远程 MCP 服务器。"
+    }
+  },
   "private": {
     "visibility": {
       "public": "公开",
