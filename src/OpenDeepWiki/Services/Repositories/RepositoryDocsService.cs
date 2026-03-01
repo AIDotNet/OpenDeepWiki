@@ -4,6 +4,8 @@ using OpenDeepWiki.Cache.Abstractions;
 using OpenDeepWiki.EFCore;
 using OpenDeepWiki.Entities;
 using OpenDeepWiki.Models;
+using OpenDeepWiki.Services.Auth;
+using OpenDeepWiki.Services.Organizations;
 using System.IO.Compression;
 using System.Text;
 using Microsoft.AspNetCore.Authorization;
@@ -12,7 +14,7 @@ namespace OpenDeepWiki.Services.Repositories;
 
 [MiniApi(Route = "/api/v1/repos")]
 [Tags("仓库文档")]
-public class RepositoryDocsService(IContext context, IGitPlatformService gitPlatformService, ICache cache)
+public class RepositoryDocsService(IContext context, IGitPlatformService gitPlatformService, ICache cache, IUserContext userContext, IOrganizationService organizationService)
 {
     private const string FallbackLanguageCode = "zh"; // 当没有默认语言标记时的回退语言
     private const int ExportRateLimitMinutes = 5; // 导出限流：5分钟内只能导出一次
@@ -32,6 +34,12 @@ public class RepositoryDocsService(IContext context, IGitPlatformService gitPlat
             .FirstOrDefaultAsync(item => item.OrgName == owner && item.RepoName == repo);
 
         if (repository is null)
+        {
+            return new RepositoryBranchesResponse { Branches = [], Languages = [] };
+        }
+
+        // 访问控制：非公开仓库需要验证权限
+        if (!await CanAccessRepositoryAsync(repository))
         {
             return new RepositoryBranchesResponse { Branches = [], Languages = [] };
         }
@@ -106,6 +114,19 @@ public class RepositoryDocsService(IContext context, IGitPlatformService gitPlat
 
         // 仓库不存在
         if (repository is null)
+        {
+            return new RepositoryTreeResponse
+            {
+                Owner = owner,
+                Repo = repo,
+                Exists = false,
+                Status = RepositoryStatus.Pending,
+                Nodes = []
+            };
+        }
+
+        // 访问控制：非公开仓库需要验证权限
+        if (!await CanAccessRepositoryAsync(repository))
         {
             return new RepositoryTreeResponse
             {
@@ -198,6 +219,12 @@ public class RepositoryDocsService(IContext context, IGitPlatformService gitPlat
 
         var repository = await GetRepositoryAsync(owner, repo);
         if (repository is null)
+        {
+            return new RepositoryDocResponse { Slug = normalizedSlug, Exists = false };
+        }
+
+        // 访问控制：非公开仓库需要验证权限
+        if (!await CanAccessRepositoryAsync(repository))
         {
             return new RepositoryDocResponse { Slug = normalizedSlug, Exists = false };
         }
@@ -426,6 +453,12 @@ public class RepositoryDocsService(IContext context, IGitPlatformService gitPlat
             return new NotFoundObjectResult("仓库不存在");
         }
 
+        // 访问控制：非公开仓库需要验证权限
+        if (!await CanAccessRepositoryAsync(repository))
+        {
+            return new UnauthorizedResult();
+        }
+
         var branchEntity = await GetBranchAsync(repository.Id, branch);
         if (branchEntity is null)
         {
@@ -630,5 +663,24 @@ public class RepositoryDocsService(IContext context, IGitPlatformService gitPlat
                 return candidate;
             }
         }
+    }
+
+    /// <summary>
+    /// 检查当前用户是否有权限访问指定仓库。
+    /// 公开仓库允许所有人访问；非公开仓库需要是所有者或部门成员。
+    /// </summary>
+    private async Task<bool> CanAccessRepositoryAsync(Repository repository)
+    {
+        if (repository.IsPublic)
+            return true;
+
+        if (!userContext.IsAuthenticated || userContext.UserId is null)
+            return false;
+
+        if (repository.OwnerUserId == userContext.UserId)
+            return true;
+
+        var deptRepos = await organizationService.GetDepartmentRepositoriesAsync(userContext.UserId);
+        return deptRepos.Any(r => r.OrgName == repository.OrgName && r.RepoName == repository.RepoName);
     }
 }
