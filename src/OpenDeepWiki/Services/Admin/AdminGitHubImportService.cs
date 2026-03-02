@@ -250,7 +250,8 @@ public class AdminGitHubImportService : IAdminGitHubImportService
                 Status = RepositoryStatus.Pending,
                 PrimaryLanguage = repo.Language,
                 StarCount = repo.StargazersCount,
-                ForkCount = repo.ForksCount
+                ForkCount = repo.ForksCount,
+                IsDepartmentOwned = true
             };
 
             _context.Repositories.Add(repoEntity);

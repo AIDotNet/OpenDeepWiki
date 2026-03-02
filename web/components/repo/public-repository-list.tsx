@@ -35,14 +35,15 @@ import {
  *    while org API returns DepartmentRepository (no star/fork counts). We enrich
  *    public repos with departmentName from dept data for dual-icon display.
  *
- * 2. OWNERSHIP vs DEPARTMENT: GitHub App imports set OwnerUserId to the importing
- *    admin, making all org repos appear as "owned". The Mine view therefore
- *    subtracts dept repos by default to show only truly personal repos.
+ * 2. OWNERSHIP vs DEPARTMENT: GitHub App imports set IsDepartmentOwned=true on
+ *    repositories. The backend excludes department-owned repos from ownerId
+ *    queries, so the Mine view only shows truly personal repos without any
+ *    client-side subtraction.
  *
  * 3. SUB-FILTERS: Each view has contextual sub-filters applied client-side:
  *    - Public: "publicOnly" fetches all + dept IDs, excludes overlap
  *    - Organization: "privateOnly" filters mapped dept repos by !isPublic
- *    - Mine: default excludes dept repos; "shared"/"all" include them
+ *    - Mine: shows only user-submitted private repos (no sub-filters needed)
  *
  * 4. RACE CONDITION PROTECTION: loadIdRef counter ensures only the latest
  *    async request's results are applied. Stale responses are silently discarded.
@@ -204,29 +205,16 @@ export function PublicRepositoryList({ keyword, view = "public", onViewChange, c
 
         case "mine": {
           if (!user) break;
-          const [mineResponse, mineDeptRepos] = await Promise.all([
-            fetchRepositoryList({
-              ownerId: user.id,
-              sortBy: "status",
-              keyword: keyword || undefined,
-              pageSize: MAX_CLIENT_PAGE_SIZE,
-            }),
-            getMyDepartmentRepositories().catch(() => [] as DepartmentRepository[]),
-          ]);
+          const mineResponse = await fetchRepositoryList({
+            ownerId: user.id,
+            sortBy: "status",
+            keyword: keyword || undefined,
+            pageSize: MAX_CLIENT_PAGE_SIZE,
+          });
 
           if (loadId !== loadIdRef.current) return;
 
-          // Base: all owned private repos (exclude public since user didn't create those)
-          const mineDeptRepoIds = new Set(mineDeptRepos.map(r => r.repositoryId));
           let myRepos = mineResponse.items.filter(r => !r.isPublic);
-
-          // Sub-filter: default excludes dept repos (org-imported repos belong to org, not user)
-          if (subFilter === "shared") {
-            myRepos = myRepos.filter(r => mineDeptRepoIds.has(r.id));
-          } else if (subFilter !== "all") {
-            // Default (null) and "notShared": exclude dept repos = truly personal only
-            myRepos = myRepos.filter(r => !mineDeptRepoIds.has(r.id));
-          }
 
           setViewLanguages(computeLanguageStats(myRepos));
           if (selectedLanguage) {
@@ -456,11 +444,7 @@ export function PublicRepositoryList({ keyword, view = "public", onViewChange, c
           { key: "privateOnly", label: t("home.filter.privateOnly") },
         ];
       case "mine":
-        return [
-          { key: null, label: t("home.filter.notSharedOnly") },
-          { key: "shared", label: t("home.filter.sharedOnly") },
-          { key: "all", label: t("home.filter.subAll") },
-        ];
+        return [];
       default:
         return [];
     }
@@ -659,11 +643,9 @@ export function PublicRepositoryList({ keyword, view = "public", onViewChange, c
               <PublicRepositoryCard
                 key={repo.id}
                 repository={repo}
-                {...(effectiveView === "mine"
-                  ? { onShareToggle: () => { setSubFilter("all"); }, toggleMode: "share" as const }
-                  : (effectiveView === "organization" && isAdmin)
-                    ? { onShareToggle: () => loadRepositories(), toggleMode: "restrict" as const }
-                    : {})}
+                {...((effectiveView === "organization" && isAdmin)
+                  ? { onShareToggle: () => loadRepositories(), toggleMode: "restrict" as const }
+                  : {})}
               />
             ))}
           </div>

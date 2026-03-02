@@ -112,6 +112,12 @@ public class Repository : AggregateRoot<string>
     public DateTime? LastUpdateCheckAt { get; set; }
 
     /// <summary>
+    /// Whether this repository is owned by a department (org import) rather than an individual user.
+    /// When true, the repo appears in Organization view only, not in the importing user's "My Repos".
+    /// </summary>
+    public bool IsDepartmentOwned { get; set; } = false;
+
+    /// <summary>
     /// Owner user navigation property
     /// </summary>
     [ForeignKey("OwnerUserId")]

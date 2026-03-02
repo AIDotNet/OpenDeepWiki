@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OpenDeepWiki.EFCore;
@@ -5,12 +6,13 @@ using OpenDeepWiki.Entities;
 using OpenDeepWiki.Models;
 using OpenDeepWiki.Services.Auth;
 using OpenDeepWiki.Services.GitHub;
+using OpenDeepWiki.Services.Organizations;
 
 namespace OpenDeepWiki.Services.Repositories;
 
 [MiniApi(Route = "/api/v1/repositories")]
 [Tags("Repository")]
-public class RepositoryService(IContext context, IGitPlatformService gitPlatformService, IUserContext userContext, IGitHubAppService gitHubAppService)
+public class RepositoryService(IContext context, IGitPlatformService gitPlatformService, IUserContext userContext, IGitHubAppService gitHubAppService, IOrganizationService organizationService)
 {
     [HttpPost("/submit")]
     public async Task<Repository> SubmitAsync([FromBody] RepositorySubmitRequest request)
@@ -157,7 +159,7 @@ public class RepositoryService(IContext context, IGitPlatformService gitPlatform
 
         if (!string.IsNullOrWhiteSpace(ownerId))
         {
-            query = query.Where(r => r.OwnerUserId == ownerId);
+            query = query.Where(r => r.OwnerUserId == ownerId && !r.IsDepartmentOwned);
         }
 
         if (status.HasValue)
@@ -273,13 +275,31 @@ public class RepositoryService(IContext context, IGitPlatformService gitPlatform
             // Verify ownership
             if (repository.OwnerUserId != currentUserId)
             {
-                return Results.Json(new UpdateVisibilityResponse
+                // Allow admin to manage department-owned repos in their departments
+                var allowed = false;
+                if (repository.IsDepartmentOwned)
                 {
-                    Id = request.RepositoryId,
-                    IsPublic = repository.IsPublic,
-                    Success = false,
-                    ErrorMessage = "No permission to modify this repository"
-                }, statusCode: StatusCodes.Status403Forbidden);
+                    var isAdmin = userContext.User?.IsInRole("Admin") == true;
+                    if (isAdmin)
+                    {
+                        var deptRepos = await organizationService.GetDepartmentRepositoriesAsync(currentUserId, includeRestricted: true);
+                        if (deptRepos.Any(r => r.RepositoryId == repository.Id))
+                        {
+                            allowed = true;
+                        }
+                    }
+                }
+
+                if (!allowed)
+                {
+                    return Results.Json(new UpdateVisibilityResponse
+                    {
+                        Id = request.RepositoryId,
+                        IsPublic = repository.IsPublic,
+                        Success = false,
+                        ErrorMessage = "No permission to modify this repository"
+                    }, statusCode: StatusCodes.Status403Forbidden);
+                }
             }
 
             // Update visibility
@@ -354,11 +374,29 @@ public class RepositoryService(IContext context, IGitPlatformService gitPlatform
         // Verify ownership
         if (repository.OwnerUserId != currentUserId)
         {
-            return new RegenerateResponse
+            // Allow admin to manage department-owned repos in their departments
+            var allowed = false;
+            if (repository.IsDepartmentOwned)
             {
-                Success = false,
-                ErrorMessage = "No permission to operate on this repository"
-            };
+                var isAdmin = userContext.User?.IsInRole("Admin") == true;
+                if (isAdmin)
+                {
+                    var deptRepos = await organizationService.GetDepartmentRepositoriesAsync(currentUserId, includeRestricted: true);
+                    if (deptRepos.Any(r => r.RepositoryId == repository.Id))
+                    {
+                        allowed = true;
+                    }
+                }
+            }
+
+            if (!allowed)
+            {
+                return new RegenerateResponse
+                {
+                    Success = false,
+                    ErrorMessage = "No permission to operate on this repository"
+                };
+            }
         }
 
         // Only failed or completed repositories can be regenerated

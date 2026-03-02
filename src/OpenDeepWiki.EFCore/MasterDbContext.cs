@@ -104,7 +104,7 @@ public abstract class MasterDbContext : DbContext, IContext
             .HasForeignKey(department => department.ParentId);
 
         modelBuilder.Entity<Repository>()
-            .HasIndex(repository => new { repository.OwnerUserId, repository.OrgName, repository.RepoName })
+            .HasIndex(repository => new { repository.OrgName, repository.RepoName })
             .IsUnique();
 
         modelBuilder.Entity<RepositoryBranch>()
