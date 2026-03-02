@@ -37,6 +37,27 @@
   },
   "exploreTrending": "이번 주 인기 저장소 탐색",
   "mcpIntegration": "개발 도구에 KeboolaDeepWiki MCP 통합 🔥",
+  "integrations": {
+    "title": "통합",
+    "description": "DeepWiki를 개발 도구와 연결",
+    "slack": {
+      "title": "Slack 통합",
+      "connected": "연결됨",
+      "notConnected": "연결되지 않음",
+      "configure": "Slack 구성",
+      "contactAdmin": "Slack 통합을 구성하려면 관리자에게 문의하세요."
+    },
+    "mcp": {
+      "title": "MCP 서버",
+      "description": "AI 도구에서 DeepWiki를 MCP 서버로 사용하세요.",
+      "serverUrl": "서버 URL",
+      "copied": "복사됨!",
+      "copyUrl": "URL 복사",
+      "copyConfig": "설정 복사",
+      "claudeDesktopHint": "Claude Desktop 설정 파일 (claude_desktop_config.json)에 다음을 추가하세요:",
+      "claudeAiHint": "Claude.ai 설정에서 위의 MCP 서버 URL을 원격 MCP 서버로 추가하세요."
+    }
+  },
   "private": {
     "visibility": {
       "public": "공개",
