@@ -273,6 +273,7 @@ public class RepositoryDocsService(IContext context, IGitPlatformService gitPlat
             ForkCount = repoInfo.ForkCount,
             Language = repoInfo.Language,
             AvatarUrl = repoInfo.AvatarUrl,
+            IsPrivate = repoInfo.IsPrivate,
             GitUrl = $"https://github.com/{owner}/{repo}"
         };
     }

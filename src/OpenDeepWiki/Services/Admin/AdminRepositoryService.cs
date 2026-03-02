@@ -176,6 +176,10 @@ public class AdminRepositoryService : IAdminRepositoryService
         repo.StarCount = stats.StarCount;
         repo.ForkCount = stats.ForkCount;
         repo.UpdatedAt = DateTime.UtcNow;
+
+        // Sync visibility with actual Git platform state
+        await SyncVisibilityAsync(repo);
+
         await _context.SaveChangesAsync();
 
         return new SyncStatsResult
@@ -212,6 +216,9 @@ public class AdminRepositoryService : IAdminRepositoryService
                 repo.StarCount = stats.StarCount;
                 repo.ForkCount = stats.ForkCount;
                 repo.UpdatedAt = DateTime.UtcNow;
+
+                // Sync visibility with actual Git platform state
+                await SyncVisibilityAsync(repo);
 
                 itemResult.Success = true;
                 itemResult.StarCount = stats.StarCount;
@@ -687,6 +694,55 @@ public class AdminRepositoryService : IAdminRepositoryService
             Success = true,
             Message = "文档内容已保存"
         };
+    }
+
+    /// <summary>
+    /// Sync repository visibility with the actual Git platform state
+    /// </summary>
+    private async Task SyncVisibilityAsync(Repository repo)
+    {
+        try
+        {
+            if (!IsPublicPlatform(repo.GitUrl) ||
+                string.IsNullOrWhiteSpace(repo.OrgName) ||
+                string.IsNullOrWhiteSpace(repo.RepoName))
+            {
+                return;
+            }
+
+            var repoInfo = await _gitPlatformService.CheckRepoExistsAsync(repo.OrgName, repo.RepoName);
+            if (!repoInfo.Exists)
+            {
+                return;
+            }
+
+            var shouldBePublic = !repoInfo.IsPrivate;
+            if (repo.IsPublic != shouldBePublic)
+            {
+                repo.IsPublic = shouldBePublic;
+            }
+        }
+        catch
+        {
+            // Visibility sync is best-effort; don't fail the parent operation
+        }
+    }
+
+    /// <summary>
+    /// Check if the git URL is from a supported public platform
+    /// </summary>
+    private static bool IsPublicPlatform(string gitUrl)
+    {
+        try
+        {
+            var uri = new Uri(gitUrl);
+            var host = uri.Host.ToLowerInvariant();
+            return host is "github.com" or "gitee.com" or "gitlab.com";
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static string NormalizeDocPath(string path)

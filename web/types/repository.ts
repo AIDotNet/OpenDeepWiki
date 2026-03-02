@@ -173,5 +173,6 @@ export interface GitRepoCheckResponse {
   forkCount: number;
   language: string | null;
   avatarUrl: string | null;
+  isPrivate: boolean;
   gitUrl: string | null;
 }

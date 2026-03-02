@@ -51,6 +51,17 @@ public class RepositoryService(IContext context, IGitPlatformService gitPlatform
             }
         }
 
+        // Server-side visibility verification: check actual GitHub repo visibility
+        var effectiveIsPublic = request.IsPublic;
+        if (IsPublicPlatform(request.GitUrl) && !string.IsNullOrWhiteSpace(request.OrgName) && !string.IsNullOrWhiteSpace(request.RepoName))
+        {
+            var repoInfo = await gitPlatformService.CheckRepoExistsAsync(request.OrgName, request.RepoName);
+            if (repoInfo.Exists)
+            {
+                effectiveIsPublic = !repoInfo.IsPrivate;
+            }
+        }
+
         var repositoryId = Guid.NewGuid().ToString();
         var repository = new Repository
         {
@@ -61,7 +72,7 @@ public class RepositoryService(IContext context, IGitPlatformService gitPlatform
             OrgName = request.OrgName,
             AuthAccount = request.AuthAccount,
             AuthPassword = request.AuthPassword,
-            IsPublic = request.IsPublic,
+            IsPublic = effectiveIsPublic,
             Status = RepositoryStatus.Pending,
             StarCount = starCount,
             ForkCount = forkCount
