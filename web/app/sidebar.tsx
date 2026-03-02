@@ -8,7 +8,7 @@ import {
     Bookmark,
     Building2,
     AppWindow,
-    Zap,
+    Lock,
 } from "lucide-react";
 import {
     Sidebar,
@@ -52,7 +52,7 @@ const GithubIcon = ({ className }: { className?: string }) => (
 const itemKeys = [
     { key: "explore", url: "/", icon: Compass, requireAuth: false },
     { key: "recommend", url: "/recommend", icon: ThumbsUp, requireAuth: false },
-    { key: "private", url: "/private", icon: GitFork, requireAuth: true },
+    { key: "private", url: "/?view=organization", icon: Lock, requireAuth: true },
     { key: "subscribe", url: "/subscribe", icon: Star, requireAuth: true },
     { key: "bookmarks", url: "/bookmarks", icon: Bookmark, requireAuth: true },
     { key: "organizations", url: "/organizations", icon: Building2, requireAuth: false },

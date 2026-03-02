@@ -12,16 +12,21 @@ import {
   Loader2,
   CheckCircle2,
   XCircle,
-  GitBranch,
+  Globe,
+  Building2,
   Calendar,
   Bookmark,
   Bell,
   Star,
   GitFork,
+  Lock,
+  EyeOff,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { addBookmark, removeBookmark, getBookmarkStatus } from "@/lib/bookmark-api";
 import { addSubscription, removeSubscription, getSubscriptionStatus } from "@/lib/subscription-api";
+import { shareRepoWithOrganization, unshareRepoFromOrganization, restrictRepoInOrganization, unrestrictRepoInOrganization } from "@/lib/organization-api";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 
 const STATUS_CONFIG: Record<RepositoryStatus, {
@@ -74,17 +79,22 @@ function StatusBadge({ status }: { status: RepositoryStatus }) {
 
 interface PublicRepositoryCardProps {
   repository: RepositoryItemResponse;
+  onShareToggle?: (repositoryId: string, shared: boolean) => void;
+  toggleMode?: "share" | "restrict";
 }
 
-export function PublicRepositoryCard({ repository }: PublicRepositoryCardProps) {
+export function PublicRepositoryCard({ repository, onShareToggle, toggleMode = "share" }: PublicRepositoryCardProps) {
   const t = useTranslations();
   const { user } = useAuth();
-  const createdDate = new Date(repository.createdAt).toLocaleDateString();
+  const createdDate = repository.createdAt
+    ? new Date(repository.createdAt).toLocaleDateString()
+    : null;
 
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [bookmarkLoading, setBookmarkLoading] = useState(false);
   const [subscribeLoading, setSubscribeLoading] = useState(false);
+  const [shareLoading, setShareLoading] = useState(false);
 
   // 获取收藏和订阅状态
   useEffect(() => {
@@ -152,14 +162,66 @@ export function PublicRepositoryCard({ repository }: PublicRepositoryCardProps) 
     }
   }, [user, repository.id, isSubscribed, subscribeLoading, t]);
 
+  const handleShareToggle = useCallback(async (checked: boolean) => {
+    if (shareLoading) return;
+    setShareLoading(true);
+    try {
+      if (toggleMode === "restrict") {
+        // Admin restrict/unrestrict in org view
+        if (checked) {
+          // Toggle ON = visible = unrestrict
+          await unrestrictRepoInOrganization(repository.id);
+          toast.success(t("home.filter.visibleToOrg"));
+        } else {
+          // Toggle OFF = restricted
+          await restrictRepoInOrganization(repository.id);
+          toast.success(t("home.filter.restricted"));
+        }
+      } else {
+        // User share/unshare in mine view
+        if (checked) {
+          await shareRepoWithOrganization(repository.id);
+          toast.success(t("home.filter.sharedWithOrg"));
+        } else {
+          await unshareRepoFromOrganization(repository.id);
+          toast.success(t("home.filter.unsharedFromOrg"));
+        }
+      }
+      onShareToggle?.(repository.id, checked);
+    } catch {
+      toast.error(t("home.actions.actionError"));
+    } finally {
+      setShareLoading(false);
+    }
+  }, [repository.id, shareLoading, onShareToggle, toggleMode, t]);
+
   return (
     <Link href={`/${repository.orgName}/${repository.repoName}`}>
-      <Card className="h-full transition-all hover:shadow-md hover:border-primary/50 cursor-pointer">
+      <Card className={cn(
+        "h-full transition-all hover:shadow-md hover:border-primary/50 cursor-pointer",
+        repository.isRestricted && "opacity-60"
+      )}>
         <CardContent className="p-4">
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
-                <GitBranch className="h-4 w-4 text-muted-foreground shrink-0" />
+                {/* Icons: dual display for repos that are both public AND in a department.
+                    Restricted repos show EyeOff regardless. Private-only shows Lock. */}
+                {repository.isRestricted ? (
+                  <span title={t("home.icons.restricted")}><EyeOff className="h-4 w-4 text-gray-400 shrink-0" /></span>
+                ) : (
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    {repository.isPublic && (
+                      <span title={t("home.icons.public")}><Globe className="h-4 w-4 text-green-500" /></span>
+                    )}
+                    {repository.departmentName && (
+                      <span title={t("home.icons.organization")}><Building2 className="h-4 w-4 text-blue-500" /></span>
+                    )}
+                    {!repository.isPublic && !repository.departmentName && (
+                      <span title={t("home.icons.private")}><Lock className="h-4 w-4 text-amber-500" /></span>
+                    )}
+                  </div>
+                )}
                 <h3 className="font-medium truncate">
                   {repository.orgName}/{repository.repoName}
                 </h3>
@@ -168,10 +230,12 @@ export function PublicRepositoryCard({ repository }: PublicRepositoryCardProps) 
             </div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                <div className="flex items-center gap-1">
-                  <Calendar className="h-3.5 w-3.5" />
-                  <span>{createdDate}</span>
-                </div>
+                {createdDate && createdDate !== "Invalid Date" && (
+                  <div className="flex items-center gap-1">
+                    <Calendar className="h-3.5 w-3.5" />
+                    <span>{createdDate}</span>
+                  </div>
+                )}
                 {typeof repository.starCount === "number" && (
                   <div className="flex items-center gap-1">
                     <Star className="h-3.5 w-3.5" />
@@ -226,6 +290,25 @@ export function PublicRepositoryCard({ repository }: PublicRepositoryCardProps) 
               )}
             </div>
           </div>
+          {onShareToggle && (
+            <div className="flex items-center gap-2 pt-2 border-t mt-2" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+              {shareLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Building2 className="h-4 w-4 text-muted-foreground" />
+              )}
+              <Switch
+                checked={toggleMode === "restrict" ? !repository.isRestricted : !!repository.departmentName}
+                onCheckedChange={handleShareToggle}
+                disabled={shareLoading}
+              />
+              <span className="text-sm text-muted-foreground">
+                {toggleMode === "restrict"
+                  ? (repository.isRestricted ? t("home.filter.restricted") : t("home.filter.visibleToOrg"))
+                  : (repository.departmentName ? t("home.filter.sharedWithOrg") : t("home.filter.shareWithOrg"))}
+              </span>
+            </div>
+          )}
         </CardContent>
       </Card>
     </Link>

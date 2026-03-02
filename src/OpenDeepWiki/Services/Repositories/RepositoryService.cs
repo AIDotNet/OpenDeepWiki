@@ -4,12 +4,13 @@ using OpenDeepWiki.EFCore;
 using OpenDeepWiki.Entities;
 using OpenDeepWiki.Models;
 using OpenDeepWiki.Services.Auth;
+using OpenDeepWiki.Services.GitHub;
 
 namespace OpenDeepWiki.Services.Repositories;
 
 [MiniApi(Route = "/api/v1/repositories")]
-[Tags("仓库")]
-public class RepositoryService(IContext context, IGitPlatformService gitPlatformService, IUserContext userContext)
+[Tags("Repository")]
+public class RepositoryService(IContext context, IGitPlatformService gitPlatformService, IUserContext userContext, IGitHubAppService gitHubAppService)
 {
     [HttpPost("/submit")]
     public async Task<Repository> SubmitAsync([FromBody] RepositorySubmitRequest request)

@@ -235,7 +235,8 @@ export function RepoShell({
     <DocsLayout
       tree={tree}
       nav={{
-        title,
+        title: "KeboolaDeepWiki",
+        url: "/",
       }}
       sidebar={{
         defaultOpenLevel: 1,
