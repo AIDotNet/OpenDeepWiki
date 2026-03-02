@@ -154,6 +154,9 @@ public class UserGitHubImportService : IUserGitHubImportService
             }
 
             // Create Repository entity
+            // When importing into a department, mark as department-owned so it appears
+            // in Organization view only, not in the importing user's "My Repos".
+            var isDeptImport = !string.IsNullOrEmpty(request.DepartmentId);
             var repoEntity = new Repository
             {
                 Id = Guid.NewGuid().ToString(),
@@ -165,7 +168,8 @@ public class UserGitHubImportService : IUserGitHubImportService
                 Status = RepositoryStatus.Pending,
                 PrimaryLanguage = repo.Language,
                 StarCount = repo.StargazersCount,
-                ForkCount = repo.ForksCount
+                ForkCount = repo.ForksCount,
+                IsDepartmentOwned = isDeptImport
             };
 
             _context.Repositories.Add(repoEntity);
