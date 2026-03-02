@@ -60,13 +60,14 @@ export function getToken(): string | null {
 /**
  * Read JWT from cookie during SSR. Uses require() to avoid build errors
  * when this module is imported in client components.
+ * Must be async because cookies() returns a Promise in Next.js 15+.
  */
-export function getServerToken(): string | null {
+export async function getServerToken(): Promise<string | null> {
   if (typeof window !== "undefined") return null;
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { cookies } = require("next/headers");
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     return cookieStore.get(TOKEN_COOKIE)?.value ?? null;
   } catch {
     return null;
