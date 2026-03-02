@@ -149,5 +149,31 @@
       "ja": "日本語",
       "ko": "韓国語"
     }
+  },
+  "filter": {
+    "all": "すべて",
+    "public": "公開",
+    "organization": "組織",
+    "myRepos": "マイリポジトリ",
+    "allTitle": "すべてのリポジトリ",
+    "organizationTitle": "組織リポジトリ",
+    "organizationEmpty": "部門で共有されているリポジトリはありません",
+    "myReposEmpty": "まだリポジトリを追加していません",
+    "shareWithOrg": "組織に共有",
+    "sharedWithOrg": "組織に共有されました",
+    "unsharedFromOrg": "組織から削除されました",
+    "restricted": "組織から制限",
+    "visibleToOrg": "組織に表示",
+    "subAll": "All",
+    "publicOnly": "Public only",
+    "privateOnly": "Private only",
+    "sharedOnly": "Shared with org",
+    "notSharedOnly": "Not shared"
+  },
+  "icons": {
+    "public": "パブリックリポジトリ",
+    "organization": "組織と共有",
+    "private": "個人プライベートリポジトリ",
+    "restricted": "制限 - 管理者のみ"
   }
 }

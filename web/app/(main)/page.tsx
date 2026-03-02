@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useCallback, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AppLayout } from "@/components/app-layout";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -16,13 +16,21 @@ import {
 import { useAuth } from "@/contexts/auth-context";
 import { useScrollPosition } from "@/hooks/use-scroll-position";
 import { PublicRepositoryList } from "@/components/repo/public-repository-list";
+import type { RepositoryView } from "@/components/repo/public-repository-list";
 import { cn } from "@/lib/utils";
 
-export default function Home() {
+function HomeContent() {
   const t = useTranslations();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
-  const [activeItem, setActiveItem] = useState(t("sidebar.explore"));
+
+  const viewParam = (searchParams.get("view") as RepositoryView) || "public";
+
+  const activeItem = (viewParam === "organization" || viewParam === "mine")
+    ? t("sidebar.private")
+    : t("sidebar.explore");
+
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isIntegrationsOpen, setIsIntegrationsOpen] = useState(false);
   const [keyword, setKeyword] = useState("");
@@ -40,10 +48,21 @@ export default function Home() {
     setIsFormOpen(true);
   }, [user, router]);
 
+  const handleViewChange = useCallback((newView: RepositoryView) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (newView === "public") {
+      params.delete("view");
+    } else {
+      params.set("view", newView);
+    }
+    const query = params.toString();
+    router.replace(query ? `/?${query}` : "/", { scroll: false });
+  }, [router, searchParams]);
+
   return (
     <AppLayout
       activeItem={activeItem}
-      onItemClick={setActiveItem}
+      onItemClick={() => {}}
       searchBox={{
         value: keyword,
         onChange: setKeyword,
@@ -118,11 +137,23 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Public Repository List Section */}
+        {/* Repository List Section */}
         <div className="w-full max-w-6xl mx-auto mt-8">
-          <PublicRepositoryList keyword={keyword} />
+          <PublicRepositoryList
+            keyword={keyword}
+            view={viewParam}
+            onViewChange={handleViewChange}
+          />
         </div>
       </div>
     </AppLayout>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={null}>
+      <HomeContent />
+    </Suspense>
   );
 }
