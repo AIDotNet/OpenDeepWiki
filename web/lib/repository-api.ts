@@ -13,6 +13,17 @@ import type {
   MindMapResponse
 } from "@/types/repository";
 import { api, buildApiUrl } from "./api-client";
+import { getServerToken } from "./auth-api";
+
+/**
+ * Returns Authorization header for SSR fetches if a JWT cookie is present.
+ * On the client side (window exists), getServerToken() returns null so
+ * this returns empty headers -- client auth goes through apiClient instead.
+ */
+function getSSRAuthHeaders(): HeadersInit {
+  const token = getServerToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 function encodePathSegments(path: string) {
   return path
@@ -26,7 +37,7 @@ export async function fetchRepoBranches(owner: string, repo: string) {
     `/api/v1/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/branches`,
   );
 
-  const response = await fetch(url, { cache: "no-store" });
+  const response = await fetch(url, { cache: "no-store", headers: getSSRAuthHeaders() });
 
   if (!response.ok) {
     throw new Error("Failed to fetch repository branches");
@@ -44,7 +55,7 @@ export async function fetchGitBranches(gitUrl: string): Promise<GitBranchesRespo
   
   const url = buildApiUrl(`/api/v1/repositories/branches?${params.toString()}`);
 
-  const response = await fetch(url, { cache: "no-store" });
+  const response = await fetch(url, { cache: "no-store", headers: getSSRAuthHeaders() });
 
   if (!response.ok) {
     return { branches: [], defaultBranch: null, isSupported: false };
@@ -63,7 +74,7 @@ export async function fetchRepoTree(owner: string, repo: string, branch?: string
     `/api/v1/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/tree${queryString ? `?${queryString}` : ""}`,
   );
 
-  const response = await fetch(url, { cache: "no-store" });
+  const response = await fetch(url, { cache: "no-store", headers: getSSRAuthHeaders() });
 
   if (!response.ok) {
     throw new Error("Failed to fetch repository tree");
@@ -83,7 +94,7 @@ export async function fetchRepoDoc(owner: string, repo: string, slug: string, br
     `/api/v1/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/docs/${encodedSlug}${queryString ? `?${queryString}` : ""}`,
   );
 
-  const response = await fetch(url, { cache: "no-store" });
+  const response = await fetch(url, { cache: "no-store", headers: getSSRAuthHeaders() });
 
   if (!response.ok) {
     throw new Error("Failed to fetch repository doc");
@@ -133,7 +144,7 @@ export async function fetchRepositoryList(params?: {
   const queryString = searchParams.toString();
   const url = buildApiUrl(`/api/v1/repositories/list${queryString ? `?${queryString}` : ""}`);
 
-  const response = await fetch(url, { cache: "no-store" });
+  const response = await fetch(url, { cache: "no-store", headers: getSSRAuthHeaders() });
 
   if (!response.ok) {
     throw new Error("Failed to fetch repository list");
@@ -161,7 +172,7 @@ export async function fetchRepoStatus(owner: string, repo: string): Promise<Repo
     `/api/v1/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/tree`,
   );
 
-  const response = await fetch(url, { cache: "no-store" });
+  const response = await fetch(url, { cache: "no-store", headers: getSSRAuthHeaders() });
 
   if (!response.ok) {
     throw new Error("Failed to fetch repository status");
@@ -191,7 +202,7 @@ export async function fetchProcessingLogs(
     `/api/v1/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/processing-logs${queryString ? `?${queryString}` : ""}`
   );
 
-  const response = await fetch(url, { cache: "no-store" });
+  const response = await fetch(url, { cache: "no-store", headers: getSSRAuthHeaders() });
 
   if (!response.ok) {
     throw new Error("Failed to fetch processing logs");
@@ -212,7 +223,7 @@ export async function checkGitHubRepo(
     `/api/v1/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/check`
   );
 
-  const response = await fetch(url, { cache: "no-store" });
+  const response = await fetch(url, { cache: "no-store", headers: getSSRAuthHeaders() });
 
   if (!response.ok) {
     return {
@@ -263,7 +274,7 @@ export async function fetchMindMap(
     `/api/v1/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/mindmap${queryString ? `?${queryString}` : ""}`
   );
 
-  const response = await fetch(url, { cache: "no-store" });
+  const response = await fetch(url, { cache: "no-store", headers: getSSRAuthHeaders() });
 
   if (!response.ok) {
     throw new Error("Failed to fetch mind map");

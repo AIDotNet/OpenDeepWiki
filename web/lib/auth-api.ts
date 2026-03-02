@@ -49,20 +49,41 @@ export interface ApiResponse<T> {
 }
 
 const TOKEN_KEY = "auth_token";
+const TOKEN_COOKIE = "deepwiki_token";
+const TOKEN_COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
 export function getToken(): string | null {
   if (typeof window === "undefined") return null;
   return localStorage.getItem(TOKEN_KEY);
 }
 
+/**
+ * Read JWT from cookie during SSR. Uses require() to avoid build errors
+ * when this module is imported in client components.
+ */
+export function getServerToken(): string | null {
+  if (typeof window !== "undefined") return null;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { cookies } = require("next/headers");
+    const cookieStore = cookies();
+    return cookieStore.get(TOKEN_COOKIE)?.value ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export function setToken(token: string): void {
   if (typeof window === "undefined") return;
   localStorage.setItem(TOKEN_KEY, token);
+  // Also set as cookie for SSR access to private repo pages
+  document.cookie = `${TOKEN_COOKIE}=${token}; path=/; max-age=${TOKEN_COOKIE_MAX_AGE}; SameSite=Lax`;
 }
 
 export function removeToken(): void {
   if (typeof window === "undefined") return;
   localStorage.removeItem(TOKEN_KEY);
+  document.cookie = `${TOKEN_COOKIE}=; path=/; max-age=0`;
 }
 
 export async function login(request: LoginRequest): Promise<LoginResponse> {
