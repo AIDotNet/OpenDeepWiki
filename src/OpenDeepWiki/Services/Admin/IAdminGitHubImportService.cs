@@ -11,5 +11,6 @@ public interface IAdminGitHubImportService
     Task<GitHubConfigResponse> GetGitHubConfigAsync(CancellationToken cancellationToken = default);
     Task<GitHubConfigResponse> SaveGitHubConfigAsync(SaveGitHubConfigRequest request, CancellationToken cancellationToken = default);
     Task DisconnectInstallationAsync(string installationId, CancellationToken cancellationToken = default);
+    Task<GitHubInstallationDto> LinkInstallationToDepartmentAsync(string installationId, string? departmentId, CancellationToken cancellationToken = default);
     Task ResetGitHubConfigAsync(CancellationToken cancellationToken = default);
 }

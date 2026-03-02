@@ -13,6 +13,7 @@ import {
   batchImportRepos,
   getDepartments,
   disconnectGitHubInstallation,
+  linkInstallationToDepartment,
   GitHubStatus,
   GitHubConfig,
   GitHubInstallation,
@@ -174,6 +175,34 @@ export default function GitHubImportPage() {
     }
   };
 
+  const handleLinkDepartment = async (inst: GitHubInstallation, departmentId: string | null) => {
+    try {
+      const updated = await linkInstallationToDepartment(inst.id, departmentId);
+      // Update status with the new installation data
+      setStatus(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          installations: prev.installations.map(i =>
+            i.id === inst.id ? updated : i
+          ),
+        };
+      });
+      if (selectedInstallation?.id === inst.id) {
+        setSelectedInstallation(updated);
+      }
+      toast.success(
+        departmentId
+          ? t("admin.githubImport.linkDepartmentSuccess")
+          : t("admin.githubImport.unlinkDepartmentSuccess")
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : t("admin.githubImport.linkDepartmentFailed")
+      );
+    }
+  };
+
   const handleResetConfig = async () => {
     const confirmed = window.confirm(
       t("admin.githubImport.resetConfigConfirm")
@@ -276,6 +305,8 @@ export default function GitHubImportPage() {
                     installations={status.installations}
                     selectedInstallation={selectedInstallation}
                     onSelect={setSelectedInstallation}
+                    departments={departments}
+                    onLinkDepartment={handleLinkDepartment}
                     renderActions={(inst) => (
                       <Button
                         variant="outline"

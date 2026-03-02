@@ -1113,6 +1113,18 @@ export async function disconnectGitHubInstallation(id: string): Promise<void> {
   await fetchWithAuth(url, { method: "DELETE" });
 }
 
+export async function linkInstallationToDepartment(
+  installationId: string,
+  departmentId: string | null
+): Promise<GitHubInstallation> {
+  const url = buildApiUrl(`/api/admin/github/installations/${installationId}/department`);
+  const result = await fetchWithAuth(url, {
+    method: "PUT",
+    body: JSON.stringify({ departmentId }),
+  });
+  return result.data;
+}
+
 export async function getInstallationRepos(
   installationId: number,
   page: number = 1,

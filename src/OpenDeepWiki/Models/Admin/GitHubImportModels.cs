@@ -25,6 +25,11 @@ public class StoreInstallationRequest
     public long InstallationId { get; set; }
 }
 
+public class LinkInstallationDepartmentRequest
+{
+    public string? DepartmentId { get; set; }
+}
+
 public class GitHubRepoDto
 {
     public long Id { get; set; }

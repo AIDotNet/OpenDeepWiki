@@ -556,7 +556,10 @@
     "filterAll": "All Repositories",
     "filterNotImported": "Not Imported",
     "filterImported": "Already Imported",
-    "importStatus": "Import Status"
+    "importStatus": "Import Status",
+    "linkDepartmentSuccess": "Installation linked to department",
+    "unlinkDepartmentSuccess": "Installation unlinked from department",
+    "linkDepartmentFailed": "Failed to update department link"
   },
   "common": {
     "refresh": "Refresh",

@@ -169,6 +169,50 @@ public class AdminGitHubImportService : IAdminGitHubImportService
             entity.InstallationId, entity.AccountLogin);
     }
 
+    public async Task<GitHubInstallationDto> LinkInstallationToDepartmentAsync(
+        string installationId, string? departmentId, CancellationToken cancellationToken = default)
+    {
+        var entity = await _context.GitHubAppInstallations
+            .FirstOrDefaultAsync(i => i.Id == installationId && !i.IsDeleted, cancellationToken);
+
+        if (entity == null)
+            throw new InvalidOperationException($"Installation {installationId} not found.");
+
+        // Validate department if provided
+        string? departmentName = null;
+        if (!string.IsNullOrEmpty(departmentId))
+        {
+            var department = await _context.Departments
+                .FirstOrDefaultAsync(d => d.Id == departmentId && !d.IsDeleted, cancellationToken);
+
+            if (department == null)
+                throw new InvalidOperationException($"Department {departmentId} not found.");
+
+            departmentName = department.Name;
+        }
+
+        entity.DepartmentId = departmentId;
+        entity.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation(
+            "Linked GitHub App installation {InstallationId} ({AccountLogin}) to department {DepartmentId}",
+            entity.InstallationId, entity.AccountLogin, departmentId ?? "(none)");
+
+        return new GitHubInstallationDto
+        {
+            Id = entity.Id,
+            InstallationId = entity.InstallationId,
+            AccountLogin = entity.AccountLogin,
+            AccountType = entity.AccountType,
+            AccountId = entity.AccountId,
+            AvatarUrl = entity.AvatarUrl,
+            DepartmentId = departmentId,
+            DepartmentName = departmentName,
+            CreatedAt = entity.CreatedAt
+        };
+    }
+
     public async Task<GitHubRepoListDto> ListInstallationReposAsync(
         long installationId, int page, int perPage, CancellationToken cancellationToken = default)
     {

@@ -104,6 +104,24 @@ public static class AdminGitHubImportEndpoints
             }
         });
 
+        github.MapPut("/installations/{installationId}/department", async (
+            string installationId,
+            LinkInstallationDepartmentRequest request,
+            IAdminGitHubImportService service,
+            CancellationToken cancellationToken) =>
+        {
+            try
+            {
+                var result = await service.LinkInstallationToDepartmentAsync(
+                    installationId, request.DepartmentId, cancellationToken);
+                return Results.Ok(new { success = true, data = result });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+        });
+
         github.MapGet("/installations/{installationId:long}/repos", async (
             long installationId,
             int page,

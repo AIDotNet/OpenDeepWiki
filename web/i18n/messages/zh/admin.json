@@ -556,7 +556,10 @@
     "filterAll": "所有仓库",
     "filterNotImported": "未导入",
     "filterImported": "已导入",
-    "importStatus": "导入状态"
+    "importStatus": "导入状态",
+    "linkDepartmentSuccess": "Installation linked to department",
+    "unlinkDepartmentSuccess": "Installation unlinked from department",
+    "linkDepartmentFailed": "Failed to update department link"
   },
   "common": {
     "refresh": "刷新",

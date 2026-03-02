@@ -556,7 +556,10 @@
     "filterAll": "모든 저장소",
     "filterNotImported": "미가져옴",
     "filterImported": "가져옴 완료",
-    "importStatus": "가져오기 상태"
+    "importStatus": "가져오기 상태",
+    "linkDepartmentSuccess": "Installation linked to department",
+    "unlinkDepartmentSuccess": "Installation unlinked from department",
+    "linkDepartmentFailed": "Failed to update department link"
   },
   "common": {
     "refresh": "새로고침",

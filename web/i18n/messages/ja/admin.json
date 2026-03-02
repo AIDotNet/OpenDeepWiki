@@ -556,7 +556,10 @@
     "filterAll": "すべてのリポジトリ",
     "filterNotImported": "未インポート",
     "filterImported": "インポート済み",
-    "importStatus": "インポート状態"
+    "importStatus": "インポート状態",
+    "linkDepartmentSuccess": "Installation linked to department",
+    "unlinkDepartmentSuccess": "Installation unlinked from department",
+    "linkDepartmentFailed": "Failed to update department link"
   },
   "common": {
     "refresh": "更新",
