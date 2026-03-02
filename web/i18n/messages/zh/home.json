@@ -159,5 +159,31 @@
       "ja": "日语",
       "ko": "韩语"
     }
+  },
+  "filter": {
+    "all": "全部",
+    "public": "公开",
+    "organization": "组织",
+    "myRepos": "我的仓库",
+    "allTitle": "所有仓库",
+    "organizationTitle": "组织仓库",
+    "organizationEmpty": "您的部门没有共享的仓库",
+    "myReposEmpty": "您还没有添加任何仓库",
+    "shareWithOrg": "共享给组织",
+    "sharedWithOrg": "已共享给组织",
+    "unsharedFromOrg": "已从组织移除",
+    "restricted": "已从组织中限制",
+    "visibleToOrg": "对组织可见",
+    "subAll": "All",
+    "publicOnly": "Public only",
+    "privateOnly": "Private only",
+    "sharedOnly": "Shared with org",
+    "notSharedOnly": "Not shared"
+  },
+  "icons": {
+    "public": "公共仓库",
+    "organization": "已共享给组织",
+    "private": "个人私有仓库",
+    "restricted": "已限制 - 仅管理员可见"
   }
 }

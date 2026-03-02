@@ -33,17 +33,77 @@ public static class OrganizationEndpoints
         // Get repository list for current user's departments
         group.MapGet("/my-repositories", async (
             ClaimsPrincipal user,
+            [FromServices] IOrganizationService orgService,
+            [FromQuery] bool? includeRestricted) =>
+        {
+            var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return Results.Unauthorized();
+
+            var result = await orgService.GetDepartmentRepositoriesAsync(userId, includeRestricted ?? false);
+            return Results.Ok(new { success = true, data = result });
+        })
+        .WithName("GetMyDepartmentRepositories")
+        .WithSummary("Get repository list for current user's departments");
+
+        // Share a repository with current user's departments
+        group.MapPost("/my-repositories/{repositoryId}/share", async (
+            string repositoryId,
+            ClaimsPrincipal user,
             [FromServices] IOrganizationService orgService) =>
         {
             var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId))
                 return Results.Unauthorized();
 
-            var result = await orgService.GetDepartmentRepositoriesAsync(userId);
-            return Results.Ok(new { success = true, data = result });
+            var result = await orgService.ShareRepositoryWithMyDepartmentsAsync(userId, repositoryId);
+            return Results.Ok(new { success = result });
         })
-        .WithName("GetMyDepartmentRepositories")
-        .WithSummary("Get repository list for current user's departments");
+        .WithName("ShareRepositoryWithMyDepartments")
+        .WithSummary("Share a repository with current user's departments");
+
+        // Unshare a repository from current user's departments
+        group.MapDelete("/my-repositories/{repositoryId}/share", async (
+            string repositoryId,
+            ClaimsPrincipal user,
+            [FromServices] IOrganizationService orgService) =>
+        {
+            var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return Results.Unauthorized();
+
+            var result = await orgService.UnshareRepositoryFromMyDepartmentsAsync(userId, repositoryId);
+            return Results.Ok(new { success = result });
+        })
+        .WithName("UnshareRepositoryFromMyDepartments")
+        .WithSummary("Unshare a repository from current user's departments");
+
+        // Admin-only endpoints for repository restriction
+        var adminGroup = group.MapGroup("/repositories").RequireAuthorization("AdminOnly");
+
+        adminGroup.MapPost("/{repositoryId}/restrict", async (
+            string repositoryId,
+            ClaimsPrincipal user,
+            [FromServices] IOrganizationService orgService) =>
+        {
+            var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId)) return Results.Unauthorized();
+
+            var result = await orgService.RestrictRepositoryInDepartmentsAsync(repositoryId, userId);
+            return result ? Results.Ok(new { success = true }) : Results.BadRequest(new { success = false });
+        }).WithName("RestrictRepository");
+
+        adminGroup.MapPost("/{repositoryId}/unrestrict", async (
+            string repositoryId,
+            ClaimsPrincipal user,
+            [FromServices] IOrganizationService orgService) =>
+        {
+            var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId)) return Results.Unauthorized();
+
+            var result = await orgService.UnrestrictRepositoryInDepartmentsAsync(repositoryId, userId);
+            return result ? Results.Ok(new { success = true }) : Results.BadRequest(new { success = false });
+        }).WithName("UnrestrictRepository");
 
         return app;
     }

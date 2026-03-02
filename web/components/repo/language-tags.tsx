@@ -11,6 +11,7 @@ interface LanguageTagsProps {
   selectedLanguage: string | null;
   onLanguageChange: (language: string | null) => void;
   className?: string;
+  languages?: LanguageInfo[];
 }
 
 // Language color mapping
@@ -35,15 +36,20 @@ const languageColors: Record<string, string> = {
 
 const defaultColor = "bg-muted hover:bg-muted/80 text-muted-foreground border-border";
 
-export function LanguageTags({ selectedLanguage, onLanguageChange, className }: LanguageTagsProps) {
-  const [languages, setLanguages] = useState<LanguageInfo[]>([]);
+export function LanguageTags({ selectedLanguage, onLanguageChange, className, languages: languagesProp }: LanguageTagsProps) {
+  const [languageData, setLanguageData] = useState<LanguageInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    if (languagesProp) {
+      setLanguageData(languagesProp);
+      setIsLoading(false);
+      return;
+    }
     const loadLanguages = async () => {
       try {
         const response = await getAvailableLanguages();
-        setLanguages(response.languages);
+        setLanguageData(response.languages);
       } catch (error) {
         console.error("Failed to load languages:", error);
       } finally {
@@ -51,7 +57,7 @@ export function LanguageTags({ selectedLanguage, onLanguageChange, className }: 
       }
     };
     loadLanguages();
-  }, []);
+  }, [languagesProp]);
 
   if (isLoading) {
     return (
@@ -63,7 +69,7 @@ export function LanguageTags({ selectedLanguage, onLanguageChange, className }: 
     );
   }
 
-  if (languages.length === 0) {
+  if (languageData.length === 0) {
     return null;
   }
 
@@ -82,7 +88,7 @@ export function LanguageTags({ selectedLanguage, onLanguageChange, className }: 
       >
         All
       </Badge>
-      {languages.map((lang) => (
+      {languageData.map((lang) => (
         <Badge
           key={lang.name}
           variant="outline"

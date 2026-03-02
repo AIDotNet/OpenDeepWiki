@@ -1,6 +1,16 @@
 import { getToken } from "./auth-api";
 import { getApiProxyUrl } from "./env";
 
+/**
+ * Organization API client.
+ *
+ * Admin restrict/unrestrict endpoints require AdminOnly authorization policy,
+ * so they MUST use fetchWithAuth (Bearer token), not raw fetch with credentials.
+ *
+ * DepartmentRepository.isPublic comes from backend's Repository.IsPublic,
+ * enabling dual-icon display (Globe + Building2) for public org repos.
+ */
+
 const API_BASE_URL = getApiProxyUrl();
 
 function buildApiUrl(path: string) {
@@ -48,6 +58,10 @@ export interface DepartmentRepository {
   statusName: string;
   departmentId: string;
   departmentName: string;
+  createdAt?: string;
+  primaryLanguage?: string;
+  isRestricted?: boolean;
+  isPublic?: boolean;
 }
 
 /**
@@ -62,8 +76,29 @@ export async function getMyDepartments(): Promise<UserDepartment[]> {
 /**
  * Get the repository list under the current user's departments
  */
-export async function getMyDepartmentRepositories(): Promise<DepartmentRepository[]> {
-  const url = buildApiUrl("/api/organizations/my-repositories");
+export async function getMyDepartmentRepositories(includeRestricted = false): Promise<DepartmentRepository[]> {
+  const params = includeRestricted ? '?includeRestricted=true' : '';
+  const url = buildApiUrl(`/api/organizations/my-repositories${params}`);
   const result = await fetchWithAuth(url);
   return result.data;
+}
+
+export async function shareRepoWithOrganization(repositoryId: string): Promise<{ success: boolean }> {
+  const url = buildApiUrl(`/api/organizations/my-repositories/${repositoryId}/share`);
+  return fetchWithAuth(url, { method: "POST" });
+}
+
+export async function unshareRepoFromOrganization(repositoryId: string): Promise<{ success: boolean }> {
+  const url = buildApiUrl(`/api/organizations/my-repositories/${repositoryId}/share`);
+  return fetchWithAuth(url, { method: "DELETE" });
+}
+
+export async function restrictRepoInOrganization(repositoryId: string): Promise<{ success: boolean }> {
+  const url = buildApiUrl(`/api/organizations/repositories/${repositoryId}/restrict`);
+  return fetchWithAuth(url, { method: "POST" });
+}
+
+export async function unrestrictRepoInOrganization(repositoryId: string): Promise<{ success: boolean }> {
+  const url = buildApiUrl(`/api/organizations/repositories/${repositoryId}/unrestrict`);
+  return fetchWithAuth(url, { method: "POST" });
 }

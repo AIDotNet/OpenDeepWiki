@@ -159,5 +159,31 @@
       "ja": "Japanese",
       "ko": "Korean"
     }
+  },
+  "filter": {
+    "all": "All",
+    "public": "Public",
+    "organization": "Organization",
+    "myRepos": "My Repos",
+    "allTitle": "All Repositories",
+    "organizationTitle": "Organization Repositories",
+    "organizationEmpty": "No repositories shared with your departments",
+    "myReposEmpty": "You haven't added any repositories yet",
+    "shareWithOrg": "Share with organization",
+    "sharedWithOrg": "Shared with organization",
+    "unsharedFromOrg": "Removed from organization",
+    "restricted": "Restricted from organization",
+    "visibleToOrg": "Visible to organization",
+    "subAll": "All",
+    "publicOnly": "Public only",
+    "privateOnly": "Private only",
+    "sharedOnly": "Shared with org",
+    "notSharedOnly": "Not shared"
+  },
+  "icons": {
+    "public": "Public repository",
+    "organization": "Shared with organization",
+    "private": "Personal private repository",
+    "restricted": "Restricted - admin only"
   }
 }

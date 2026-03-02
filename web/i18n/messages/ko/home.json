@@ -147,5 +147,31 @@
       "ja": "일본어",
       "ko": "한국어"
     }
+  },
+  "filter": {
+    "all": "전체",
+    "public": "공개",
+    "organization": "조직",
+    "myRepos": "내 저장소",
+    "allTitle": "모든 저장소",
+    "organizationTitle": "조직 저장소",
+    "organizationEmpty": "부서에 공유된 저장소가 없습니다",
+    "myReposEmpty": "아직 추가한 저장소가 없습니다",
+    "shareWithOrg": "조직에 공유",
+    "sharedWithOrg": "조직에 공유됨",
+    "unsharedFromOrg": "조직에서 제거됨",
+    "restricted": "조직에서 제한됨",
+    "visibleToOrg": "조직에 표시",
+    "subAll": "All",
+    "publicOnly": "Public only",
+    "privateOnly": "Private only",
+    "sharedOnly": "Shared with org",
+    "notSharedOnly": "Not shared"
+  },
+  "icons": {
+    "public": "공개 저장소",
+    "organization": "조직과 공유됨",
+    "private": "개인 비공개 저장소",
+    "restricted": "제한됨 - 관리자만"
   }
 }
