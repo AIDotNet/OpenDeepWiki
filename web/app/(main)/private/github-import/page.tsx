@@ -135,9 +135,17 @@ export default function UserGitHubImportPage() {
               <GitHubRepoBrowser
                 installation={selectedInstallation}
                 fetchRepos={getUserInstallationRepos}
-                departments={departments.map(d => ({ id: d.id, name: d.name }))}
+                departments={
+                  // When installation is linked to a department, only offer that department
+                  // (org imports always go to the org, no "Personal only" option)
+                  selectedInstallation.departmentId
+                    ? departments
+                        .filter(d => d.id === selectedInstallation.departmentId)
+                        .map(d => ({ id: d.id, name: d.name }))
+                    : departments.map(d => ({ id: d.id, name: d.name }))
+                }
                 onImport={handleImport}
-                showPersonalOption={true}
+                showPersonalOption={!selectedInstallation.departmentId}
               />
             )}
 
