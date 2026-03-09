@@ -28,9 +28,10 @@ public class McpOAuthServer
     // In-memory stores for OAuth state (short-lived, lost on restart = clients re-auth)
     private static readonly ConcurrentDictionary<string, PendingAuthorization> PendingAuthorizations = new();
     private static readonly ConcurrentDictionary<string, AuthorizationCode> AuthorizationCodes = new();
+    private static readonly ConcurrentDictionary<string, RegisteredClient> RegisteredClients = new();
 
-    // Allowed redirect URIs for MCP clients
-    private static readonly HashSet<string> AllowedRedirectUris = new(StringComparer.OrdinalIgnoreCase)
+    // Well-known redirect URIs for MCP clients (always allowed, no registration needed)
+    private static readonly HashSet<string> WellKnownRedirectUris = new(StringComparer.OrdinalIgnoreCase)
     {
         "https://claude.ai/api/mcp/auth_callback",
         "https://claude.com/api/mcp/auth_callback",
@@ -71,6 +72,7 @@ public class McpOAuthServer
             issuer = baseUrl,
             authorization_endpoint = $"{baseUrl}/oauth/authorize",
             token_endpoint = $"{baseUrl}/oauth/token",
+            registration_endpoint = $"{baseUrl}/oauth/register",
             response_types_supported = new[] { "code" },
             grant_types_supported = new[] { "authorization_code" },
             code_challenge_methods_supported = new[] { "S256" },
@@ -103,7 +105,7 @@ public class McpOAuthServer
             return Results.BadRequest(new { error = "invalid_request", error_description = "redirect_uri is required" });
         }
 
-        if (!AllowedRedirectUris.Contains(redirectUri))
+        if (!IsRedirectUriAllowed(redirectUri, clientId))
         {
             _logger.LogWarning("MCP OAuth authorize: disallowed redirect_uri: {RedirectUri}", redirectUri);
             return Results.BadRequest(new { error = "invalid_request", error_description = "redirect_uri not allowed" });
@@ -427,6 +429,113 @@ public class McpOAuthServer
     }
 
     /// <summary>
+    /// Handles POST /oauth/register for RFC 7591 Dynamic Client Registration.
+    /// MCP clients (like Claude Code CLI) register themselves to obtain a client_id
+    /// and declare their redirect_uris before starting the OAuth flow.
+    /// </summary>
+    public async Task<IResult> HandleRegister(HttpContext context)
+    {
+        JsonElement body;
+        try
+        {
+            body = await JsonSerializer.DeserializeAsync<JsonElement>(context.Request.Body);
+        }
+        catch (JsonException)
+        {
+            return Results.Json(
+                new { error = "invalid_client_metadata", error_description = "Invalid JSON body" },
+                statusCode: 400);
+        }
+
+        // Extract redirect_uris (required per RFC 7591)
+        var redirectUris = new List<string>();
+        if (body.TryGetProperty("redirect_uris", out var urisElement) && urisElement.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var uri in urisElement.EnumerateArray())
+            {
+                var uriStr = uri.GetString();
+                if (!string.IsNullOrEmpty(uriStr))
+                {
+                    // Validate URI format
+                    if (!Uri.TryCreate(uriStr, UriKind.Absolute, out var parsed))
+                    {
+                        return Results.Json(
+                            new { error = "invalid_redirect_uri", error_description = $"Invalid redirect_uri: {uriStr}" },
+                            statusCode: 400);
+                    }
+
+                    // Allow https:// and http://localhost (for CLI tools)
+                    if (parsed.Scheme != "https" && !(parsed.Scheme == "http" && parsed.Host == "localhost"))
+                    {
+                        return Results.Json(
+                            new { error = "invalid_redirect_uri", error_description = $"redirect_uri must use https (or http://localhost): {uriStr}" },
+                            statusCode: 400);
+                    }
+
+                    redirectUris.Add(uriStr);
+                }
+            }
+        }
+
+        if (redirectUris.Count == 0)
+        {
+            return Results.Json(
+                new { error = "invalid_client_metadata", error_description = "At least one redirect_uri is required" },
+                statusCode: 400);
+        }
+
+        var clientName = body.TryGetProperty("client_name", out var nameElement)
+            ? nameElement.GetString() ?? "Unknown MCP Client"
+            : "Unknown MCP Client";
+
+        // Generate a unique client_id
+        var clientId = GenerateRandomString(32);
+
+        var registration = new RegisteredClient
+        {
+            ClientId = clientId,
+            ClientName = clientName,
+            RedirectUris = redirectUris,
+            CreatedAt = DateTime.UtcNow,
+        };
+
+        RegisteredClients[clientId] = registration;
+
+        _logger.LogInformation("MCP OAuth register: registered client {ClientName} with id {ClientId}, redirect_uris: [{Uris}]",
+            clientName, clientId, string.Join(", ", redirectUris));
+
+        // Return registration response per RFC 7591
+        return Results.Json(new
+        {
+            client_id = clientId,
+            client_name = clientName,
+            redirect_uris = redirectUris,
+            token_endpoint_auth_method = "none",
+            grant_types = new[] { "authorization_code" },
+            response_types = new[] { "code" },
+        }, statusCode: 201);
+    }
+
+    /// <summary>
+    /// Checks if a redirect_uri is allowed, either as a well-known URI or registered by a client.
+    /// </summary>
+    private bool IsRedirectUriAllowed(string redirectUri, string? clientId)
+    {
+        // Always allow well-known URIs (claude.ai web)
+        if (WellKnownRedirectUris.Contains(redirectUri))
+            return true;
+
+        // Check if the client is registered and the redirect_uri matches
+        if (!string.IsNullOrEmpty(clientId) &&
+            RegisteredClients.TryGetValue(clientId, out var client))
+        {
+            return client.RedirectUris.Contains(redirectUri, StringComparer.OrdinalIgnoreCase);
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// Removes expired entries from the in-memory stores.
     /// </summary>
     public static void CleanupExpiredEntries()
@@ -517,6 +626,14 @@ public static class McpOAuthEndpoints
             })
             .AllowAnonymous();
 
+        // Dynamic Client Registration (RFC 7591)
+        app.MapPost("/oauth/register", async (HttpContext ctx) =>
+            {
+                var result = await oauthServer.HandleRegister(ctx);
+                await result.ExecuteAsync(ctx);
+            })
+            .AllowAnonymous();
+
         return app;
     }
 }
@@ -569,4 +686,12 @@ internal class AuthorizationCode
     public required string CodeChallenge { get; init; }
     public required DateTime CreatedAt { get; init; }
     public required DateTime ExpiresAt { get; init; }
+}
+
+internal class RegisteredClient
+{
+    public required string ClientId { get; init; }
+    public required string ClientName { get; init; }
+    public required List<string> RedirectUris { get; init; }
+    public required DateTime CreatedAt { get; init; }
 }
