@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "OpenDeepWiki",
-  description: "AI驱动的代码知识库，支持多平台代码仓库分析和智能文档生成",
+  description: "AI-powered code knowledge base for repository analysis and documentation generation",
   icons: {
     icon: "/favicon.png",
   },

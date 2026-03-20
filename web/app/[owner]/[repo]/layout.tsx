@@ -3,8 +3,8 @@ import { fetchRepoTree, fetchRepoBranches, checkGitHubRepo } from "@/lib/reposit
 import { RepoShell } from "@/components/repo/repo-shell";
 import { RepositoryProcessingStatus } from "@/components/repo/repository-processing-status";
 import { RepositoryNotFound } from "@/components/repo/repository-not-found";
-import { RootProvider } from "fumadocs-ui/provider/next";
 import { decodeRouteSegment } from "@/lib/repo-route";
+import { cookies } from "next/headers";
 
 // 禁用缓存
 export const dynamic = "force-dynamic";
@@ -80,19 +80,20 @@ export default async function RepoLayout({ children, params }: RepoLayoutProps) 
 
   // 获取分支和语言数据
   const branches = await getBranchesData(decodedOwner, decodedRepo);
+  const cookieStore = await cookies();
+  const uiLocale = cookieStore.get("NEXT_LOCALE")?.value === "en" ? "en" : "zh";
 
   return (
-    <RootProvider>
-      <RepoShell 
-        owner={decodedOwner} 
-        repo={decodedRepo} 
-        initialNodes={tree.nodes}
-        initialBranches={branches ?? undefined}
-        initialBranch={tree.currentBranch}
-        initialLanguage={tree.currentLanguage}
-      >
-        {children}
-      </RepoShell>
-    </RootProvider>
+    <RepoShell 
+      owner={decodedOwner} 
+      repo={decodedRepo} 
+      initialNodes={tree.nodes}
+      initialBranches={branches ?? undefined}
+      initialBranch={tree.currentBranch}
+      initialLanguage={tree.currentLanguage}
+      uiLocale={uiLocale}
+    >
+      {children}
+    </RepoShell>
   );
 }

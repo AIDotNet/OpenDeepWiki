@@ -97,15 +97,15 @@ export async function login(request: LoginRequest): Promise<LoginResponse> {
 
   if (!response.ok) {
     if (response.status === 401) {
-      throw new Error("邮箱或密码错误");
+      throw new Error("Invalid email or password");
     }
     const error = await response.json().catch(() => ({}));
-    throw new Error(error.message || "登录失败");
+    throw new Error(error.message || "Login failed");
   }
 
   const result = (await response.json()) as ApiResponse<LoginResponse>;
   if (!result.success || !result.data) {
-    throw new Error(result.message || "登录失败");
+    throw new Error(result.message || "Login failed");
   }
 
   setToken(result.data.accessToken);
@@ -122,12 +122,12 @@ export async function register(request: RegisterRequest): Promise<LoginResponse>
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new Error(error.message || "注册失败");
+    throw new Error(error.message || "Registration failed");
   }
 
   const result = (await response.json()) as ApiResponse<LoginResponse>;
   if (!result.success || !result.data) {
-    throw new Error(result.message || "注册失败");
+    throw new Error(result.message || "Registration failed");
   }
 
   setToken(result.data.accessToken);

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const supportedLocales = ['zh', 'en', 'ko', 'ja'];
+const defaultLocale = 'zh';
 
 export function middleware(request: NextRequest) {
   // 优先从 URL 查询参数获取语言设置（用于仓库文档页面）
@@ -9,8 +10,8 @@ export function middleware(request: NextRequest) {
   // 从 cookie 中获取语言设置
   const cookieLocale = request.cookies.get('NEXT_LOCALE')?.value;
   
-  // 优先级：URL lang 参数 > cookie > 默认 zh
-  let locale = 'zh';
+  // Priority: URL `lang` > cookie > default `zh`
+  let locale = defaultLocale;
   if (urlLang && supportedLocales.includes(urlLang)) {
     locale = urlLang;
   } else if (cookieLocale && supportedLocales.includes(cookieLocale)) {
@@ -21,11 +22,20 @@ export function middleware(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-next-intl-locale', locale);
 
-  return NextResponse.next({
+  const response = NextResponse.next({
     request: {
       headers: requestHeaders,
     },
   });
+
+  if (urlLang && supportedLocales.includes(urlLang)) {
+    response.cookies.set('NEXT_LOCALE', locale, {
+      path: '/',
+      sameSite: 'lax',
+    });
+  }
+
+  return response;
 }
 
 export const config = {

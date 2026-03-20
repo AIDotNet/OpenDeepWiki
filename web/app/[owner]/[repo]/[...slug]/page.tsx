@@ -3,9 +3,8 @@ import { extractHeadings } from "@/lib/markdown";
 import { MarkdownRenderer } from "@/components/repo/markdown-renderer";
 import { DocNotFound } from "@/components/repo/doc-not-found";
 import { SourceFiles } from "@/components/repo/source-files";
-import { DocsPage, DocsBody } from "fumadocs-ui/page";
-import type { TOCItemType } from "fumadocs-core/toc";
 import { decodeRouteSegment } from "@/lib/repo-route";
+import { cookies } from "next/headers";
 
 interface RepoDocPageProps {
   params: Promise<{
@@ -46,32 +45,47 @@ export default async function RepoDocPage({ params, searchParams }: RepoDocPageP
   // 文档不存在，但保留侧边栏（由layout提供）
   if (!data) {
     return (
-      <DocsPage toc={[]}>
-        <DocsBody>
-          <DocNotFound slug={slug} />
-        </DocsBody>
-      </DocsPage>
+      <div className="mx-auto max-w-4xl">
+        <DocNotFound slug={slug} />
+      </div>
     );
   }
 
   const { doc, headings } = data;
-
-  // 转换 headings 为 fumadocs TOC 格式
-  const toc: TOCItemType[] = headings.map((h) => ({
-    title: h.text,
-    url: `#${h.id}`,
-    depth: h.level,
-  }));
+  const cookieStore = await cookies();
+  const locale = cookieStore.get("NEXT_LOCALE")?.value === "en" ? "en" : "zh";
+  const repoCopy = locale === "en"
+    ? { tableOfContents: "Table of Contents" }
+    : { tableOfContents: "目录" };
 
   return (
-    <DocsPage toc={toc}>
-      <DocsBody>
-        <MarkdownRenderer content={doc.content} />
+    <div className="mx-auto flex max-w-6xl flex-col gap-8 xl:flex-row">
+      <article className="min-w-0 flex-1">
+        <MarkdownRenderer content={doc.content} language={locale} />
         <SourceFiles 
           files={doc.sourceFiles || []} 
           branch={branch}
         />
-      </DocsBody>
-    </DocsPage>
+      </article>
+      {headings.length > 0 && (
+        <aside className="xl:w-64 xl:shrink-0">
+          <div className="rounded-xl border border-border/70 bg-muted/20 p-4 xl:sticky xl:top-6">
+            <div className="mb-3 text-sm font-semibold">{repoCopy.tableOfContents}</div>
+            <nav className="space-y-2">
+              {headings.map((heading) => (
+                <a
+                  key={heading.id}
+                  href={`#${heading.id}`}
+                  className="block text-sm text-muted-foreground hover:text-foreground"
+                  style={{ paddingLeft: `${(heading.level - 1) * 12}px` }}
+                >
+                  {heading.text}
+                </a>
+              ))}
+            </nav>
+          </div>
+        </aside>
+      )}
+    </div>
   );
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useMemo, useState, useEffect, useId, useCallback } from "react";
-import { useTranslations } from "next-intl";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
@@ -9,17 +8,41 @@ import { oneDark, oneLight } from "react-syntax-highlighter/dist/esm/styles/pris
 import { useTheme } from "next-themes";
 import { slugifyHeading } from "@/lib/markdown";
 import { Check, Copy, X, Maximize2, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
-import mermaid from "mermaid";
 
 interface MarkdownRendererProps {
   content: string;
+  language?: string;
 }
 
 interface CodeBlockProps {
   code: string;
   language: string;
   isDark: boolean;
+  locale: "zh" | "en";
 }
+
+const repoMarkdownText = {
+  zh: {
+    zoomOut: "缩小",
+    zoomIn: "放大",
+    resetView: "重置视图",
+    close: "关闭 (ESC)",
+    hint: "滚轮缩放 · 拖动平移 · ESC 关闭",
+    loading: "加载图表中...",
+    enlarge: "点击放大查看",
+    copyCode: "复制代码",
+  },
+  en: {
+    zoomOut: "Zoom out",
+    zoomIn: "Zoom in",
+    resetView: "Reset view",
+    close: "Close (ESC)",
+    hint: "Scroll to zoom · Drag to pan · ESC to close",
+    loading: "Loading diagram...",
+    enlarge: "Click to enlarge",
+    copyCode: "Copy code",
+  },
+} as const;
 
 // 清理 mermaid 在 body 中创建的错误元素
 function cleanupMermaidErrors(diagramId: string) {
@@ -49,18 +72,19 @@ function MermaidFullscreenModal({
   svg, 
   isOpen, 
   onClose,
-  t,
+  locale,
 }: { 
   svg: string; 
   isOpen: boolean; 
   onClose: () => void;
-  t?: (key: string) => string;
+  locale: "zh" | "en";
 }) {
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const containerRef = React.useRef<HTMLDivElement>(null);
+  const copy = repoMarkdownText[locale];
 
   // 重置状态
   const resetView = useCallback(() => {
@@ -142,7 +166,7 @@ function MermaidFullscreenModal({
         <button
           onClick={handleZoomOut}
           className="rounded-md p-1.5 transition-colors hover:bg-muted"
-          title={t?.("mermaid.zoomOut") || "Zoom out"}
+          title={copy.zoomOut}
         >
           <ZoomOut className="h-5 w-5" />
         </button>
@@ -152,7 +176,7 @@ function MermaidFullscreenModal({
         <button
           onClick={handleZoomIn}
           className="rounded-md p-1.5 transition-colors hover:bg-muted"
-          title={t?.("mermaid.zoomIn") || "Zoom in"}
+          title={copy.zoomIn}
         >
           <ZoomIn className="h-5 w-5" />
         </button>
@@ -160,7 +184,7 @@ function MermaidFullscreenModal({
         <button
           onClick={resetView}
           className="rounded-md p-1.5 transition-colors hover:bg-muted"
-          title={t?.("mermaid.resetView") || "Reset view"}
+          title={copy.resetView}
         >
           <RotateCcw className="h-5 w-5" />
         </button>
@@ -170,7 +194,7 @@ function MermaidFullscreenModal({
       <button
         onClick={onClose}
         className="absolute right-4 top-4 z-50 rounded-full bg-background/90 p-2 text-foreground shadow-lg transition-colors hover:bg-muted"
-        title={t?.("mermaid.close") || "Close (ESC)"}
+        title={copy.close}
       >
         <X className="h-6 w-6" />
       </button>
@@ -203,18 +227,19 @@ function MermaidFullscreenModal({
 
       {/* 操作提示 */}
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-background/70 px-4 py-2 text-xs text-muted-foreground">
-        滚轮缩放 · 拖动平移 · ESC 关闭
+        {copy.hint}
       </div>
     </div>
   );
 }
 
 // Mermaid 图表组件
-function MermaidDiagram({ code, isDark, t }: { code: string; isDark: boolean; t?: (key: string) => string }) {
+function MermaidDiagram({ code, isDark, locale }: { code: string; isDark: boolean; locale: "zh" | "en" }) {
   const id = useId().replace(/:/g, "");
   const [svg, setSvg] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const copy = repoMarkdownText[locale];
 
   const handleOpenFullscreen = useCallback(() => {
     setIsFullscreen(true);
@@ -225,16 +250,17 @@ function MermaidDiagram({ code, isDark, t }: { code: string; isDark: boolean; t?
   }, []);
 
   useEffect(() => {
-    mermaid.initialize({
-      startOnLoad: false,
-      theme: isDark ? "dark" : "default",
-      securityLevel: "loose",
-      suppressErrorRendering: true,
-    });
-
     const renderDiagram = async () => {
       const diagramId = `mermaid-${id}`;
       try {
+        const mermaid = (await import("mermaid")).default;
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: isDark ? "dark" : "default",
+          securityLevel: "loose",
+          suppressErrorRendering: true,
+        });
+
         const { svg } = await mermaid.render(diagramId, code);
         setSvg(svg);
         setError("");
@@ -252,13 +278,13 @@ function MermaidDiagram({ code, isDark, t }: { code: string; isDark: boolean; t?
 
   if (error) {
     // 渲染失败时显示为普通代码块
-    return <CodeBlock code={code} language="mermaid" isDark={isDark} />;
+    return <CodeBlock code={code} language="mermaid" isDark={isDark} locale={locale} />;
   }
 
   if (!svg) {
     return (
       <div className="my-4 flex items-center justify-center rounded-lg border border-border bg-muted/50 p-8 not-prose">
-        <div className="text-sm text-muted-foreground">加载图表中...</div>
+        <div className="text-sm text-muted-foreground">{copy.loading}</div>
       </div>
     );
   }
@@ -268,7 +294,7 @@ function MermaidDiagram({ code, isDark, t }: { code: string; isDark: boolean; t?
       <div 
         className="group relative my-4 flex cursor-pointer justify-center overflow-auto rounded-lg border border-border bg-background p-4 not-prose transition-shadow hover:shadow-md"
         onClick={handleOpenFullscreen}
-        title="点击放大查看"
+        title={copy.enlarge}
       >
         <div 
           className="pointer-events-none"
@@ -278,18 +304,19 @@ function MermaidDiagram({ code, isDark, t }: { code: string; isDark: boolean; t?
           <Maximize2 className="h-4 w-4 text-muted-foreground" />
         </div>
       </div>
-      <MermaidFullscreenModal 
-        svg={svg} 
-        isOpen={isFullscreen} 
-        onClose={handleCloseFullscreen}
-        t={t}
-      />
+        <MermaidFullscreenModal 
+          svg={svg} 
+          isOpen={isFullscreen} 
+          onClose={handleCloseFullscreen}
+          locale={locale}
+        />
     </>
   );
 }
 
-function CodeBlock({ code, language, isDark }: CodeBlockProps) {
+function CodeBlock({ code, language, isDark, locale }: CodeBlockProps) {
   const [copied, setCopied] = useState(false);
+  const copy = repoMarkdownText[locale];
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(code);
@@ -302,7 +329,7 @@ function CodeBlock({ code, language, isDark }: CodeBlockProps) {
       <button
         onClick={handleCopy}
         className="absolute right-2 top-2 z-10 rounded-md bg-background/80 p-2 opacity-0 transition-opacity hover:bg-muted group-hover:opacity-100"
-        title="复制代码"
+        title={copy.copyCode}
       >
         {copied ? (
           <Check className="h-4 w-4 text-green-500" />
@@ -400,8 +427,8 @@ function createHeadingIdMap(texts: string[]): Map<string, string[]> {
   return idMap;
 }
 
-export function MarkdownRenderer({ content }: MarkdownRendererProps) {
-  const t = useTranslations("common");
+export function MarkdownRenderer({ content, language }: MarkdownRendererProps) {
+  const locale = language === "en" ? "en" : "zh";
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   
@@ -500,14 +527,14 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
             
             // 处理 mermaid 图表
             if (language === "mermaid") {
-              return <MermaidDiagram code={codeString} isDark={isDark} t={t} />;
+              return <MermaidDiagram code={codeString} isDark={isDark} locale={locale} />;
             }
             
             // Check if this is a code block (has language) or inline code
             const isCodeBlock = match || codeString.includes("\n");
             
             if (isCodeBlock) {
-              return <CodeBlock code={codeString} language={language} isDark={isDark} />;
+              return <CodeBlock code={codeString} language={language} isDark={isDark} locale={locale} />;
             }
             
             return (

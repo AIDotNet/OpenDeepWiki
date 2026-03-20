@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "@/hooks/use-translations";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getAvailableLanguages, type LanguageInfo } from "@/lib/recommendation-api";
@@ -36,6 +37,7 @@ const languageColors: Record<string, string> = {
 const defaultColor = "bg-muted hover:bg-muted/80 text-muted-foreground border-border";
 
 export function LanguageTags({ selectedLanguage, onLanguageChange, className }: LanguageTagsProps) {
+  const t = useTranslations();
   const [languages, setLanguages] = useState<LanguageInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -80,7 +82,7 @@ export function LanguageTags({ selectedLanguage, onLanguageChange, className }: 
         )}
         onClick={() => onLanguageChange(null)}
       >
-        全部
+        {t("ui.allLanguages")}
       </Badge>
       {languages.map((lang) => (
         <Badge

@@ -25,6 +25,7 @@ const GIT_URL_REGEX = /^(https?:\/\/|git@)[\w.-]+[/:].+?(\.git)?$/i;
 
 const SUPPORTED_LANGUAGES = [
   { code: "en", label: "languages.en" },
+  { code: "pl", label: "languages.pl" },
   { code: "zh", label: "languages.zh" },
   { code: "ja", label: "languages.ja" },
   { code: "ko", label: "languages.ko" },

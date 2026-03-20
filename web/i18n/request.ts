@@ -2,6 +2,7 @@ import { getRequestConfig } from 'next-intl/server';
 
 export const locales = ['zh', 'en', 'ko', 'ja'] as const;
 export type Locale = (typeof locales)[number];
+const defaultLocale: Locale = 'zh';
 
 export const localeNames: Record<Locale, string> = {
   zh: '简体中文',
@@ -48,11 +49,11 @@ async function loadMessages(locale: Locale) {
 }
 
 export default getRequestConfig(async ({ requestLocale }) => {
-  // 从 requestLocale 获取 locale，如果没有则使用默认值
+  // Take locale from request, fall back to default locale
   let locale = await requestLocale;
   
   if (!locale || !locales.includes(locale as Locale)) {
-    locale = 'zh';
+    locale = defaultLocale;
   }
 
   return {

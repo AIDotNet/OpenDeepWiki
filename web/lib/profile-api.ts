@@ -36,7 +36,7 @@ export interface UserSettings {
 
 export async function updateProfile(request: UpdateProfileRequest): Promise<UserInfo> {
   const token = getToken();
-  if (!token) throw new Error("未登录");
+  if (!token) throw new Error("Not signed in");
 
   const url = buildApiUrl("/api/user/profile");
   const response = await fetch(url, {
@@ -50,12 +50,12 @@ export async function updateProfile(request: UpdateProfileRequest): Promise<User
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new Error(error.message || "更新失败");
+    throw new Error(error.message || "Update failed");
   }
 
   const result = (await response.json()) as ApiResponse<UserInfo>;
   if (!result.success || !result.data) {
-    throw new Error(result.message || "更新失败");
+    throw new Error(result.message || "Update failed");
   }
 
   return result.data;
@@ -63,7 +63,7 @@ export async function updateProfile(request: UpdateProfileRequest): Promise<User
 
 export async function changePassword(request: ChangePasswordRequest): Promise<void> {
   const token = getToken();
-  if (!token) throw new Error("未登录");
+  if (!token) throw new Error("Not signed in");
 
   const url = buildApiUrl("/api/user/password");
   const response = await fetch(url, {
@@ -77,18 +77,18 @@ export async function changePassword(request: ChangePasswordRequest): Promise<vo
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new Error(error.message || "修改密码失败");
+    throw new Error(error.message || "Password change failed");
   }
 
   const result = (await response.json()) as ApiResponse<void>;
   if (!result.success) {
-    throw new Error(result.message || "修改密码失败");
+    throw new Error(result.message || "Password change failed");
   }
 }
 
 export async function getUserSettings(): Promise<UserSettings> {
   const token = getToken();
-  if (!token) throw new Error("未登录");
+  if (!token) throw new Error("Not signed in");
 
   const url = buildApiUrl("/api/user/settings");
   const response = await fetch(url, {
@@ -99,7 +99,7 @@ export async function getUserSettings(): Promise<UserSettings> {
     // 返回默认设置
     return {
       theme: "system",
-      language: "zh",
+      language: "en",
       emailNotifications: true,
       pushNotifications: false,
     };
@@ -108,7 +108,7 @@ export async function getUserSettings(): Promise<UserSettings> {
   const result = (await response.json()) as ApiResponse<UserSettings>;
   return result.data || {
     theme: "system",
-    language: "zh",
+      language: "en",
     emailNotifications: true,
     pushNotifications: false,
   };
@@ -116,7 +116,7 @@ export async function getUserSettings(): Promise<UserSettings> {
 
 export async function updateUserSettings(settings: UserSettings): Promise<UserSettings> {
   const token = getToken();
-  if (!token) throw new Error("未登录");
+  if (!token) throw new Error("Not signed in");
 
   const url = buildApiUrl("/api/user/settings");
   const response = await fetch(url, {
@@ -130,12 +130,12 @@ export async function updateUserSettings(settings: UserSettings): Promise<UserSe
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new Error(error.message || "保存设置失败");
+    throw new Error(error.message || "Failed to save settings");
   }
 
   const result = (await response.json()) as ApiResponse<UserSettings>;
   if (!result.success || !result.data) {
-    throw new Error(result.message || "保存设置失败");
+    throw new Error(result.message || "Failed to save settings");
   }
 
   return result.data;

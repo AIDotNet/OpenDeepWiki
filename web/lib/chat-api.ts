@@ -206,30 +206,30 @@ export const ChatErrorCodes = {
  */
 export function getErrorMessage(code: string): string {
   const messages: Record<string, string> = {
-    [ChatErrorCodes.FEATURE_DISABLED]: '对话助手功能未启用',
-    [ChatErrorCodes.CONFIG_MISSING]: '功能配置缺失',
-    [ChatErrorCodes.MODEL_UNAVAILABLE]: '模型不可用，请选择其他模型',
-    [ChatErrorCodes.MODEL_CONFIG_INVALID]: '模型配置无效',
-    [ChatErrorCodes.NO_AVAILABLE_MODELS]: '暂无可用模型，请联系管理员配置',
-    [ChatErrorCodes.INVALID_APP_ID]: '无效的应用ID',
-    [ChatErrorCodes.APP_MODEL_NOT_CONFIGURED]: '应用未配置AI模型',
-    [ChatErrorCodes.APP_DISABLED]: '应用已禁用',
-    [ChatErrorCodes.DOMAIN_NOT_ALLOWED]: '当前域名不在允许列表中',
-    [ChatErrorCodes.DOMAIN_UNKNOWN]: '无法获取请求来源域名',
-    [ChatErrorCodes.RATE_LIMIT_EXCEEDED]: '请求频率超限，请稍后重试',
-    [ChatErrorCodes.DOCUMENT_NOT_FOUND]: '文档不存在',
-    [ChatErrorCodes.DOCUMENT_ACCESS_DENIED]: '文档访问被拒绝',
-    [ChatErrorCodes.REPOSITORY_NOT_FOUND]: '仓库不存在',
-    [ChatErrorCodes.MCP_CALL_FAILED]: 'MCP工具调用失败',
-    [ChatErrorCodes.TOOL_EXECUTION_FAILED]: '工具执行失败',
-    [ChatErrorCodes.TOOL_NOT_FOUND]: '工具不存在',
-    [ChatErrorCodes.CONNECTION_FAILED]: '连接失败，请检查网络',
-    [ChatErrorCodes.REQUEST_TIMEOUT]: '请求超时，请重试',
-    [ChatErrorCodes.STREAM_INTERRUPTED]: '数据流中断，请重试',
-    [ChatErrorCodes.INTERNAL_ERROR]: '服务器内部错误',
-    [ChatErrorCodes.UNKNOWN_ERROR]: '未知错误',
+    [ChatErrorCodes.FEATURE_DISABLED]: 'Chat assistant is disabled',
+    [ChatErrorCodes.CONFIG_MISSING]: 'Feature configuration is missing',
+    [ChatErrorCodes.MODEL_UNAVAILABLE]: 'Model is unavailable. Choose another model.',
+    [ChatErrorCodes.MODEL_CONFIG_INVALID]: 'Model configuration is invalid',
+    [ChatErrorCodes.NO_AVAILABLE_MODELS]: 'No models are available. Ask an admin to configure one.',
+    [ChatErrorCodes.INVALID_APP_ID]: 'Invalid app ID',
+    [ChatErrorCodes.APP_MODEL_NOT_CONFIGURED]: 'No AI model is configured for this app',
+    [ChatErrorCodes.APP_DISABLED]: 'This app is disabled',
+    [ChatErrorCodes.DOMAIN_NOT_ALLOWED]: 'This domain is not allowed',
+    [ChatErrorCodes.DOMAIN_UNKNOWN]: 'Unable to determine request domain',
+    [ChatErrorCodes.RATE_LIMIT_EXCEEDED]: 'Rate limit exceeded. Please try again later.',
+    [ChatErrorCodes.DOCUMENT_NOT_FOUND]: 'Document not found',
+    [ChatErrorCodes.DOCUMENT_ACCESS_DENIED]: 'Access to this document was denied',
+    [ChatErrorCodes.REPOSITORY_NOT_FOUND]: 'Repository not found',
+    [ChatErrorCodes.MCP_CALL_FAILED]: 'MCP tool call failed',
+    [ChatErrorCodes.TOOL_EXECUTION_FAILED]: 'Tool execution failed',
+    [ChatErrorCodes.TOOL_NOT_FOUND]: 'Tool not found',
+    [ChatErrorCodes.CONNECTION_FAILED]: 'Connection failed. Please check your network.',
+    [ChatErrorCodes.REQUEST_TIMEOUT]: 'Request timed out. Please retry.',
+    [ChatErrorCodes.STREAM_INTERRUPTED]: 'The response stream was interrupted. Please retry.',
+    [ChatErrorCodes.INTERNAL_ERROR]: 'Internal server error',
+    [ChatErrorCodes.UNKNOWN_ERROR]: 'Unknown error',
   }
-  return messages[code] || '发生错误'
+  return messages[code] || 'An error occurred'
 }
 
 /**

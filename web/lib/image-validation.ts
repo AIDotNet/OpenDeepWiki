@@ -27,7 +27,7 @@ export function validateImageFile(
       valid: false,
       error: t
         ? t("chat.image.unsupportedFormat")
-        : `不支持的图片格式: ${file.type}。仅支持 PNG、JPG、GIF、WebP`,
+        : `Unsupported image format: ${file.type}. Supported formats: PNG, JPG, GIF, WebP`,
     }
   }
 
@@ -38,7 +38,7 @@ export function validateImageFile(
       valid: false,
       error: t
         ? t("chat.image.sizeTooLarge")
-        : `图片大小 (${sizeMB}MB) 超过限制 (10MB)`,
+        : `Image size (${sizeMB}MB) exceeds the 10MB limit`,
     }
   }
 
@@ -52,7 +52,7 @@ export function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => resolve(reader.result as string)
-    reader.onerror = () => reject(new Error("读取文件失败"))
+    reader.onerror = () => reject(new Error("Failed to read file"))
     reader.readAsDataURL(file)
   })
 }
@@ -79,7 +79,7 @@ export function validateBase64Image(
   if (!mimeType) {
     return {
       valid: false,
-      error: t ? t("chat.image.invalidFormat") : "无效的Base64图片格式",
+      error: t ? t("chat.image.invalidFormat") : "Invalid Base64 image format",
     }
   }
 
@@ -88,7 +88,7 @@ export function validateBase64Image(
       valid: false,
       error: t
         ? t("chat.image.unsupportedFormat")
-        : `不支持的图片格式: ${mimeType}。仅支持 PNG、JPG、GIF、WebP`,
+        : `Unsupported image format: ${mimeType}. Supported formats: PNG, JPG, GIF, WebP`,
     }
   }
 

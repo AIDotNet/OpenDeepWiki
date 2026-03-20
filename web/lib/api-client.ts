@@ -70,11 +70,11 @@ export async function apiClient<T>(
   // 处理 401 未授权
   if (response.status === 401) {
     removeToken();
-    throw new ApiError("请先登录", 401);
+    throw new ApiError("Please sign in first", 401);
   }
 
   if (!response.ok) {
-    let errorMessage = "请求失败";
+    let errorMessage = "Request failed";
     try {
       const errorData = await response.json();
       errorMessage = errorData.message || errorData.error || errorMessage;

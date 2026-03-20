@@ -79,6 +79,7 @@ export function ChatPanel({
 }: ChatPanelProps) {
   const locale = useLocale()
   const t = useTranslations("chat")
+  const common = useTranslations("common")
   const { messages, addMessage, updateMessage, clearHistory } = useChatHistory()
   const [input, setInput] = React.useState("")
   const [images, setImages] = React.useState<string[]>([])
@@ -168,13 +169,13 @@ export function ChatPanel({
 
   const handleCreateShare = React.useCallback(async () => {
     if (messages.length === 0) {
-      setShareError("暂无可分享的对话")
+      setShareError(t("panel.shareNoMessages"))
       return
     }
 
     const shareModelId = selectedModelId || models.find(m => m.isEnabled)?.id || models[0]?.id
     if (!shareModelId) {
-      setShareError("请先选择模型")
+      setShareError(t("panel.shareSelectModel"))
       return
     }
 
@@ -195,7 +196,7 @@ export function ChatPanel({
       const result = await createChatShare(payload)
       setShareResult(result)
     } catch (err) {
-      setShareError(err instanceof Error ? err.message : "分享失败，请稍后重试")
+      setShareError(err instanceof Error ? err.message : t("panel.shareFailed"))
     } finally {
       setShareLoading(false)
     }
@@ -686,7 +687,7 @@ export function ChatPanel({
               variant="ghost"
               size="icon"
               onClick={handleOpenShareDialog}
-              title="分享当前对话"
+              title={t("panel.shareConversation")}
               disabled={messages.length === 0}
             >
               <Share2 className="h-4 w-4" />
@@ -768,14 +769,14 @@ export function ChatPanel({
                     disabled={isLoading}
                   >
                     <RefreshCw className="h-3 w-3" />
-                    重试
+                    {t("panel.retry")}
                   </button>
                 )}
                 <button
                   className="underline hover:no-underline"
                   onClick={() => setError(null)}
                 >
-                  关闭
+                  {t("panel.closeError")}
                 </button>
               </div>
             </div>
@@ -904,30 +905,30 @@ export function ChatPanel({
       <Dialog open={isShareDialogOpen} onOpenChange={handleShareDialogChange}>
         <DialogContent className="sm:max-w-[520px]">
           <DialogHeader>
-            <DialogTitle>分享当前对话</DialogTitle>
+            <DialogTitle>{t("panel.shareDialogTitle")}</DialogTitle>
             <DialogDescription>
-              生成一个只读链接，公开展示当前对话的即时快照。
+              {t("panel.shareDialogDescription")}
             </DialogDescription>
           </DialogHeader>
 
           {shareResult ? (
             <div className="space-y-4">
               <div className="rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm">
-                <div className="text-muted-foreground">分享链接</div>
+                <div className="text-muted-foreground">{t("panel.shareLink")}</div>
                 <p className="mt-1 break-all text-foreground">{shareLink}</p>
                 <p className="mt-2 text-xs text-muted-foreground">
-                  分享ID：{shareResult.shareId} · 模型：{shareResult.modelId}
+                  {t("panel.shareId")}: {shareResult.shareId} · Model: {shareResult.modelId}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button onClick={handleCopyShareLink} className="gap-2">
                   {shareCopied ? (
                     <>
-                      <Check className="h-4 w-4" /> 已复制
+                      <Check className="h-4 w-4" /> {t("panel.copied")}
                     </>
                   ) : (
                     <>
-                      <Copy className="h-4 w-4" /> 复制链接
+                      <Copy className="h-4 w-4" /> {t("panel.copyLink")}
                     </>
                   )}
                 </Button>
@@ -936,10 +937,10 @@ export function ChatPanel({
                   onClick={() => window.open(shareLink, "_blank", "noopener,noreferrer")}
                   disabled={!shareLink}
                 >
-                  打开分享页
+                  {t("panel.openSharePage")}
                 </Button>
                 <Button variant="ghost" onClick={() => handleShareDialogChange(false)}>
-                  关闭
+                  {t("panel.close")}
                 </Button>
               </div>
             </div>
@@ -947,24 +948,24 @@ export function ChatPanel({
             <>
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">分享标题</label>
+                  <label className="text-sm font-medium">{t("panel.shareTitle")}</label>
                   <Input
                     value={shareTitle}
-                    placeholder="给分享起个标题"
+                    placeholder={t("panel.shareTitlePlaceholder")}
                     onChange={(e) => setShareTitle(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">补充说明（可选）</label>
+                  <label className="text-sm font-medium">{t("panel.shareDescription")}</label>
                   <Textarea
                     value={shareDescription}
                     rows={3}
-                    placeholder="为查看者说明分享背景"
+                    placeholder={t("panel.shareDescriptionPlaceholder")}
                     onChange={(e) => setShareDescription(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">有效期（分钟）</label>
+                  <label className="text-sm font-medium">{t("panel.shareExpiration")}</label>
                   <Input
                     type="number"
                     min={10}
@@ -977,7 +978,7 @@ export function ChatPanel({
                       }
                     }}
                   />
-                  <p className="text-xs text-muted-foreground">默认 7 天，最长 30 天。</p>
+                  <p className="text-xs text-muted-foreground">{t("panel.shareExpirationHint")}</p>
                 </div>
                 {shareError && (
                   <p className="text-sm text-destructive">{shareError}</p>
@@ -985,13 +986,13 @@ export function ChatPanel({
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => handleShareDialogChange(false)}>
-                  取消
+                  {common("cancel")}
                 </Button>
                 <Button onClick={handleCreateShare} disabled={shareLoading}>
                   {shareLoading ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : null}
-                  {shareLoading ? "生成中..." : "生成分享链接"}
+                  {shareLoading ? t("panel.generating") : t("panel.generateShareLink")}
                 </Button>
               </DialogFooter>
             </>

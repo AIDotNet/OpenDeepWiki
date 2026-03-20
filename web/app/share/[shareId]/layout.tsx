@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import "@/app/globals.css"
 
 export const metadata: Metadata = {
-  title: "AI 对话分享",
+  title: "AI Chat Share",
 }
 
 export default function ShareLayout({ children }: { children: React.ReactNode }) {

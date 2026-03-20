@@ -16,7 +16,26 @@
     "uploadImage": "Upload Image",
     "send": "Send",
     "retry": "Retry",
-    "closeError": "Close"
+    "closeError": "Close",
+    "shareConversation": "Share current conversation",
+    "shareNoMessages": "No conversation available to share",
+    "shareSelectModel": "Select a model first",
+    "shareFailed": "Failed to share the conversation. Please try again.",
+    "shareDialogTitle": "Share current conversation",
+    "shareDialogDescription": "Generate a read-only link to share a snapshot of this conversation.",
+    "shareLink": "Share link",
+    "shareId": "Share ID",
+    "copied": "Copied",
+    "copyLink": "Copy Link",
+    "openSharePage": "Open Share Page",
+    "shareTitle": "Share title",
+    "shareTitlePlaceholder": "Give this share a title",
+    "shareDescription": "Description (optional)",
+    "shareDescriptionPlaceholder": "Add context for viewers",
+    "shareExpiration": "Expiration (minutes)",
+    "shareExpirationHint": "Default is 7 days, maximum is 30 days.",
+    "generateShareLink": "Generate Share Link",
+    "generating": "Generating..."
   },
   "message": {
     "thinking": "Thinking Process",
@@ -67,5 +86,10 @@
     "icon": "📎",
     "label": "Quoted from:",
     "remove": "Remove quote"
+  },
+  "share": {
+    "title": "Chat Share",
+    "messageCount": "{count} chat messages",
+    "empty": "This shared conversation has no messages yet."
   }
 }

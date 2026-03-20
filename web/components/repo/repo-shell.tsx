@@ -3,15 +3,27 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams, usePathname } from "next/navigation";
 import Link from "next/link";
-import { DocsLayout } from "fumadocs-ui/layouts/docs";
-import type * as PageTree from "fumadocs-core/page-tree";
 import type { RepoTreeNode, RepoBranchesResponse } from "@/types/repository";
 import { BranchLanguageSelector } from "./branch-language-selector";
 import { fetchRepoTree, fetchRepoBranches } from "@/lib/repository-api";
 import { Network, Download } from "lucide-react";
 import { ChatAssistant, buildCatalogMenu } from "@/components/chat";
-import { useTranslations } from "@/hooks/use-translations";
 import { buildRepoBasePath, buildRepoDocPath, buildRepoMindMapPath } from "@/lib/repo-route";
+
+const repoUiText = {
+  zh: {
+    wikiTitle: "仓库 Wiki",
+    mindMap: "项目架构",
+    exportDocs: "导出文档",
+    exporting: "导出中...",
+  },
+  en: {
+    wikiTitle: "Repository Wiki",
+    mindMap: "Project Architecture",
+    exportDocs: "Export Docs",
+    exporting: "Exporting...",
+  },
+} as const;
 
 interface RepoShellProps {
   owner: string;
@@ -21,52 +33,60 @@ interface RepoShellProps {
   initialBranches?: RepoBranchesResponse;
   initialBranch?: string;
   initialLanguage?: string;
+  uiLocale?: "zh" | "en";
 }
 
-/**
- * 将 RepoTreeNode 转换为 fumadocs PageTree.Node
- */
-function convertToPageTreeNode(
-  node: RepoTreeNode,
-  owner: string,
-  repo: string,
-  queryString: string
-): PageTree.Node {
-  const baseUrl = buildRepoDocPath(owner, repo, node.slug);
-  // 链接需要带上查询参数以保持 branch 和 lang 状态
-  const url = queryString ? `${baseUrl}?${queryString}` : baseUrl;
+function SidebarTree({
+  nodes,
+  owner,
+  repo,
+  queryString,
+  currentPath,
+  depth = 0,
+}: {
+  nodes: RepoTreeNode[];
+  owner: string;
+  repo: string;
+  queryString: string;
+  currentPath: string;
+  depth?: number;
+}) {
+  return (
+    <ul className={depth === 0 ? "space-y-1" : "mt-1 space-y-1 border-l border-border/60 pl-3"}>
+      {nodes.map((node) => {
+        const href = queryString
+          ? `${buildRepoDocPath(owner, repo, node.slug)}?${queryString}`
+          : buildRepoDocPath(owner, repo, node.slug);
+        const isActive = currentPath === node.slug;
 
-  if (node.children && node.children.length > 0) {
-    return {
-      type: "folder",
-      name: node.title,
-      url,
-      children: node.children.map((child) =>
-        convertToPageTreeNode(child, owner, repo, queryString)
-      ),
-    } as PageTree.Folder;
-  }
-
-  return {
-    type: "page",
-    name: node.title,
-    url,
-  } as PageTree.Item;
-}
-
-/**
- * 将 RepoTreeNode[] 转换为 fumadocs PageTree.Root
- */
-function convertToPageTree(
-  nodes: RepoTreeNode[],
-  owner: string,
-  repo: string,
-  queryString: string
-): PageTree.Root {
-  return {
-    name: `${owner}/${repo}`,
-    children: nodes.map((node) => convertToPageTreeNode(node, owner, repo, queryString)),
-  };
+        return (
+          <li key={node.slug}>
+            <Link
+              href={href}
+              className={[
+                "block rounded-md px-3 py-2 text-sm transition-colors",
+                isActive
+                  ? "bg-primary text-primary-foreground"
+                  : "text-foreground/80 hover:bg-muted hover:text-foreground",
+              ].join(" ")}
+            >
+              {node.title}
+            </Link>
+            {node.children && node.children.length > 0 && (
+              <SidebarTree
+                nodes={node.children}
+                owner={owner}
+                repo={repo}
+                queryString={queryString}
+                currentPath={currentPath}
+                depth={depth + 1}
+              />
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
 }
 
 export function RepoShell({ 
@@ -77,12 +97,12 @@ export function RepoShell({
   initialBranches,
   initialBranch,
   initialLanguage,
+  uiLocale = "zh",
 }: RepoShellProps) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const urlBranch = searchParams.get("branch");
   const urlLang = searchParams.get("lang");
-  const t = useTranslations();
   const repoBasePath = buildRepoBasePath(owner, repo);
   
   const [nodes, setNodes] = useState<RepoTreeNode[]>(initialNodes);
@@ -91,6 +111,7 @@ export function RepoShell({
   const [currentLanguage, setCurrentLanguage] = useState(initialLanguage || "");
   const [isLoading, setIsLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const copy = repoUiText[uiLocale];
 
   // 从pathname提取当前文档路径
   const currentDocPath = React.useMemo(() => {
@@ -170,7 +191,7 @@ export function RepoShell({
       
       const response = await fetch(exportUrl);
       if (!response.ok) {
-        throw new Error("导出失败");
+        throw new Error(copy.exportDocs);
       }
       
       // 获取文件名
@@ -194,14 +215,13 @@ export function RepoShell({
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (error) {
-      console.error("导出失败:", error);
+      console.error("Export failed:", error);
       // 可以在这里添加错误提示
     } finally {
       setIsExporting(false);
     }
   };
 
-  const tree = convertToPageTree(nodes, owner, repo, queryString);
   const title = `${owner}/${repo}`;
 
   // 构建侧边栏顶部的选择器和操作按钮
@@ -222,7 +242,7 @@ export function RepoShell({
           className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-700 dark:text-blue-300 hover:bg-blue-500/20 transition-colors"
         >
           <Network className="h-4 w-4" />
-          <span className="font-medium text-sm">{t("mindmap.title")}</span>
+          <span className="font-medium text-sm">{copy.mindMap}</span>
         </Link>
         <button
           onClick={handleExport}
@@ -230,34 +250,54 @@ export function RepoShell({
           className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-500/10 border border-green-500/30 text-green-700 dark:text-green-300 hover:bg-green-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed w-full"
         >
           <Download className="h-4 w-4" />
-          <span className="font-medium text-sm">
-            {isExporting ? "导出中..." : "导出文档"}
-          </span>
+            <span className="font-medium text-sm">
+              {isExporting ? copy.exporting : copy.exportDocs}
+            </span>
         </button>
       </div>
     </div>
   );
 
   return (
-    <DocsLayout
-      tree={tree}
-      nav={{
-        title,
-      }}
-      sidebar={{
-        defaultOpenLevel: 1,
-        collapsible: true,
-        banner: sidebarBanner,
-      }}
-    >
-      {isLoading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+    <div className="min-h-screen bg-background">
+      <div className="border-b border-border/70 bg-background/95 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-4">
+          <div>
+            <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{copy.wikiTitle}</div>
+            <div className="text-lg font-semibold">{title}</div>
+          </div>
         </div>
-      ) : (
-        children
-      )}
-      
+      </div>
+
+      <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-6 lg:flex-row lg:px-6">
+        <aside className="w-full shrink-0 lg:sticky lg:top-6 lg:w-80 lg:self-start">
+          <div className="rounded-xl border border-border/70 bg-card p-4 shadow-sm">
+            {sidebarBanner}
+            <div className="mt-4 border-t border-border/70 pt-4">
+              <SidebarTree
+                nodes={nodes}
+                owner={owner}
+                repo={repo}
+                queryString={queryString}
+                currentPath={currentDocPath}
+              />
+            </div>
+          </div>
+        </aside>
+
+        <main className="min-w-0 flex-1">
+          <div className="rounded-xl border border-border/70 bg-card p-4 shadow-sm sm:p-6">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-20">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            ) : (
+              children
+            )}
+          </div>
+        </main>
+      </div>
+
       {/* 文档对话助手悬浮球 */}
       <ChatAssistant
         context={{
@@ -269,6 +309,6 @@ export function RepoShell({
           catalogMenu: buildCatalogMenu(nodes),
         }}
       />
-    </DocsLayout>
+    </div>
   );
 }

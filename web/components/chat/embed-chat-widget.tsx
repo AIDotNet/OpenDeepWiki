@@ -282,12 +282,12 @@ export function EmbedChatWidget({
             continue
           }
           
-          throw new Error(`请求失败: ${response.status}`)
+          throw new Error(`Request failed: ${response.status}`)
         }
 
         const reader = response.body?.getReader()
         if (!reader) {
-          throw new Error('无法读取响应')
+          throw new Error('Unable to read response')
         }
 
         const decoder = new TextDecoder()
@@ -325,7 +325,7 @@ export function EmbedChatWidget({
                   setLastRequest(null)
                 } else if (event.type === 'error') {
                   const errorData = event.data as ErrorInfo
-                  throw new Error(errorData.message || '对话失败')
+                  throw new Error(errorData.message || 'Chat request failed')
                 }
               } catch (parseError) {
                 // 可能是纯文本内容
@@ -357,7 +357,7 @@ export function EmbedChatWidget({
           }
           
           setError({
-            message: '请求超时，请重试',
+            message: 'Request timed out. Please retry.',
             code: 'REQUEST_TIMEOUT',
             retryable: true,
             retryAfterMs: retryDelayMs,
@@ -376,7 +376,7 @@ export function EmbedChatWidget({
           }
           
           setError({
-            message: '连接失败，请检查网络',
+            message: 'Connection failed. Please check your network.',
             code: 'CONNECTION_FAILED',
             retryable: true,
             retryAfterMs: retryDelayMs,
@@ -386,9 +386,9 @@ export function EmbedChatWidget({
           break
         }
         
-        console.error('[EmbedChatWidget] 发送失败:', err)
+        console.error('[EmbedChatWidget] Send failed:', err)
         setError({
-          message: err instanceof Error ? err.message : '发送失败，请重试',
+          message: err instanceof Error ? err.message : 'Send failed. Please retry.',
           retryable: true,
         })
         // 移除空的助手消息

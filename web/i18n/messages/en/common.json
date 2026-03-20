@@ -99,12 +99,29 @@
     "saturday": "Saturday"
   },
   "repository": {
+    "wikiTitle": "Repository Wiki",
+    "exportDocs": "Export Docs",
+    "exporting": "Exporting...",
+    "tableOfContents": "Table of Contents",
     "notFound": {
       "title": "Repository Not Found",
       "description": "Repository {owner}/{repo} not found",
       "privateOrNotExist": "This repository does not exist on GitHub, or it is a private repository.",
       "existsButNoDoc": "This repository exists on GitHub but has no documentation yet. Click the button below to generate Wiki documentation.",
       "generateWiki": "Generate Wiki"
+    },
+    "docNotFound": {
+      "title": "Document not found",
+      "description": "No document was found for {slug}.",
+      "hint": "Choose another document from the left sidebar."
+    },
+    "globalError": {
+      "title": "Page failed to load",
+      "description": "An unexpected error occurred. Please try again in a moment."
+    },
+    "pageNotFound": {
+      "title": "Page not found",
+      "description": "The page you requested does not exist or has moved."
     }
   },
   "theme": {
@@ -151,6 +168,23 @@
     "zoomOut": "Zoom out",
     "zoomIn": "Zoom in",
     "resetView": "Reset view",
-    "close": "Close (ESC)"
+    "close": "Close (ESC)",
+    "hint": "Scroll to zoom · Drag to pan · ESC to close",
+    "loading": "Loading diagram...",
+    "enlarge": "Click to enlarge",
+    "copyCode": "Copy code"
+  },
+  "languageNames": {
+    "zh": "Chinese (Simplified)",
+    "en": "English",
+    "pl": "Polish",
+    "ko": "Korean",
+    "ja": "Japanese",
+    "es": "Spanish",
+    "fr": "French",
+    "de": "German",
+    "pt": "Portuguese",
+    "ru": "Russian",
+    "ar": "Arabic"
   }
 }

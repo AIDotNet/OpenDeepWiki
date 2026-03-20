@@ -97,12 +97,29 @@
     "saturday": "星期六"
   },
   "repository": {
+    "wikiTitle": "仓库 Wiki",
+    "exportDocs": "导出文档",
+    "exporting": "导出中...",
+    "tableOfContents": "目录",
     "notFound": {
       "title": "仓库不存在",
       "description": "未找到 {owner}/{repo} 仓库",
       "privateOrNotExist": "该仓库在 GitHub 上不存在，或者是私有仓库。",
       "existsButNoDoc": "该仓库在 GitHub 上存在，但尚未生成文档。点击下方按钮开始生成 Wiki 文档。",
       "generateWiki": "生成 Wiki 文档"
+    },
+    "docNotFound": {
+      "title": "文档不存在",
+      "description": "未找到路径为 {slug} 的文档。",
+      "hint": "请从左侧目录选择其他文档查看。"
+    },
+    "globalError": {
+      "title": "页面加载失败",
+      "description": "发生了未预期的错误，请稍后重试。"
+    },
+    "pageNotFound": {
+      "title": "页面不存在",
+      "description": "你访问的页面不存在或已被移动。"
     }
   },
   "theme": {
@@ -149,6 +166,23 @@
     "zoomOut": "缩小",
     "zoomIn": "放大",
     "resetView": "重置视图",
-    "close": "关闭 (ESC)"
+    "close": "关闭 (ESC)",
+    "hint": "滚轮缩放 · 拖动平移 · ESC 关闭",
+    "loading": "加载图表中...",
+    "enlarge": "点击放大查看",
+    "copyCode": "复制代码"
+  },
+  "languageNames": {
+    "zh": "简体中文",
+    "en": "English",
+    "pl": "Polski",
+    "ko": "한국어",
+    "ja": "日本語",
+    "es": "Español",
+    "fr": "Français",
+    "de": "Deutsch",
+    "pt": "Português",
+    "ru": "Русский",
+    "ar": "العربية"
   }
 }

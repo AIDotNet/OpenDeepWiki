@@ -21,19 +21,6 @@ interface BranchLanguageSelectorProps {
   currentLanguage: string;
 }
 
-const languageNames: Record<string, string> = {
-  zh: "简体中文",
-  en: "English",
-  ko: "한국어",
-  ja: "日本語",
-  es: "Español",
-  fr: "Français",
-  de: "Deutsch",
-  pt: "Português",
-  ru: "Русский",
-  ar: "العربية",
-};
-
 export function BranchLanguageSelector({
   owner,
   repo,
@@ -45,6 +32,13 @@ export function BranchLanguageSelector({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const getLanguageName = (lang: string) => {
+    try {
+      return t(`languageNames.${lang}` as never);
+    } catch {
+      return lang;
+    }
+  };
 
   // 获取当前分支支持的语言
   const currentBranchData = branches.branches.find(
@@ -72,6 +66,7 @@ export function BranchLanguageSelector({
     if (currentBranch) {
       params.set("branch", currentBranch);
     }
+    document.cookie = `NEXT_LOCALE=${newLanguage}; path=/; samesite=lax`;
     // 使用 window.location 强制刷新页面，确保 middleware 重新执行以更新 i18n locale
     window.location.href = `${pathname}?${params.toString()}`;
   };
@@ -111,7 +106,7 @@ export function BranchLanguageSelector({
             <SelectContent>
               {availableLanguages.map((lang) => (
                 <SelectItem key={lang} value={lang}>
-                  {languageNames[lang] ?? lang}
+                  {getLanguageName(lang)}
                 </SelectItem>
               ))}
             </SelectContent>

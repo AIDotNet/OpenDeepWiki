@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { fetchRepoTree } from "@/lib/repository-api";
 import { DocNotFound } from "@/components/repo/doc-not-found";
-import { DocsPage, DocsBody } from "fumadocs-ui/page";
 import { buildRepoDocPath, decodeRouteSegment } from "@/lib/repo-route";
 
 interface RepoIndexProps {
@@ -49,11 +48,9 @@ export default async function RepoIndex({ params }: RepoIndexProps) {
   // 没有默认文档但有目录，显示提示
   if (tree.nodes.length > 0) {
     return (
-      <DocsPage toc={[]}>
-        <DocsBody>
-          <DocNotFound slug="" />
-        </DocsBody>
-      </DocsPage>
+      <div className="mx-auto max-w-4xl">
+        <DocNotFound slug="" />
+      </div>
     );
   }
 
