@@ -81,6 +81,16 @@ public class RepositoryWorkspace
     public string BranchName { get; set; } = string.Empty;
 
     /// <summary>
+    /// The repository source type.
+    /// </summary>
+    public RepositorySourceType SourceType { get; set; } = RepositorySourceType.Git;
+
+    /// <summary>
+    /// The original source location for the repository.
+    /// </summary>
+    public string SourceLocation { get; set; } = string.Empty;
+
+    /// <summary>
     /// The current HEAD commit ID after clone/pull.
     /// </summary>
     public string CommitId { get; set; } = string.Empty;
@@ -96,7 +106,17 @@ public class RepositoryWorkspace
     public string GitUrl { get; set; } = string.Empty;
 
     /// <summary>
-    /// Indicates whether this is an incremental update (has previous commit).
+    /// Indicates whether this repository source supports incremental updates.
     /// </summary>
-    public bool IsIncremental => !string.IsNullOrEmpty(PreviousCommitId);
+    public bool SupportsIncrementalUpdates { get; set; } = true;
+
+    /// <summary>
+    /// The local-directory import mode that was actually used.
+    /// </summary>
+    public LocalDirectoryImportMode LocalDirectoryImportModeUsed { get; set; } = LocalDirectoryImportMode.Copy;
+
+    /// <summary>
+    /// Indicates whether this is an incremental update (has previous commit and source supports it).
+    /// </summary>
+    public bool IsIncremental => SupportsIncrementalUpdates && !string.IsNullOrEmpty(PreviousCommitId);
 }

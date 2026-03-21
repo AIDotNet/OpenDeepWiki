@@ -4,6 +4,8 @@ import type {
   RepoBranchesResponse,
   GitBranchesResponse,
   RepositorySubmitRequest, 
+  ArchiveRepositorySubmitRequest,
+  LocalDirectoryRepositorySubmitRequest,
   RepositoryListResponse,
   RepositoryItemResponse,
   UpdateVisibilityRequest,
@@ -113,6 +115,26 @@ export async function submitRepository(
   request: RepositorySubmitRequest
 ): Promise<RepositoryItemResponse> {
   return api.post<RepositoryItemResponse>("/api/v1/repositories/submit", request);
+}
+
+export async function submitArchiveRepository(
+  request: ArchiveRepositorySubmitRequest
+): Promise<RepositoryItemResponse> {
+  const formData = new FormData();
+  formData.append("orgName", request.orgName);
+  formData.append("repoName", request.repoName);
+  formData.append("branchName", request.branchName);
+  formData.append("languageCode", request.languageCode);
+  formData.append("isPublic", String(request.isPublic));
+  formData.append("archive", request.archive);
+
+  return api.post<RepositoryItemResponse>("/api/v1/repositories/submit-archive", formData);
+}
+
+export async function submitLocalDirectoryRepository(
+  request: LocalDirectoryRepositorySubmitRequest
+): Promise<RepositoryItemResponse> {
+  return api.post<RepositoryItemResponse>("/api/v1/repositories/submit-local", request);
 }
 
 /**

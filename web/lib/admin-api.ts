@@ -212,6 +212,9 @@ export async function getMcpUsageLogs(filter: McpUsageLogFilter): Promise<PagedR
 export interface AdminRepository {
   id: string;
   gitUrl: string;
+  sourceType: "Git" | "Archive" | "LocalDirectory";
+  sourceTypeName: "Git" | "Archive" | "LocalDirectory";
+  sourceLocation: string;
   repoName: string;
   orgName: string;
   isPublic: boolean;

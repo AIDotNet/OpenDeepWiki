@@ -82,6 +82,17 @@ const statusBarColors: Record<number, string> = {
   3: "bg-red-500/90",
 };
 
+function getSourceTypeLabelKey(sourceType: AdminRepository["sourceType"]) {
+  switch (sourceType) {
+    case "Archive":
+      return "sourceTypeArchive";
+    case "LocalDirectory":
+      return "sourceTypeLocal";
+    default:
+      return "sourceTypeGit";
+  }
+}
+
 export default function AdminRepositoriesPage() {
   const router = useRouter();
   const [data, setData] = useState<RepositoryListResponse | null>(null);
@@ -196,9 +207,20 @@ export default function AdminRepositoriesPage() {
       toast.warning(t('admin.repositories.selectFirst'));
       return;
     }
+    if (selectedGitRepoIds.length === 0) {
+      toast.warning(t('admin.repositories.syncStatsNotSupported'));
+      return;
+    }
     setBatchSyncing(true);
     try {
-      const result = await batchSyncRepositoryStats(Array.from(selectedIds));
+      const result = await batchSyncRepositoryStats(selectedGitRepoIds);
+      if (selectedGitRepoIds.length < selectedIds.size) {
+        toast.warning(
+          t('admin.repositories.batchSyncSkippedNonGit', {
+            count: selectedIds.size - selectedGitRepoIds.length,
+          })
+        );
+      }
       toast.success(t('admin.repositories.batchSyncResult', { success: result.successCount, failed: result.failedCount }));
       fetchData();
     } catch {
@@ -244,6 +266,12 @@ export default function AdminRepositoriesPage() {
   const totalPages = data ? Math.ceil(data.total / data.pageSize) : 0;
   const allSelected = data && data.items.length > 0 && selectedIds.size === data.items.length;
   const someSelected = selectedIds.size > 0 && !allSelected;
+  const selectedGitRepoIds = useMemo(() => {
+    const items = data?.items ?? [];
+    return items
+      .filter((item) => selectedIds.has(item.id) && item.sourceType === "Git")
+      .map((item) => item.id);
+  }, [data, selectedIds]);
   const overview = useMemo(() => {
     const items = data?.items ?? [];
     const pageCount = items.length;
@@ -481,7 +509,12 @@ export default function AdminRepositoriesPage() {
                               {repo.orgName}/{repo.repoName}
                             </button>
                             <p className="text-sm text-muted-foreground truncate max-w-xs">
-                              {repo.gitUrl}
+                              {repo.sourceLocation || repo.gitUrl}
+                            </p>
+                            <p className="mt-1">
+                              <span className="inline-flex rounded-full bg-secondary px-2 py-1 text-xs text-muted-foreground">
+                                {t(`admin.repositories.${getSourceTypeLabelKey(repo.sourceType)}`)}
+                              </span>
                             </p>
                           </div>
                         </td>
@@ -559,8 +592,8 @@ export default function AdminRepositoriesPage() {
                               variant="ghost"
                               size="icon"
                               onClick={() => handleSyncStats(repo.id)}
-                              disabled={syncing === repo.id}
-                              title={t('admin.repositories.syncStats')}
+                              disabled={syncing === repo.id || repo.sourceType !== "Git"}
+                              title={repo.sourceType === "Git" ? t('admin.repositories.syncStats') : t('admin.repositories.syncStatsNotSupported')}
                               className="transition-all duration-200 hover:-translate-y-0.5"
                             >
                               {syncing === repo.id ? (
@@ -650,8 +683,12 @@ export default function AdminRepositoriesPage() {
                 <p>{selectedRepo.orgName}/{selectedRepo.repoName}</p>
               </div>
               <div>
-                <label className="text-sm font-medium">{t('admin.repositories.gitUrl')}</label>
-                <p className="text-sm text-muted-foreground break-all">{selectedRepo.gitUrl}</p>
+                <label className="text-sm font-medium">{t('admin.repositories.sourceType')}</label>
+                <p>{t(`admin.repositories.${getSourceTypeLabelKey(selectedRepo.sourceType)}`)}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium">{t('admin.repositories.sourceLocation')}</label>
+                <p className="text-sm text-muted-foreground break-all">{selectedRepo.sourceLocation || selectedRepo.gitUrl}</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>

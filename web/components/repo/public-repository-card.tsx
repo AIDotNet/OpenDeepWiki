@@ -6,7 +6,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useTranslations } from "@/hooks/use-translations";
 import { useAuth } from "@/contexts/auth-context";
-import type { RepositoryItemResponse, RepositoryStatus } from "@/types/repository";
+import type {
+  RepositoryItemResponse,
+  RepositorySourceType,
+  RepositoryStatus,
+} from "@/types/repository";
 import {
   Clock,
   Loader2,
@@ -70,6 +74,17 @@ function StatusBadge({ status }: { status: RepositoryStatus }) {
       {t(`home.repository.status.${config.labelKey}`)}
     </span>
   );
+}
+
+function getSourceTypeLabelKey(sourceType: RepositorySourceType) {
+  switch (sourceType) {
+    case "Archive":
+      return "sourceTypeArchive";
+    case "LocalDirectory":
+      return "sourceTypeLocal";
+    default:
+      return "sourceTypeGit";
+  }
 }
 
 
@@ -167,6 +182,14 @@ export function PublicRepositoryCard({ repository }: PublicRepositoryCardProps) 
                 </h3>
               </div>
               <StatusBadge status={repository.statusName} />
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <span className="inline-flex rounded-full bg-secondary px-2 py-1 text-xs text-muted-foreground">
+                {t(`home.repository.${getSourceTypeLabelKey(repository.sourceType)}`)}
+              </span>
+              <p className="truncate text-xs text-muted-foreground">
+                {repository.sourceLocation || repository.gitUrl}
+              </p>
             </div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3 text-xs text-muted-foreground">

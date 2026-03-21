@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using OpenDeepWiki.EFCore;
 using OpenDeepWiki.Entities;
 using OpenDeepWiki.Models;
@@ -12,16 +13,18 @@ namespace OpenDeepWiki.Services.Repositories;
 
 [MiniApi(Route = "/api/v1/repositories")]
 [Tags("仓库")]
-public class RepositoryService(IContext context, IGitPlatformService gitPlatformService, IUserContext userContext, IGitHubAppService gitHubAppService, IOrganizationService organizationService)
+public class RepositoryService(
+    IContext context,
+    IGitPlatformService gitPlatformService,
+    IUserContext userContext,
+    IGitHubAppService gitHubAppService,
+    IOrganizationService organizationService,
+    IOptions<RepositoryAnalyzerOptions> repositoryOptions)
 {
     [HttpPost("/submit")]
     public async Task<Repository> SubmitAsync([FromBody] RepositorySubmitRequest request)
     {
-        var currentUserId = userContext.UserId;
-        if (string.IsNullOrWhiteSpace(currentUserId))
-        {
-            throw new UnauthorizedAccessException("用户未登录");
-        }
+        var currentUserId = GetCurrentUserId();
 
         if (!request.IsPublic && string.IsNullOrWhiteSpace(request.AuthAccount) && string.IsNullOrWhiteSpace(request.AuthPassword))
         {
@@ -65,45 +68,87 @@ public class RepositoryService(IContext context, IGitPlatformService gitPlatform
             }
         }
 
-        var repositoryId = Guid.NewGuid().ToString();
-        var repository = new Repository
+        return await CreateRepositoryAsync(
+            currentUserId,
+            request.GitUrl,
+            request.RepoName,
+            request.OrgName,
+            request.BranchName,
+            request.LanguageCode,
+            effectiveIsPublic,
+            request.AuthAccount,
+            request.AuthPassword,
+            starCount,
+            forkCount);
+    }
+
+    [HttpPost("/submit-archive")]
+    public async Task<Repository> SubmitArchiveAsync([FromForm] ArchiveRepositorySubmitRequest request)
+    {
+        var currentUserId = GetCurrentUserId();
+
+        if (request.Archive == null || request.Archive.Length <= 0)
         {
-            Id = repositoryId,
-            OwnerUserId = currentUserId,
-            GitUrl = request.GitUrl,
-            RepoName = request.RepoName,
-            OrgName = request.OrgName,
-            AuthAccount = request.AuthAccount,
-            AuthPassword = request.AuthPassword,
-            IsPublic = effectiveIsPublic,
-            Status = RepositoryStatus.Pending,
-            StarCount = starCount,
-            ForkCount = forkCount
-        };
+            throw new InvalidOperationException("请上传 ZIP 压缩包");
+        }
 
-        var branchId = Guid.NewGuid().ToString();
-        var branch = new RepositoryBranch
+        if (!request.Archive.FileName.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
         {
-            Id = branchId,
-            RepositoryId = repositoryId,
-            BranchName = request.BranchName
-        };
+            throw new InvalidOperationException("目前仅支持 ZIP 压缩包导入");
+        }
 
-        var language = new BranchLanguage
+        var branchName = NormalizeBranchName(request.BranchName);
+        var uploadsDirectory = GetArchiveUploadsDirectory(currentUserId);
+        Directory.CreateDirectory(uploadsDirectory);
+
+        var uploadedArchivePath = Path.Combine(
+            uploadsDirectory,
+            $"{Guid.NewGuid():N}{Path.GetExtension(request.Archive.FileName)}");
+
+        await using (var stream = new FileStream(uploadedArchivePath, FileMode.Create, FileAccess.Write, FileShare.None))
         {
-            Id = Guid.NewGuid().ToString(),
-            RepositoryBranchId = branchId,
-            LanguageCode = request.LanguageCode,
-            UpdateSummary = string.Empty,
-            IsDefault = true // 提交时的第一个语言为默认语言
-        };
+            await request.Archive.CopyToAsync(stream);
+        }
 
-        context.Repositories.Add(repository);
-        context.RepositoryBranches.Add(branch);
-        context.BranchLanguages.Add(language);
+        return await CreateRepositoryAsync(
+            currentUserId,
+            RepositorySource.EncodeArchivePath(uploadedArchivePath),
+            request.RepoName,
+            request.OrgName,
+            branchName,
+            request.LanguageCode,
+            request.IsPublic,
+            null,
+            null,
+            0,
+            0);
+    }
 
-        await context.SaveChangesAsync();
-        return repository;
+    [HttpPost("/submit-local")]
+    public async Task<Repository> SubmitLocalDirectoryAsync([FromBody] LocalDirectoryRepositorySubmitRequest request)
+    {
+        var currentUserId = GetCurrentUserId();
+        var normalizedPath = NormalizeLocalDirectoryPath(request.LocalPath);
+
+        if (!Directory.Exists(normalizedPath))
+        {
+            throw new DirectoryNotFoundException("本地目录不存在");
+        }
+
+        EnsureLocalPathAllowed(normalizedPath);
+
+        return await CreateRepositoryAsync(
+            currentUserId,
+            RepositorySource.EncodeLocalDirectoryPath(normalizedPath),
+            request.RepoName,
+            request.OrgName,
+            NormalizeBranchName(request.BranchName),
+            request.LanguageCode,
+            request.IsPublic,
+            null,
+            null,
+            0,
+            0);
     }
 
     [HttpPost("/assign")]
@@ -214,7 +259,9 @@ public class RepositoryService(IContext context, IGitPlatformService gitPlatform
                 Id = r.Id,
                 OrgName = r.OrgName,
                 RepoName = r.RepoName,
-                GitUrl = r.GitUrl,
+                GitUrl = r.SourceLocation,
+                SourceType = r.SourceType,
+                SourceLocation = r.SourceLocation,
                 Status = r.Status,
                 IsPublic = r.IsPublic,
                 HasPassword = !string.IsNullOrWhiteSpace(r.AuthPassword),
@@ -334,6 +381,11 @@ public class RepositoryService(IContext context, IGitPlatformService gitPlatform
     /// </summary>
     private static bool IsPublicPlatform(string gitUrl)
     {
+        if (!RepositorySource.IsGit(gitUrl))
+        {
+            return false;
+        }
+
         try
         {
             var uri = new Uri(gitUrl);
@@ -497,5 +549,120 @@ public class RepositoryService(IContext context, IGitPlatformService gitPlatform
             DefaultBranch = result.DefaultBranch,
             IsSupported = result.IsSupported
         };
+    }
+
+    private string GetCurrentUserId()
+    {
+        var currentUserId = userContext.UserId;
+        if (string.IsNullOrWhiteSpace(currentUserId))
+        {
+            throw new UnauthorizedAccessException("用户未登录");
+        }
+
+        return currentUserId;
+    }
+
+    private async Task<Repository> CreateRepositoryAsync(
+        string currentUserId,
+        string storedSource,
+        string repoName,
+        string orgName,
+        string branchName,
+        string languageCode,
+        bool isPublic,
+        string? authAccount,
+        string? authPassword,
+        int starCount,
+        int forkCount)
+    {
+        var exists = await context.Repositories
+            .AsNoTracking()
+            .Where(r => r.GitUrl == storedSource && !r.IsDeleted)
+            .Join(context.RepositoryBranches, r => r.Id, b => b.RepositoryId, (r, b) => b)
+            .AnyAsync(b => b.BranchName == branchName);
+
+        if (exists)
+        {
+            throw new InvalidOperationException("该仓库的相同分支已存在，请勿重复提交");
+        }
+
+        var repositoryId = Guid.NewGuid().ToString();
+        var repository = new Repository
+        {
+            Id = repositoryId,
+            OwnerUserId = currentUserId,
+            GitUrl = storedSource,
+            RepoName = repoName,
+            OrgName = orgName,
+            AuthAccount = authAccount,
+            AuthPassword = authPassword,
+            IsPublic = isPublic,
+            Status = RepositoryStatus.Pending,
+            StarCount = starCount,
+            ForkCount = forkCount
+        };
+
+        var branchId = Guid.NewGuid().ToString();
+        var branch = new RepositoryBranch
+        {
+            Id = branchId,
+            RepositoryId = repositoryId,
+            BranchName = branchName
+        };
+
+        var language = new BranchLanguage
+        {
+            Id = Guid.NewGuid().ToString(),
+            RepositoryBranchId = branchId,
+            LanguageCode = languageCode,
+            UpdateSummary = string.Empty,
+            IsDefault = true
+        };
+
+        context.Repositories.Add(repository);
+        context.RepositoryBranches.Add(branch);
+        context.BranchLanguages.Add(language);
+
+        await context.SaveChangesAsync();
+        return repository;
+    }
+
+    private string GetArchiveUploadsDirectory(string currentUserId)
+    {
+        return Path.Combine(repositoryOptions.Value.RepositoriesDirectory, "_uploads", currentUserId);
+    }
+
+    private static string NormalizeBranchName(string? branchName)
+    {
+        return string.IsNullOrWhiteSpace(branchName) ? "main" : branchName.Trim();
+    }
+
+    private static string NormalizeLocalDirectoryPath(string path)
+    {
+        return Path.GetFullPath(path.Trim());
+    }
+
+    private void EnsureLocalPathAllowed(string fullPath)
+    {
+        var allowedRoots = repositoryOptions.Value.AllowedLocalPathRoots
+            .Where(root => !string.IsNullOrWhiteSpace(root))
+            .Select(root => Path.GetFullPath(root.Trim()).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))
+            .ToList();
+
+        if (allowedRoots.Count == 0)
+        {
+            throw new InvalidOperationException("当前未配置允许导入的本地目录根路径");
+        }
+
+        var normalizedPath = fullPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var isAllowed = allowedRoots.Any(root =>
+            normalizedPath.Equals(root, StringComparison.OrdinalIgnoreCase) ||
+            normalizedPath.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) ||
+            normalizedPath.StartsWith(root + Path.AltDirectorySeparatorChar, StringComparison.OrdinalIgnoreCase));
+
+        if (!isAllowed)
+        {
+            throw new InvalidOperationException("本地目录不在允许导入的白名单范围内");
+        }
     }
 }

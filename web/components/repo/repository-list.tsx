@@ -12,8 +12,12 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTranslations } from "@/hooks/use-translations";
-import { fetchRepositoryList } from "@/lib/repository-api";
-import type { RepositoryItemResponse, RepositoryStatus } from "@/types/repository";
+import { fetchRepositoryList, regenerateRepository } from "@/lib/repository-api";
+import type {
+  RepositoryItemResponse,
+  RepositorySourceType,
+  RepositoryStatus,
+} from "@/types/repository";
 import {
   Clock,
   Loader2,
@@ -26,6 +30,7 @@ import {
 import { cn } from "@/lib/utils";
 import { buildRepoBasePath } from "@/lib/repo-route";
 import { VisibilityToggle } from "@/components/repo/visibility-toggle";
+import { toast } from "sonner";
 
 interface RepositoryListProps {
   ownerId?: string;
@@ -79,12 +84,27 @@ function StatusBadge({ status }: { status: RepositoryStatus }) {
   );
 }
 
+function getSourceTypeLabelKey(sourceType: RepositorySourceType) {
+  switch (sourceType) {
+    case "Archive":
+      return "sourceTypeArchive";
+    case "LocalDirectory":
+      return "sourceTypeLocal";
+    default:
+      return "sourceTypeGit";
+  }
+}
+
 function RepositoryCard({ 
   repo, 
-  onVisibilityChange 
+  onVisibilityChange,
+  onRetry,
+  isRetrying,
 }: { 
   repo: RepositoryItemResponse;
   onVisibilityChange: (repoId: string, newIsPublic: boolean) => void;
+  onRetry: (repo: RepositoryItemResponse) => void;
+  isRetrying: boolean;
 }) {
   const t = useTranslations();
   const createdDate = new Date(repo.createdAt).toLocaleDateString();
@@ -108,8 +128,13 @@ function RepositoryCard({
                 {repo.orgName}/{repo.repoName}
               </h3>
             </div>
+            <div className="mt-2">
+              <span className="inline-flex rounded-full bg-secondary px-2 py-1 text-xs text-muted-foreground">
+                {t(`home.repository.${getSourceTypeLabelKey(repo.sourceType)}`)}
+              </span>
+            </div>
             <p className="mt-1 text-sm text-muted-foreground truncate">
-              {repo.gitUrl}
+              {repo.sourceLocation || repo.gitUrl}
             </p>
             <p className="mt-2 text-xs text-muted-foreground">
               {t("home.repository.createdAt")}: {createdDate}
@@ -132,9 +157,20 @@ function RepositoryCard({
               </Button>
             )}
             {repo.statusName === "Failed" && (
-              <Button variant="outline" size="sm">
-                <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
-                {t("home.repository.retry")}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onRetry(repo)}
+                disabled={isRetrying}
+              >
+                {isRetrying ? (
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                )}
+                {isRetrying
+                  ? (t("home.repository.status.regenerating") || t("home.repository.retry"))
+                  : t("home.repository.retry")}
               </Button>
             )}
           </div>
@@ -170,6 +206,7 @@ export function RepositoryList({ ownerId, refreshTrigger }: RepositoryListProps)
   const [repositories, setRepositories] = useState<RepositoryItemResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retryingRepoId, setRetryingRepoId] = useState<string | null>(null);
 
   const loadRepositories = useCallback(async () => {
     try {
@@ -193,6 +230,29 @@ export function RepositoryList({ ownerId, refreshTrigger }: RepositoryListProps)
       )
     );
   }, []);
+
+  const handleRetry = useCallback(async (repo: RepositoryItemResponse) => {
+    setRetryingRepoId(repo.id);
+    try {
+      const result = await regenerateRepository(repo.orgName, repo.repoName);
+      if (!result.success) {
+        toast.error(result.errorMessage || t("home.actions.actionError"));
+        return;
+      }
+
+      setRepositories((prev) =>
+        prev.map((item) =>
+          item.id === repo.id ? { ...item, statusName: "Pending" } : item
+        )
+      );
+      void loadRepositories();
+    } catch (err) {
+      console.error("Failed to regenerate repository:", err);
+      toast.error(t("home.actions.actionError"));
+    } finally {
+      setRetryingRepoId((current) => (current === repo.id ? null : current));
+    }
+  }, [loadRepositories, t]);
 
   useEffect(() => {
     loadRepositories();
@@ -284,6 +344,8 @@ export function RepositoryList({ ownerId, refreshTrigger }: RepositoryListProps)
                 key={repo.id} 
                 repo={repo} 
                 onVisibilityChange={handleVisibilityChange}
+                onRetry={handleRetry}
+                isRetrying={retryingRepoId === repo.id}
               />
             ))}
           </div>

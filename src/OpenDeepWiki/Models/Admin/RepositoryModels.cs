@@ -1,3 +1,5 @@
+using OpenDeepWiki.Entities;
+
 namespace OpenDeepWiki.Models.Admin;
 
 /// <summary>
@@ -18,6 +20,9 @@ public class AdminRepositoryDto
 {
     public string Id { get; set; } = string.Empty;
     public string GitUrl { get; set; } = string.Empty;
+    public RepositorySourceType SourceType { get; set; } = RepositorySourceType.Git;
+    public string SourceTypeName => SourceType.ToString();
+    public string SourceLocation { get; set; } = string.Empty;
     public string RepoName { get; set; } = string.Empty;
     public string OrgName { get; set; } = string.Empty;
     public bool IsPublic { get; set; }

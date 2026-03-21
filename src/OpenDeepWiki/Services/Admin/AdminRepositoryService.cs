@@ -51,7 +51,9 @@ public class AdminRepositoryService : IAdminRepositoryService
             .Select(r => new AdminRepositoryDto
             {
                 Id = r.Id,
-                GitUrl = r.GitUrl,
+                GitUrl = r.SourceLocation,
+                SourceType = r.SourceType,
+                SourceLocation = r.SourceLocation,
                 RepoName = r.RepoName,
                 OrgName = r.OrgName,
                 IsPublic = r.IsPublic,
@@ -87,7 +89,9 @@ public class AdminRepositoryService : IAdminRepositoryService
         return new AdminRepositoryDto
         {
             Id = repo.Id,
-            GitUrl = repo.GitUrl,
+            GitUrl = repo.SourceLocation,
+            SourceType = repo.SourceType,
+            SourceLocation = repo.SourceLocation,
             RepoName = repo.RepoName,
             OrgName = repo.OrgName,
             IsPublic = repo.IsPublic,

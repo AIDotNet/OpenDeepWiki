@@ -34,6 +34,29 @@ export class ApiError extends Error {
   }
 }
 
+function normalizeApiErrorMessage(message: string): string {
+  const normalized = message.replace(/\r/g, "").trim();
+  if (!normalized) {
+    return "请求失败";
+  }
+
+  const lines = normalized
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  const firstMeaningfulLine =
+    lines.find((line) => !line.startsWith("at ") && line !== "HEADERS" && !/^=+$/.test(line)) ||
+    normalized;
+
+  const exceptionMatch = firstMeaningfulLine.match(/^[A-Za-z0-9_.]+Exception:\s*(.+)$/);
+  if (exceptionMatch?.[1]) {
+    return exceptionMatch[1].trim();
+  }
+
+  return firstMeaningfulLine;
+}
+
 /**
  * 统一的 API 请求方法
  * - 自动添加 Authorization header（如果有 token）
@@ -45,11 +68,15 @@ export async function apiClient<T>(
   options: ApiClientOptions = {}
 ): Promise<T> {
   const { body, skipAuth = false, headers: customHeaders, ...restOptions } = options;
+  const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
 
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
     ...(customHeaders as Record<string, string>),
   };
+
+  if (!isFormData && body !== undefined && !headers["Content-Type"]) {
+    headers["Content-Type"] = "application/json";
+  }
 
   // 自动添加 token
   if (!skipAuth) {
@@ -64,7 +91,12 @@ export async function apiClient<T>(
   const response = await fetch(url, {
     ...restOptions,
     headers,
-    body: body ? JSON.stringify(body) : undefined,
+    body:
+      body === undefined
+        ? undefined
+        : isFormData
+          ? (body as FormData)
+          : JSON.stringify(body),
   });
 
   // 处理 401 未授权
@@ -75,13 +107,37 @@ export async function apiClient<T>(
 
   if (!response.ok) {
     let errorMessage = "请求失败";
+    let errorData: unknown;
+
     try {
-      const errorData = await response.json();
-      errorMessage = errorData.message || errorData.error || errorMessage;
+      const rawError = await response.text();
+      if (rawError) {
+        try {
+          errorData = JSON.parse(rawError);
+          if (
+            typeof errorData === "object" &&
+            errorData !== null
+          ) {
+            const message =
+              "message" in errorData && typeof errorData.message === "string"
+                ? errorData.message
+                : "error" in errorData && typeof errorData.error === "string"
+                  ? errorData.error
+                  : null;
+
+            errorMessage = normalizeApiErrorMessage(message || rawError);
+          } else {
+            errorMessage = normalizeApiErrorMessage(rawError);
+          }
+        } catch {
+          errorMessage = normalizeApiErrorMessage(rawError);
+          errorData = rawError;
+        }
+      }
     } catch {
-      errorMessage = await response.text() || errorMessage;
+      // Ignore body read failures and fall back to the default message.
     }
-    throw new ApiError(errorMessage, response.status);
+    throw new ApiError(errorMessage, response.status, errorData);
   }
 
   // 处理空响应

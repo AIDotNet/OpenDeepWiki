@@ -34,6 +34,18 @@ public class Repository : AggregateRoot<string>
     public string GitUrl { get; set; } = string.Empty;
 
     /// <summary>
+    /// 仓库来源类型（从持久化来源字段动态解析）
+    /// </summary>
+    [NotMapped]
+    public RepositorySourceType SourceType => RepositorySource.Parse(GitUrl).SourceType;
+
+    /// <summary>
+    /// 仓库真实来源位置（Git URL、压缩包路径或本地目录路径）
+    /// </summary>
+    [NotMapped]
+    public string SourceLocation => RepositorySource.Parse(GitUrl).Location;
+
+    /// <summary>
     /// 仓库名称
     /// </summary>
     [Required]

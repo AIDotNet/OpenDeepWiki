@@ -44,6 +44,21 @@ public class RepositoryItemResponse
     public string GitUrl { get; set; } = string.Empty;
 
     /// <summary>
+    /// 仓库来源类型
+    /// </summary>
+    public RepositorySourceType SourceType { get; set; } = RepositorySourceType.Git;
+
+    /// <summary>
+    /// 仓库来源类型名称
+    /// </summary>
+    public string SourceTypeName => SourceType.ToString();
+
+    /// <summary>
+    /// 对外展示的来源信息
+    /// </summary>
+    public string SourceLocation { get; set; } = string.Empty;
+
+    /// <summary>
     /// 处理状态
     /// </summary>
     public RepositoryStatus Status { get; set; }

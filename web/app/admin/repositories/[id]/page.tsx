@@ -130,6 +130,17 @@ function normalizeTaskStatus(status: string) {
   return "other";
 }
 
+function getSourceTypeLabelKey(sourceType: AdminRepository["sourceType"]) {
+  switch (sourceType) {
+    case "Archive":
+      return "sourceTypeArchive";
+    case "LocalDirectory":
+      return "sourceTypeLocal";
+    default:
+      return "sourceTypeGit";
+  }
+}
+
 export default function AdminRepositoryManagementPage() {
   const router = useRouter();
   const t = useTranslations();
@@ -263,6 +274,8 @@ export default function AdminRepositoryManagementPage() {
       Math.round((selectedLanguageInfo.documentCount / selectedLanguageInfo.catalogCount) * 100)
     );
   }, [selectedLanguageInfo]);
+
+  const supportsGitOperations = repository?.sourceType === "Git";
 
   const processingFlow = useMemo(() => {
     const steps = [
@@ -584,6 +597,10 @@ export default function AdminRepositoryManagementPage() {
 
   const handleSyncStats = async () => {
     if (!repositoryId) return;
+    if (!supportsGitOperations) {
+      toast.warning(t("admin.repositories.syncStatsNotSupported"));
+      return;
+    }
     setSyncingStats(true);
     try {
       const result = await syncRepositoryStats(repositoryId);
@@ -719,6 +736,10 @@ export default function AdminRepositoryManagementPage() {
   const handleTriggerIncremental = async () => {
     if (!repositoryId || !selectedBranch) {
       toast.warning(t("admin.repositories.management.toasts.selectBranchFirst"));
+      return;
+    }
+    if (!supportsGitOperations) {
+      toast.warning(t("admin.repositories.management.incrementalNotSupported"));
       return;
     }
 
@@ -862,7 +883,12 @@ export default function AdminRepositoryManagementPage() {
             {t("admin.repositories.management.backToList")}
           </Button>
           <h1 className="text-2xl font-bold">{repository.orgName}/{repository.repoName}</h1>
-          <p className="text-sm text-muted-foreground">{repository.gitUrl}</p>
+          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <span className="inline-flex rounded-full bg-secondary px-2 py-1 text-xs">
+              {t(`admin.repositories.${getSourceTypeLabelKey(repository.sourceType)}`)}
+            </span>
+            <span className="break-all">{repository.sourceLocation || repository.gitUrl}</span>
+          </div>
           <p className="inline-flex items-center gap-2 text-xs text-muted-foreground">
             <Sparkles className="h-3.5 w-3.5 text-primary" />
             {t("admin.repositories.management.visualHint")}
@@ -873,11 +899,11 @@ export default function AdminRepositoryManagementPage() {
             <RefreshCw className={`mr-2 h-4 w-4 ${refreshingAll ? "animate-spin" : ""}`} />
             {t("admin.repositories.management.refresh")}
           </Button>
-          <Button variant="outline" onClick={handleSyncStats} disabled={syncingStats}>
+          <Button variant="outline" onClick={handleSyncStats} disabled={syncingStats || !supportsGitOperations} title={supportsGitOperations ? t("admin.repositories.management.syncStats") : t("admin.repositories.syncStatsNotSupported")}>
             {syncingStats ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RotateCcw className="mr-2 h-4 w-4" />}
             {t("admin.repositories.management.syncStats")}
           </Button>
-          <Button variant="outline" onClick={handleTriggerIncremental} disabled={triggeringIncremental || !selectedBranch}>
+          <Button variant="outline" onClick={handleTriggerIncremental} disabled={triggeringIncremental || !selectedBranch || !supportsGitOperations} title={supportsGitOperations ? t("admin.repositories.management.triggerIncremental") : t("admin.repositories.management.incrementalNotSupported")}>
             {triggeringIncremental ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
             {t("admin.repositories.management.triggerIncremental")}
           </Button>
@@ -929,7 +955,9 @@ export default function AdminRepositoryManagementPage() {
             <Card className="p-3 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-sm">
               <p className="text-xs text-muted-foreground">Star / Fork</p>
               <p className="text-xl font-semibold">
-                {repository.starCount} / {repository.forkCount}
+                {supportsGitOperations
+                  ? `${repository.starCount} / ${repository.forkCount}`
+                  : t("admin.repositories.management.notAvailable")}
               </p>
             </Card>
             <Card className="p-3 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-sm">
@@ -1315,13 +1343,20 @@ export default function AdminRepositoryManagementPage() {
               </div>
               <Button
                 onClick={handleTriggerIncremental}
-                disabled={triggeringIncremental || !selectedBranch}
+                disabled={triggeringIncremental || !selectedBranch || !supportsGitOperations}
+                title={supportsGitOperations ? t("admin.repositories.management.triggerCurrentBranchIncremental") : t("admin.repositories.management.incrementalNotSupported")}
                 className="transition-all duration-200 hover:-translate-y-0.5"
               >
                 {triggeringIncremental ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
                 {t("admin.repositories.management.triggerCurrentBranchIncremental")}
               </Button>
             </div>
+
+            {!supportsGitOperations && (
+              <p className="text-xs text-muted-foreground">
+                {t("admin.repositories.management.incrementalNotSupported")}
+              </p>
+            )}
 
             <div className="mt-4 grid gap-3 md:grid-cols-3">
               <Card className="p-3">

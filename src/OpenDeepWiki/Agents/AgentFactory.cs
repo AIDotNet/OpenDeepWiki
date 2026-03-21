@@ -75,6 +75,7 @@ namespace OpenDeepWiki.Agents
 
             if (option.RequestType == AiRequestType.OpenAI)
             {
+                var apiKey = ResolveRequiredApiKey(option);
                 var clientOptions = new OpenAIClientOptions()
                 {
                     Endpoint = new Uri(option.Endpoint ?? DefaultEndpoint),
@@ -83,7 +84,7 @@ namespace OpenDeepWiki.Agents
                 };
 
                 var openAiClient = new OpenAIClient(
-                    new ApiKeyCredential(option.ApiKey ?? string.Empty),
+                    new ApiKeyCredential(apiKey),
                     clientOptions);
 
                 var openAIClient = openAiClient.GetChatClient(model);
@@ -92,6 +93,7 @@ namespace OpenDeepWiki.Agents
             }
             else if (option.RequestType == AiRequestType.OpenAIResponses)
             {
+                var apiKey = ResolveRequiredApiKey(option);
                 var clientOptions = new OpenAIClientOptions()
                 {
                     Endpoint = new Uri(option.Endpoint ?? DefaultEndpoint),
@@ -100,7 +102,7 @@ namespace OpenDeepWiki.Agents
                 };
 
                 var openAiClient = new OpenAIClient(
-                    new ApiKeyCredential(option.ApiKey ?? string.Empty),
+                    new ApiKeyCredential(apiKey),
                     clientOptions);
 
                 var openAIClient = openAiClient.GetResponsesClient(model);
@@ -109,13 +111,15 @@ namespace OpenDeepWiki.Agents
             }
             else if (option.RequestType == AiRequestType.Anthropic)
             {
+                var apiKey = ResolveRequiredApiKey(option);
                 AnthropicClient client = new()
                 {
                     BaseUrl = option.Endpoint ?? DefaultEndpoint,
-                    ApiKey = option.ApiKey,
+                    ApiKey = apiKey,
                     HttpClient = httpClient,
                 };
 
+                clientAgentOptions.ChatOptions ??= new ChatOptions();
                 clientAgentOptions.ChatOptions.ModelId = model;
                 var anthropicClient = client.AsAIAgent(clientAgentOptions);
                 return anthropicClient;
@@ -164,6 +168,17 @@ namespace OpenDeepWiki.Agents
             }
 
             return resolved;
+        }
+
+        private static string ResolveRequiredApiKey(AiRequestOptions options)
+        {
+            if (!string.IsNullOrWhiteSpace(options.ApiKey))
+            {
+                return options.ApiKey!;
+            }
+
+            throw new InvalidOperationException(
+                "AI API key is not configured. Configure AI:ApiKey, CHAT_API_KEY, or a request-specific API key.");
         }
 
         private static AiRequestType? TryParseRequestType(string? requestType)

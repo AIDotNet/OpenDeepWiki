@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.IO.Compression;
+using System.Security.Cryptography;
 using LibGit2Sharp;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -33,6 +35,16 @@ public class RepositoryAnalyzerOptions
     /// Delay between retry attempts in milliseconds.
     /// </summary>
     public int RetryDelayMs { get; set; } = 1000;
+
+    /// <summary>
+    /// Local directory roots allowed for import.
+    /// </summary>
+    public string[] AllowedLocalPathRoots { get; set; } = [];
+
+    /// <summary>
+    /// Local directory import mode.
+    /// </summary>
+    public LocalDirectoryImportMode LocalDirectoryImportMode { get; set; } = LocalDirectoryImportMode.Copy;
 }
 
 /// <summary>
@@ -64,14 +76,19 @@ public class RepositoryAnalyzer : IRepositoryAnalyzer
         CancellationToken cancellationToken = default)
     {
         var stopwatch = Stopwatch.StartNew();
+        var sourceInfo = RepositorySource.Parse(repository.GitUrl);
         var workspace = new RepositoryWorkspace
         {
             Organization = repository.OrgName,
             RepositoryName = repository.RepoName,
             BranchName = branchName,
-            GitUrl = repository.GitUrl,
+            SourceType = sourceInfo.SourceType,
+            SourceLocation = sourceInfo.Location,
+            GitUrl = sourceInfo.SourceType == RepositorySourceType.Git ? sourceInfo.Location : string.Empty,
             PreviousCommitId = previousCommitId,
-            WorkingDirectory = GetWorkingDirectory(repository.OrgName, repository.RepoName)
+            WorkingDirectory = GetWorkingDirectory(repository.OrgName, repository.RepoName),
+            SupportsIncrementalUpdates = sourceInfo.SourceType == RepositorySourceType.Git,
+            LocalDirectoryImportModeUsed = LocalDirectoryImportMode.Copy
         };
 
         _logger.LogInformation(
@@ -87,28 +104,41 @@ public class RepositoryAnalyzer : IRepositoryAnalyzer
             Directory.CreateDirectory(parentDir);
         }
 
-        // Build credentials if provided
-        var credentials = BuildCredentials(repository);
-        var hasCredentials = credentials != null;
-        _logger.LogDebug("Credentials configured: {HasCredentials}", hasCredentials);
-
-        // Clone or pull the repository
-        var repoExists = Directory.Exists(workspace.WorkingDirectory) && 
-                         Directory.Exists(Path.Combine(workspace.WorkingDirectory, ".git"));
-
-        if (repoExists)
+        if (workspace.SourceType == RepositorySourceType.Git)
         {
-            _logger.LogDebug("Repository exists locally, pulling latest changes");
-            await PullRepositoryAsync(workspace, credentials, cancellationToken);
+            // Build credentials if provided
+            var credentials = BuildCredentials(repository);
+            var hasCredentials = credentials != null;
+            _logger.LogDebug("Credentials configured: {HasCredentials}", hasCredentials);
+
+            // Clone or pull the repository
+            var repoExists = Directory.Exists(workspace.WorkingDirectory) &&
+                             Directory.Exists(Path.Combine(workspace.WorkingDirectory, ".git"));
+
+            if (repoExists)
+            {
+                _logger.LogDebug("Repository exists locally, pulling latest changes");
+                await PullRepositoryAsync(workspace, credentials, cancellationToken);
+            }
+            else
+            {
+                _logger.LogDebug("Repository does not exist locally, cloning");
+                await CloneRepositoryAsync(workspace, credentials, cancellationToken);
+            }
+
+            // Get the current HEAD commit ID
+            workspace.CommitId = GetHeadCommitId(workspace.WorkingDirectory);
+        }
+        else if (workspace.SourceType == RepositorySourceType.Archive)
+        {
+            await PrepareArchiveWorkspaceAsync(workspace, cancellationToken);
+            workspace.CommitId = ComputeDirectorySnapshotId(workspace.WorkingDirectory);
         }
         else
         {
-            _logger.LogDebug("Repository does not exist locally, cloning");
-            await CloneRepositoryAsync(workspace, credentials, cancellationToken);
+            await PrepareLocalDirectoryWorkspaceAsync(workspace, cancellationToken);
+            workspace.CommitId = ComputeDirectorySnapshotId(workspace.WorkingDirectory);
         }
-
-        // Get the current HEAD commit ID
-        workspace.CommitId = GetHeadCommitId(workspace.WorkingDirectory);
 
         stopwatch.Stop();
         _logger.LogInformation(
@@ -174,6 +204,14 @@ public class RepositoryAnalyzer : IRepositoryAnalyzer
     {
         var stopwatch = Stopwatch.StartNew();
 
+        if (!workspace.SupportsIncrementalUpdates)
+        {
+            _logger.LogInformation(
+                "Repository source does not support incremental updates. Repository: {Org}/{Repo}, SourceType: {SourceType}",
+                workspace.Organization, workspace.RepositoryName, workspace.SourceType);
+            return Task.FromResult(Array.Empty<string>());
+        }
+
         if (string.IsNullOrEmpty(fromCommitId))
         {
             _logger.LogInformation(
@@ -220,6 +258,148 @@ public class RepositoryAnalyzer : IRepositoryAnalyzer
         var safeRepo = SanitizePathComponent(repositoryName);
 
         return Path.Combine(_options.RepositoriesDirectory, safeOrg, safeRepo, "tree");
+    }
+
+    private async Task PrepareArchiveWorkspaceAsync(
+        RepositoryWorkspace workspace,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (string.IsNullOrWhiteSpace(workspace.SourceLocation) || !File.Exists(workspace.SourceLocation))
+        {
+            throw new FileNotFoundException($"Archive source not found: {workspace.SourceLocation}");
+        }
+
+        if (Directory.Exists(workspace.WorkingDirectory))
+        {
+            DeleteDirectoryRecursive(workspace.WorkingDirectory);
+        }
+
+        Directory.CreateDirectory(workspace.WorkingDirectory);
+        ZipFile.ExtractToDirectory(workspace.SourceLocation, workspace.WorkingDirectory, overwriteFiles: true);
+        await Task.CompletedTask;
+    }
+
+    private async Task PrepareLocalDirectoryWorkspaceAsync(
+        RepositoryWorkspace workspace,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (string.IsNullOrWhiteSpace(workspace.SourceLocation) || !Directory.Exists(workspace.SourceLocation))
+        {
+            throw new DirectoryNotFoundException($"Local directory source not found: {workspace.SourceLocation}");
+        }
+
+        if (Directory.Exists(workspace.WorkingDirectory))
+        {
+            DeleteDirectoryRecursive(workspace.WorkingDirectory);
+        }
+
+        Directory.CreateDirectory(Path.GetDirectoryName(workspace.WorkingDirectory)!);
+
+        if (_options.LocalDirectoryImportMode == LocalDirectoryImportMode.Link &&
+            await TryCreateDirectoryLinkAsync(workspace.WorkingDirectory, workspace.SourceLocation, cancellationToken))
+        {
+            workspace.LocalDirectoryImportModeUsed = LocalDirectoryImportMode.Link;
+            return;
+        }
+
+        workspace.LocalDirectoryImportModeUsed = LocalDirectoryImportMode.Copy;
+        CopyDirectory(workspace.SourceLocation, workspace.WorkingDirectory);
+    }
+
+    private static void CopyDirectory(string sourceDirectory, string destinationDirectory)
+    {
+        var sourceInfo = new DirectoryInfo(sourceDirectory);
+        Directory.CreateDirectory(destinationDirectory);
+
+        foreach (var directory in sourceInfo.GetDirectories())
+        {
+            CopyDirectory(directory.FullName, Path.Combine(destinationDirectory, directory.Name));
+        }
+
+        foreach (var file in sourceInfo.GetFiles())
+        {
+            file.CopyTo(Path.Combine(destinationDirectory, file.Name), overwrite: true);
+        }
+    }
+
+    private static string ComputeDirectorySnapshotId(string directoryPath)
+    {
+        using var sha = SHA256.Create();
+        var files = Directory.GetFiles(directoryPath, "*", SearchOption.AllDirectories)
+            .OrderBy(path => path, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var file in files)
+        {
+            var info = new FileInfo(file);
+            var relativePathBytes = System.Text.Encoding.UTF8.GetBytes(Path.GetRelativePath(directoryPath, file));
+            sha.TransformBlock(relativePathBytes, 0, relativePathBytes.Length, null, 0);
+
+            var metadata = BitConverter.GetBytes(info.Length)
+                .Concat(BitConverter.GetBytes(info.LastWriteTimeUtc.Ticks))
+                .ToArray();
+            sha.TransformBlock(metadata, 0, metadata.Length, null, 0);
+        }
+
+        sha.TransformFinalBlock([], 0, 0);
+        return Convert.ToHexString(sha.Hash!);
+    }
+
+    private static async Task<bool> TryCreateDirectoryLinkAsync(
+        string linkPath,
+        string targetPath,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (OperatingSystem.IsWindows())
+            {
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = "cmd",
+                    Arguments = $"/c mklink /J \"{linkPath}\" \"{targetPath}\"",
+                    UseShellExecute = false,
+                    RedirectStandardError = true,
+                    RedirectStandardOutput = true,
+                    CreateNoWindow = true
+                };
+
+                using var process = Process.Start(startInfo);
+                if (process == null)
+                {
+                    return false;
+                }
+
+                await process.WaitForExitAsync(cancellationToken);
+                return process.ExitCode == 0 && Directory.Exists(linkPath);
+            }
+
+            var psi = new ProcessStartInfo
+            {
+                FileName = "ln",
+                Arguments = $"-s \"{targetPath}\" \"{linkPath}\"",
+                UseShellExecute = false,
+                RedirectStandardError = true,
+                RedirectStandardOutput = true,
+                CreateNoWindow = true
+            };
+
+            using var unixProcess = Process.Start(psi);
+            if (unixProcess == null)
+            {
+                return false;
+            }
+
+            await unixProcess.WaitForExitAsync(cancellationToken);
+            return unixProcess.ExitCode == 0 && Directory.Exists(linkPath);
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     /// <summary>
@@ -752,6 +932,13 @@ public class RepositoryAnalyzer : IRepositoryAnalyzer
     {
         if (!Directory.Exists(path))
         {
+            return;
+        }
+
+        var rootAttributes = File.GetAttributes(path);
+        if ((rootAttributes & FileAttributes.ReparsePoint) == FileAttributes.ReparsePoint)
+        {
+            Directory.Delete(path, false);
             return;
         }
 

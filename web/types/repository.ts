@@ -40,6 +40,8 @@ export interface GitBranchItem {
   isDefault: boolean;
 }
 
+export type RepositorySourceType = "Git" | "Archive" | "LocalDirectory";
+
 export interface RepoDocResponse {
   exists: boolean;
   slug: string;
@@ -67,11 +69,32 @@ export interface RepositorySubmitRequest {
   isPublic: boolean;
 }
 
+export interface ArchiveRepositorySubmitRequest {
+  repoName: string;
+  orgName: string;
+  branchName: string;
+  languageCode: string;
+  isPublic: boolean;
+  archive: File;
+}
+
+export interface LocalDirectoryRepositorySubmitRequest {
+  repoName: string;
+  orgName: string;
+  localPath: string;
+  branchName: string;
+  languageCode: string;
+  isPublic: boolean;
+}
+
 export interface RepositoryItemResponse {
   id: string;
   orgName: string;
   repoName: string;
   gitUrl: string;
+  sourceType: RepositorySourceType;
+  sourceTypeName: RepositorySourceType;
+  sourceLocation: string;
   status: number;
   statusName: RepositoryStatus;
   isPublic: boolean;
