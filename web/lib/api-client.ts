@@ -107,6 +107,7 @@ export async function apiClient<T>(
 
   if (!response.ok) {
     let errorMessage = "Request failed";
+    let errorData: unknown;
     try {
       const rawError = await response.text();
       if (rawError) {

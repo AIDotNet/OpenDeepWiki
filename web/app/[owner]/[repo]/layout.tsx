@@ -81,23 +81,28 @@ export default async function RepoLayout({ children, params }: RepoLayoutProps) 
   else {
     // 获取分支和语言数据
     const branches = await getBranchesData(decodedOwner, decodedRepo);
+    const cookieStore = await cookies();
+    const uiLocale = cookieStore.get("NEXT_LOCALE")?.value === "en" ? "en" : "zh";
 
-  // 获取分支和语言数据
-  const branches = await getBranchesData(decodedOwner, decodedRepo);
-  const cookieStore = await cookies();
-  const uiLocale = cookieStore.get("NEXT_LOCALE")?.value === "en" ? "en" : "zh";
+    return (
+      <RepoShell
+        owner={decodedOwner}
+        repo={decodedRepo}
+        initialNodes={tree.nodes}
+        initialBranches={branches ?? undefined}
+        initialBranch={tree.currentBranch}
+        initialLanguage={tree.currentLanguage}
+        uiLocale={uiLocale}
+      >
+        {children}
+      </RepoShell>
+    );
+  }
 
+  // For non-ready states, wrap content in RouteProviders
   return (
-    <RepoShell 
-      owner={decodedOwner} 
-      repo={decodedRepo} 
-      initialNodes={tree.nodes}
-      initialBranches={branches ?? undefined}
-      initialBranch={tree.currentBranch}
-      initialLanguage={tree.currentLanguage}
-      uiLocale={uiLocale}
-    >
-      {children}
-    </RepoShell>
+    <RouteProviders>
+      {content}
+    </RouteProviders>
   );
 }
