@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const supportedLocales = ['zh', 'en', 'ko', 'ja'];
-const defaultLocale = 'zh';
+const defaultLocale = 'en';
 
 export function middleware(request: NextRequest) {
   // 优先从 URL 查询参数获取语言设置（用于仓库文档页面）

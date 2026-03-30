@@ -111,7 +111,7 @@ public class RepositoryProcessingWorker(
             if (processingLogService != null)
             {
                 await processingLogService.LogAsync(repository.Id, ProcessingStep.Workspace, 
-                    $"开始处理仓库 {repository.OrgName}/{repository.RepoName}", cancellationToken: stoppingToken);
+                    $"Starting repository processing: {repository.OrgName}/{repository.RepoName}", cancellationToken: stoppingToken);
             }
 
             var stopwatch = Stopwatch.StartNew();
@@ -140,7 +140,7 @@ public class RepositoryProcessingWorker(
                 if (processingLogService != null)
                 {
                     await processingLogService.LogAsync(repository.Id, ProcessingStep.Complete, 
-                        $"仓库处理完成，总耗时 {stopwatch.ElapsedMilliseconds}ms", cancellationToken: stoppingToken);
+                        $"Repository processing complete, total time: {stopwatch.ElapsedMilliseconds}ms", cancellationToken: stoppingToken);
                 }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
@@ -165,7 +165,7 @@ public class RepositoryProcessingWorker(
                 if (processingLogService != null)
                 {
                     await processingLogService.LogAsync(repository.Id, ProcessingStep.Content, 
-                        $"处理失败: {ex.Message}", cancellationToken: stoppingToken);
+                        $"Processing failed: {ex.Message}", cancellationToken: stoppingToken);
                 }
             }
 
@@ -239,7 +239,7 @@ public class RepositoryProcessingWorker(
         if (processingLogService != null)
         {
             await processingLogService.LogAsync(repository.Id, ProcessingStep.Workspace, 
-                $"正在准备工作区，分支: {branch.BranchName}", cancellationToken: stoppingToken);
+                $"Preparing workspace, branch: {branch.BranchName}", cancellationToken: stoppingToken);
         }
 
         // Prepare workspace with previous commit ID for incremental updates
@@ -257,7 +257,7 @@ public class RepositoryProcessingWorker(
         if (processingLogService != null)
         {
             await processingLogService.LogAsync(repository.Id, ProcessingStep.Workspace, 
-                $"工作区准备完成，Commit: {workspace.CommitId[..Math.Min(7, workspace.CommitId.Length)]}", cancellationToken: stoppingToken);
+                $"Workspace ready, Commit: {workspace.CommitId[..Math.Min(7, workspace.CommitId.Length)]}", cancellationToken: stoppingToken);
         }
 
         // 检测并更新仓库主要编程语言（仅在首次处理或语言为空时）
@@ -277,7 +277,7 @@ public class RepositoryProcessingWorker(
                 if (processingLogService != null)
                 {
                     await processingLogService.LogAsync(repository.Id, ProcessingStep.Workspace,
-                        $"检测到主要编程语言: {detectedLanguage}", cancellationToken: stoppingToken);
+                        $"Primary language detected: {detectedLanguage}", cancellationToken: stoppingToken);
                 }
             }
         }

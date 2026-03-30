@@ -23,7 +23,7 @@ public class LoggingHttpHandler(HttpMessageHandler innerHandler) : DelegatingHan
         var requestId = Guid.NewGuid().ToString("N")[..8];
         var startTime = DateTime.UtcNow;
 
-        Console.WriteLine($"[{requestId}] >>> 请求开始: {request.Method} {request.RequestUri}");
+        Console.WriteLine($"[{requestId}] >>> Request: {request.Method} {request.RequestUri}");
 
         var attempt = 0;
         HttpResponseMessage? response = null;
@@ -44,7 +44,7 @@ public class LoggingHttpHandler(HttpMessageHandler innerHandler) : DelegatingHan
                 {
                     var retryDelay = GetRetryDelay(response, attempt);
                     Console.WriteLine(
-                        $"[{requestId}] !!! 收到 {(int)response.StatusCode} 响应，{retryDelay.TotalSeconds:F0}秒后进行第 {attempt + 1} 次重试...");
+                        $"[{requestId}] !!! Got response, retrying in {retryDelay.TotalSeconds:F0}s, attempt  {attempt + 1} retry...");
 
                     response.Dispose();
                     await Task.Delay(retryDelay, cancellationToken);
@@ -57,14 +57,14 @@ public class LoggingHttpHandler(HttpMessageHandler innerHandler) : DelegatingHan
             {
                 var retryDelay = GetExponentialDelay(attempt);
                 Console.WriteLine(
-                    $"[{requestId}] !!! 请求异常: {ex.Message}，{retryDelay.TotalSeconds:F0}秒后进行第 {attempt + 1} 次重试...");
+                    $"[{requestId}] !!! Request error: {ex.Message}，{retryDelay.TotalSeconds:F0}s, attempt  {attempt + 1} retry...");
 
                 await Task.Delay(retryDelay, cancellationToken);
             }
             catch (Exception ex)
             {
                 var elapsed = DateTime.UtcNow - startTime;
-                Console.WriteLine($"[{requestId}] !!! 请求异常: {ex.Message} | 耗时: {elapsed.TotalMilliseconds:F0}ms");
+                Console.WriteLine($"[{requestId}] !!! Request error: {ex.Message} | time: {elapsed.TotalMilliseconds:F0}ms");
                 throw;
             }
         }
@@ -74,12 +74,12 @@ public class LoggingHttpHandler(HttpMessageHandler innerHandler) : DelegatingHan
         if (response != null)
         {
             Console.WriteLine(
-                $"[{requestId}] <<< 响应完成: {(int)response.StatusCode} {response.StatusCode} | 耗时: {totalElapsed.TotalMilliseconds:F0}ms | 尝试次数: {attempt}");
+                $"[{requestId}] <<< Response: {(int)response.StatusCode} {response.StatusCode} | time: {totalElapsed.TotalMilliseconds:F0}ms | attempts: {attempt}");
 
             if (!response.IsSuccessStatusCode)
             {
                 var content = await response.Content.ReadAsStringAsync(cancellationToken);
-                Console.WriteLine($"[{requestId}] !!! 错误响应: {content[..Math.Min(500, content.Length)]}");
+                Console.WriteLine($"[{requestId}] !!! Error response: {content[..Math.Min(500, content.Length)]}");
             }
         }
 
