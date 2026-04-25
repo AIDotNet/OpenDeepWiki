@@ -76,6 +76,14 @@ public static class SystemSettingDefaults
                     existing.Description = description;
                     hasChanges = true;
                 }
+
+                // Sync existing setting value with current environment variable
+                var envValue = GetEnvironmentOrConfigurationValue(configuration, key);
+                if (!string.IsNullOrWhiteSpace(envValue) && existing.Value != envValue)
+                {
+                    existing.Value = envValue;
+                    hasChanges = true;
+                }
             }
             else
             {

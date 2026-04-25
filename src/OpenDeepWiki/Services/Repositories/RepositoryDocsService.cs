@@ -131,20 +131,7 @@ public class RepositoryDocsService(IContext context, IGitPlatformService gitPlat
             };
         }
 
-        // 仓库处理失败
-        if (repository.Status == RepositoryStatus.Failed)
-        {
-            return new RepositoryTreeResponse
-            {
-                Owner = repository.OrgName,
-                Repo = repository.RepoName,
-                Exists = true,
-                Status = repository.Status,
-                Nodes = []
-            };
-        }
-
-        // 仓库处理完成，获取文档目录
+        // 仓库处理完成或失败，获取文档目录
         var branchEntity = await GetBranchAsync(repository.Id, branch);
         var language = await GetLanguageAsync(branchEntity.Id, lang);
 
@@ -364,7 +351,7 @@ public class RepositoryDocsService(IContext context, IGitPlatformService gitPlat
 
     private static string NormalizePath(string path)
     {
-        return path.Trim().Trim('/');
+        return System.Net.WebUtility.UrlDecode(path.Trim().Trim('/'));
     }
 
     /// <summary>
@@ -587,6 +574,13 @@ public class RepositoryDocsService(IContext context, IGitPlatformService gitPlat
             var children = catalogs.Where(c => c.ParentId == catalog.Id).ToList();
             if (children.Count > 0)
             {
+                // 如果没有文档文件但有子项，创建 ZIP 目录条目
+                if (catalog.DocFile == null)
+                {
+                    var dirPath = CombineZipPath(parentZipPath, itemName);
+                    archive.CreateEntry(dirPath.EndsWith('/') ? dirPath : dirPath + '/');
+                }
+
                 var nextParentZipPath = CombineZipPath(parentZipPath, itemName);
                 await AddFilesToArchive(archive, catalogs, catalog.Id, nextParentZipPath);
             }

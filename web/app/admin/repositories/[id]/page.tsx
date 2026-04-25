@@ -827,8 +827,14 @@ export default function AdminRepositoryManagementPage() {
             </button>
             <button
               type="button"
-              className="flex-1 truncate text-left text-sm"
-              onClick={() => handleSelectDoc(node.slug)}
+              className={`flex-1 truncate text-left text-sm ${hasChildren ? "cursor-pointer" : ""}`}
+              onClick={() => {
+                if (hasChildren) {
+                  toggleDocExpanded(node.slug);
+                } else {
+                  handleSelectDoc(node.slug);
+                }
+              }}
               title={node.slug}
             >
               {node.title}
