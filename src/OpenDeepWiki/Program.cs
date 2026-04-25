@@ -393,6 +393,7 @@ try
     app.MapChatAppEndpoints();
     app.MapEmbedEndpoints();
 
+    app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
     app.MapSystemEndpoints();
     app.MapIncrementalUpdateEndpoints();
     app.MapMcpProviderEndpoints();
