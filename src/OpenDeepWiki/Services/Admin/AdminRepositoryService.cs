@@ -133,8 +133,8 @@ public class AdminRepositoryService : IAdminRepositoryService
 
         if (repo == null) return false;
 
-        await ClearRepositoryReferencesAsync([repo.Id]);
-        _context.Repositories.Remove(repo);
+        await DeleteRepositoryDataAsync([repo.Id]);
+        repo.MarkAsDeleted();
         await _context.SaveChangesAsync();
         return true;
     }
@@ -297,8 +297,11 @@ public class AdminRepositoryService : IAdminRepositoryService
 
         if (repos.Count > 0)
         {
-            await ClearRepositoryReferencesAsync(repos.Select(r => r.Id).ToArray());
-            _context.Repositories.RemoveRange(repos);
+            await DeleteRepositoryDataAsync(repos.Select(r => r.Id).ToArray());
+            foreach (var repo in repos)
+            {
+                repo.MarkAsDeleted();
+            }
             result.SuccessCount = repos.Count;
         }
 
