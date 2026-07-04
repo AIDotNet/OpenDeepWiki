@@ -1,6 +1,6 @@
 ﻿FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        build-essential python3-dev \
+        build-essential git python3-dev \
         libkrb5-3 curl python3 python3-pip \
     && pip3 install --break-system-packages --no-cache-dir "graphifyy[openai,gemini,kimi,ollama]" anthropic \
     && rm -rf /var/lib/apt/lists/*

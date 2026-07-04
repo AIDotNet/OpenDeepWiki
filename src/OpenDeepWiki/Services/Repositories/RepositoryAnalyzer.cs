@@ -80,11 +80,13 @@ public class RepositoryAnalyzer : IRepositoryAnalyzer
         }
 
         var sourceInfo = RepositorySource.Parse(repository.GitUrl);
+        var exactFailureReason = "not evaluated";
         if (sourceInfo.SourceType == RepositorySourceType.LocalDirectory &&
-            TryOpenExactGitWorkdir(sourceInfo.Location, out var localRepository))
+            TryResolveLocalGitSource(sourceInfo.Location, out var localGitSource, out exactFailureReason))
         {
-            using (localRepository)
+            if (localGitSource.AccessMode == LocalGitAccessMode.LibGit2)
             {
+                using var localRepository = new GitRepository(localGitSource.RepositoryPath);
                 return await Task.Run(() =>
                 {
                     cancellationToken.ThrowIfCancellationRequested();
@@ -92,6 +94,15 @@ public class RepositoryAnalyzer : IRepositoryAnalyzer
                     return ResolveLocalSourceBranchTip(localRepository, branchName)?.Sha;
                 }, cancellationToken);
             }
+
+            return await GetGitCliBranchHeadCommitAsync(localGitSource.RepositoryPath, branchName, cancellationToken);
+        }
+
+        if (sourceInfo.SourceType == RepositorySourceType.LocalDirectory)
+        {
+            _logger.LogInformation(
+                "Local source remote HEAD lookup skipped because decoded source is not an exact Git source. Repository: {Org}/{Repo}, Branch: {Branch}, SourcePath: {SourcePath}, Reason: {Reason}",
+                repository.OrgName, repository.RepoName, branchName, sourceInfo.Location, exactFailureReason);
         }
 
         if (sourceInfo.SourceType != RepositorySourceType.Git)
@@ -148,8 +159,9 @@ public class RepositoryAnalyzer : IRepositoryAnalyzer
         };
 
         _logger.LogInformation(
-            "Preparing workspace. Repository: {Org}/{Repo}, Branch: {Branch}, WorkingDirectory: {Path}, PreviousCommit: {PreviousCommit}",
-            workspace.Organization, workspace.RepositoryName, branchName, 
+            "Preparing workspace. Repository: {Org}/{Repo}, Branch: {Branch}, SourceType: {SourceType}, SourceLocation: {SourceLocation}, WorkingDirectory: {Path}, PreviousCommit: {PreviousCommit}",
+            workspace.Organization, workspace.RepositoryName, branchName,
+            workspace.SourceType, workspace.SourceLocation,
             workspace.WorkingDirectory, previousCommitId ?? "none");
 
         // Ensure the parent directory exists
@@ -190,14 +202,21 @@ public class RepositoryAnalyzer : IRepositoryAnalyzer
             await PrepareArchiveWorkspaceAsync(workspace, cancellationToken);
             workspace.CommitId = ComputeDirectorySnapshotId(workspace.WorkingDirectory);
         }
-        else if (IsLocalGitRepository(workspace.SourceLocation))
+        else if (TryResolveLocalGitSource(workspace.SourceLocation, out var localGitSource, out var localGitFailureReason))
         {
-            await PrepareLocalGitWorkspaceAsync(workspace, cancellationToken);
+            await PrepareLocalGitWorkspaceAsync(workspace, localGitSource, cancellationToken);
             workspace.CommitId = GetHeadCommitId(workspace.WorkingDirectory);
             workspace.SupportsIncrementalUpdates = true;
         }
         else
         {
+            if (workspace.SourceType == RepositorySourceType.LocalDirectory)
+            {
+                _logger.LogWarning(
+                    "Decoded local source is not an exact Git source; falling back to local directory snapshot. SourcePath: {SourcePath}, Branch: {Branch}, WorkingDirectory: {Path}, Reason: {Reason}",
+                    workspace.SourceLocation, workspace.BranchName, workspace.WorkingDirectory, localGitFailureReason);
+            }
+
             await PrepareLocalDirectoryWorkspaceAsync(workspace, cancellationToken);
             workspace.CommitId = ComputeDirectorySnapshotId(workspace.WorkingDirectory);
         }
@@ -375,51 +394,51 @@ public class RepositoryAnalyzer : IRepositoryAnalyzer
 
     private async Task PrepareLocalGitWorkspaceAsync(
         RepositoryWorkspace workspace,
+        LocalGitSource localGitSource,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (string.IsNullOrWhiteSpace(workspace.SourceLocation) || !Directory.Exists(workspace.SourceLocation))
+        if (string.IsNullOrWhiteSpace(localGitSource.RepositoryPath) || !Directory.Exists(localGitSource.RepositoryPath))
         {
-            throw new DirectoryNotFoundException($"Local git source not found: {workspace.SourceLocation}");
+            throw new DirectoryNotFoundException($"Local git source not found: {localGitSource.RepositoryPath}");
         }
 
         _logger.LogInformation(
-            "Preparing local git workspace from target branch. SourcePath: {SourcePath}, Branch: {Branch}, TargetPath: {Path}",
-            workspace.SourceLocation, workspace.BranchName, workspace.WorkingDirectory);
+            "Preparing local git workspace from target branch. SourcePath: {SourcePath}, Branch: {Branch}, TargetPath: {Path}, AccessMode: {AccessMode}",
+            localGitSource.RepositoryPath, workspace.BranchName, workspace.WorkingDirectory, localGitSource.AccessMode);
 
-        if (!TryOpenExactGitWorkdir(workspace.SourceLocation, out var sourceRepository))
+        if (localGitSource.AccessMode == LocalGitAccessMode.GitCli)
         {
-            throw new InvalidOperationException($"Local git source is not an exact Git workdir: {workspace.SourceLocation}");
+            await PrepareLocalGitWorkspaceWithCliAsync(workspace, localGitSource.RepositoryPath, cancellationToken);
+            return;
         }
 
-        using (sourceRepository)
-        {
-            var targetTip = ResolveLocalSourceBranchTip(sourceRepository, workspace.BranchName)
-                ?? throw new InvalidOperationException(
-                    $"Branch '{workspace.BranchName}' not found in local git source: {workspace.SourceLocation}");
+        using var sourceRepository = new GitRepository(localGitSource.RepositoryPath);
+        var targetTip = ResolveLocalSourceBranchTip(sourceRepository, workspace.BranchName)
+            ?? throw new InvalidOperationException(
+                $"Branch '{workspace.BranchName}' not found in local git source: {localGitSource.RepositoryPath}");
 
-            _logger.LogInformation(
-                "Resolved local git source branch. SourcePath: {SourcePath}, Branch: {Branch}, Commit: {CommitId}",
-                workspace.SourceLocation, workspace.BranchName, targetTip.Sha);
-        }
+        _logger.LogInformation(
+            "Resolved local git source branch. SourcePath: {SourcePath}, Branch: {Branch}, Commit: {CommitId}",
+            localGitSource.RepositoryPath, workspace.BranchName, targetTip.Sha);
 
         var originalGitUrl = workspace.GitUrl;
-        workspace.GitUrl = workspace.SourceLocation;
+        workspace.GitUrl = localGitSource.RepositoryPath;
 
         try
         {
-            if (IsValidWorkspaceForSource(workspace.WorkingDirectory, workspace.SourceLocation))
+            if (IsValidWorkspaceForSource(workspace.WorkingDirectory, localGitSource.RepositoryPath, out var workspaceReason))
             {
                 await PullRepositoryAsync(workspace, credentials: null, cancellationToken);
             }
             else
             {
                 _logger.LogWarning(
-                    "Existing local git workspace is missing, invalid, or points at a different source; recloning. SourcePath: {SourcePath}, Branch: {Branch}, TargetPath: {Path}",
-                    workspace.SourceLocation, workspace.BranchName, workspace.WorkingDirectory);
+                    "Existing local git workspace is missing, invalid, or points at a different source; recloning. SourcePath: {SourcePath}, Branch: {Branch}, TargetPath: {Path}, Reason: {Reason}",
+                    localGitSource.RepositoryPath, workspace.BranchName, workspace.WorkingDirectory, workspaceReason);
 
-                DeleteWorkspaceDirectoryWithinRepositoryRoot(workspace.WorkingDirectory, workspace.SourceLocation);
+                DeleteWorkspaceDirectoryWithinRepositoryRoot(workspace.WorkingDirectory, localGitSource.RepositoryPath);
                 await CloneRepositoryAsync(workspace, credentials: null, cancellationToken);
             }
 
@@ -429,6 +448,46 @@ public class RepositoryAnalyzer : IRepositoryAnalyzer
         {
             workspace.GitUrl = originalGitUrl;
         }
+    }
+
+    private async Task PrepareLocalGitWorkspaceWithCliAsync(
+        RepositoryWorkspace workspace,
+        string sourcePath,
+        CancellationToken cancellationToken)
+    {
+        var targetCommit = await GetGitCliBranchHeadCommitAsync(sourcePath, workspace.BranchName, cancellationToken)
+            ?? throw new InvalidOperationException(
+                $"Branch '{workspace.BranchName}' not found in local git source: {sourcePath}");
+
+        _logger.LogInformation(
+            "Resolved local git source branch via git CLI. SourcePath: {SourcePath}, Branch: {Branch}, Commit: {CommitId}",
+            sourcePath, workspace.BranchName, targetCommit);
+
+        if (await IsValidGitCliWorkspaceForSourceAsync(workspace.WorkingDirectory, sourcePath, cancellationToken))
+        {
+            await RunGitCliAsync(workspace.WorkingDirectory, ["fetch", "origin"], cancellationToken, throwOnError: true);
+        }
+        else
+        {
+            var reason = await GetGitCliWorkspaceInvalidReasonAsync(workspace.WorkingDirectory, sourcePath, cancellationToken);
+            _logger.LogWarning(
+                "Existing local git workspace is missing, invalid, or points at a different source; recloning. SourcePath: {SourcePath}, Branch: {Branch}, TargetPath: {Path}, Reason: {Reason}",
+                sourcePath, workspace.BranchName, workspace.WorkingDirectory, reason);
+
+            DeleteWorkspaceDirectoryWithinRepositoryRoot(workspace.WorkingDirectory, sourcePath);
+            Directory.CreateDirectory(Path.GetDirectoryName(workspace.WorkingDirectory)!);
+            await RunGitCliAsync(
+                Directory.GetCurrentDirectory(),
+                ["clone", "--no-checkout", sourcePath, workspace.WorkingDirectory],
+                cancellationToken,
+                throwOnError: true);
+        }
+
+        await RunGitCliAsync(workspace.WorkingDirectory, ["fetch", "origin"], cancellationToken, throwOnError: true);
+        await RunGitCliAsync(workspace.WorkingDirectory, ["checkout", "-B", workspace.BranchName, targetCommit], cancellationToken, throwOnError: true);
+        await RunGitCliAsync(workspace.WorkingDirectory, ["reset", "--hard", targetCommit], cancellationToken, throwOnError: true);
+
+        workspace.LocalDirectoryImportModeUsed = LocalDirectoryImportMode.Copy;
     }
 
     private void CopyDirectory(string sourceDirectory, string destinationDirectory)
@@ -505,15 +564,35 @@ public class RepositoryAnalyzer : IRepositoryAnalyzer
                fileSystemInfo.Attributes.HasFlag(FileAttributes.ReparsePoint);
     }
 
-    private static bool IsLocalGitRepository(string path)
+    private bool TryResolveLocalGitSource(
+        string path,
+        out LocalGitSource localGitSource,
+        out string failureReason)
     {
-        if (!TryOpenExactGitWorkdir(path, out var repository))
+        localGitSource = default;
+
+        if (TryOpenExactGitWorkdir(path, out var repository, out failureReason))
         {
-            return false;
+            repository.Dispose();
+            localGitSource = new LocalGitSource(path, LocalGitAccessMode.LibGit2);
+            _logger.LogInformation(
+                "Decoded local source path is an exact Git workdir. SourcePath: {SourcePath}, AccessMode: {AccessMode}",
+                path, localGitSource.AccessMode);
+            return true;
         }
 
-        repository.Dispose();
-        return true;
+        if (TryResolveGitCliExactWorkdir(path, out var cliTopLevel, out var cliFailureReason))
+        {
+            localGitSource = new LocalGitSource(path, LocalGitAccessMode.GitCli);
+            failureReason = $"LibGit2 exact workdir failed: {failureReason}; git CLI exact workdir succeeded: {cliTopLevel}";
+            _logger.LogWarning(
+                "Decoded local source path is an exact Git workdir via git CLI fallback. SourcePath: {SourcePath}, TopLevel: {TopLevel}, LibGit2Reason: {LibGit2Reason}",
+                path, cliTopLevel, failureReason);
+            return true;
+        }
+
+        failureReason = $"LibGit2 exact workdir failed: {failureReason}; git CLI exact workdir failed: {cliFailureReason}";
+        return false;
     }
 
     private static Commit? ResolveLocalSourceBranchTip(GitRepository repository, string branchName)
@@ -522,9 +601,9 @@ public class RepositoryAnalyzer : IRepositoryAnalyzer
                repository.Branches[$"origin/{branchName}"]?.Tip;
     }
 
-    private static bool IsValidWorkspaceForSource(string workspacePath, string sourcePath)
+    private static bool IsValidWorkspaceForSource(string workspacePath, string sourcePath, out string reason)
     {
-        if (!TryOpenExactGitWorkdir(workspacePath, out var repository))
+        if (!TryOpenExactGitWorkdir(workspacePath, out var repository, out reason))
         {
             return false;
         }
@@ -532,16 +611,31 @@ public class RepositoryAnalyzer : IRepositoryAnalyzer
         using (repository)
         {
             var remote = repository.Network.Remotes["origin"];
-            return remote != null && LocalPathEquals(remote.Url, sourcePath);
+            if (remote == null)
+            {
+                reason = "workspace has no origin remote";
+                return false;
+            }
+
+            if (!LocalPathEquals(remote.Url, sourcePath))
+            {
+                reason = $"workspace origin '{remote.Url}' does not match source '{sourcePath}'";
+                return false;
+            }
+
+            reason = "workspace is an exact Git workdir and origin matches source";
+            return true;
         }
     }
 
-    private static bool TryOpenExactGitWorkdir(string path, out GitRepository repository)
+    private static bool TryOpenExactGitWorkdir(string path, out GitRepository repository, out string reason)
     {
         repository = null!;
+        reason = "unknown";
 
         if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path))
         {
+            reason = $"path does not exist or is not a directory: {path}";
             return false;
         }
 
@@ -551,21 +645,213 @@ public class RepositoryAnalyzer : IRepositoryAnalyzer
             var workingDirectory = candidate.Info.WorkingDirectory;
             if (!LocalPathEquals(workingDirectory, path))
             {
+                reason = $"opened Git workdir root '{workingDirectory}' does not equal requested path '{path}'";
                 candidate.Dispose();
                 return false;
             }
 
             repository = candidate;
+            reason = "exact Git workdir";
             return true;
         }
-        catch (RepositoryNotFoundException)
+        catch (RepositoryNotFoundException ex)
         {
+            reason = ex.Message;
             return false;
         }
-        catch (LibGit2SharpException)
+        catch (LibGit2SharpException ex)
         {
+            reason = ex.Message;
             return false;
         }
+    }
+
+    private bool TryResolveGitCliExactWorkdir(string path, out string topLevel, out string reason)
+    {
+        topLevel = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path))
+        {
+            reason = $"path does not exist or is not a directory: {path}";
+            return false;
+        }
+
+        var result = RunGitCli(path, ["rev-parse", "--show-toplevel"]);
+        if (result.ExitCode != 0)
+        {
+            reason = $"git rev-parse --show-toplevel failed with exit {result.ExitCode}: {result.Error}";
+            return false;
+        }
+
+        topLevel = result.Output.Trim();
+        if (!LocalPathEquals(topLevel, path))
+        {
+            reason = $"git CLI workdir root '{topLevel}' does not equal requested path '{path}'";
+            return false;
+        }
+
+        reason = "exact Git workdir via git CLI";
+        return true;
+    }
+
+    private async Task<string?> GetGitCliBranchHeadCommitAsync(
+        string sourcePath,
+        string branchName,
+        CancellationToken cancellationToken)
+    {
+        var localResult = await RunGitCliAsync(
+            sourcePath,
+            ["rev-parse", "--verify", $"{branchName}^{{commit}}"],
+            cancellationToken,
+            throwOnError: false);
+        if (localResult.ExitCode == 0)
+        {
+            return localResult.Output.Trim();
+        }
+
+        var remoteResult = await RunGitCliAsync(
+            sourcePath,
+            ["rev-parse", "--verify", $"origin/{branchName}^{{commit}}"],
+            cancellationToken,
+            throwOnError: false);
+        if (remoteResult.ExitCode == 0)
+        {
+            return remoteResult.Output.Trim();
+        }
+
+        _logger.LogWarning(
+            "Unable to resolve local git source branch via git CLI. SourcePath: {SourcePath}, Branch: {Branch}, LocalError: {LocalError}, RemoteError: {RemoteError}",
+            sourcePath, branchName, localResult.Error, remoteResult.Error);
+        return null;
+    }
+
+    private async Task<bool> IsValidGitCliWorkspaceForSourceAsync(
+        string workspacePath,
+        string sourcePath,
+        CancellationToken cancellationToken)
+    {
+        return string.Equals(
+            await GetGitCliWorkspaceInvalidReasonAsync(workspacePath, sourcePath, cancellationToken),
+            "workspace is an exact Git workdir and origin matches source",
+            StringComparison.Ordinal);
+    }
+
+    private async Task<string> GetGitCliWorkspaceInvalidReasonAsync(
+        string workspacePath,
+        string sourcePath,
+        CancellationToken cancellationToken)
+    {
+        if (!Directory.Exists(workspacePath))
+        {
+            return $"workspace path does not exist: {workspacePath}";
+        }
+
+        var topLevelResult = await RunGitCliAsync(
+            workspacePath,
+            ["rev-parse", "--show-toplevel"],
+            cancellationToken,
+            throwOnError: false);
+        if (topLevelResult.ExitCode != 0)
+        {
+            return $"git rev-parse --show-toplevel failed with exit {topLevelResult.ExitCode}: {topLevelResult.Error}";
+        }
+
+        var topLevel = topLevelResult.Output.Trim();
+        if (!LocalPathEquals(topLevel, workspacePath))
+        {
+            return $"workspace Git root '{topLevel}' does not equal target path '{workspacePath}'";
+        }
+
+        var originResult = await RunGitCliAsync(
+            workspacePath,
+            ["remote", "get-url", "origin"],
+            cancellationToken,
+            throwOnError: false);
+        if (originResult.ExitCode != 0)
+        {
+            return $"git remote get-url origin failed with exit {originResult.ExitCode}: {originResult.Error}";
+        }
+
+        var originUrl = originResult.Output.Trim();
+        if (!LocalPathEquals(originUrl, sourcePath))
+        {
+            return $"workspace origin '{originUrl}' does not match source '{sourcePath}'";
+        }
+
+        return "workspace is an exact Git workdir and origin matches source";
+    }
+
+    private GitCliResult RunGitCli(string workingDirectory, IReadOnlyList<string> arguments)
+    {
+        try
+        {
+            using var process = StartGitCli(workingDirectory, arguments);
+            if (process == null)
+            {
+                return new GitCliResult(-1, string.Empty, "Failed to start git process");
+            }
+
+            var output = process.StandardOutput.ReadToEnd();
+            var error = process.StandardError.ReadToEnd();
+            process.WaitForExit();
+            return new GitCliResult(process.ExitCode, output.Trim(), error.Trim());
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or FileNotFoundException)
+        {
+            return new GitCliResult(-1, string.Empty, ex.Message);
+        }
+    }
+
+    private async Task<GitCliResult> RunGitCliAsync(
+        string workingDirectory,
+        IReadOnlyList<string> arguments,
+        CancellationToken cancellationToken,
+        bool throwOnError)
+    {
+        using var process = StartGitCli(workingDirectory, arguments);
+        if (process == null)
+        {
+            throw new InvalidOperationException("Failed to start git process");
+        }
+
+        var outputTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
+        var errorTask = process.StandardError.ReadToEndAsync(cancellationToken);
+        await process.WaitForExitAsync(cancellationToken);
+        var result = new GitCliResult(
+            process.ExitCode,
+            (await outputTask).Trim(),
+            (await errorTask).Trim());
+
+        if (throwOnError && result.ExitCode != 0)
+        {
+            throw new InvalidOperationException(
+                $"git {string.Join(' ', arguments)} failed in {workingDirectory} with exit {result.ExitCode}: {result.Error}");
+        }
+
+        return result;
+    }
+
+    private static Process? StartGitCli(string workingDirectory, IReadOnlyList<string> arguments)
+    {
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = "git",
+            WorkingDirectory = workingDirectory,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true
+        };
+
+        startInfo.ArgumentList.Add("-c");
+        startInfo.ArgumentList.Add("safe.directory=*");
+
+        foreach (var argument in arguments)
+        {
+            startInfo.ArgumentList.Add(argument);
+        }
+
+        return Process.Start(startInfo);
     }
 
     private void DeleteWorkspaceDirectoryWithinRepositoryRoot(string workspacePath, string sourcePath)
@@ -629,6 +915,16 @@ public class RepositoryAnalyzer : IRepositoryAnalyzer
         return OperatingSystem.IsWindows()
             ? StringComparison.OrdinalIgnoreCase
             : StringComparison.Ordinal;
+    }
+
+    private readonly record struct LocalGitSource(string RepositoryPath, LocalGitAccessMode AccessMode);
+
+    private readonly record struct GitCliResult(int ExitCode, string Output, string Error);
+
+    private enum LocalGitAccessMode
+    {
+        LibGit2,
+        GitCli
     }
 
     private static string ComputeDirectorySnapshotId(string directoryPath)
