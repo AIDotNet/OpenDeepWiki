@@ -81,16 +81,17 @@ public class RepositoryAnalyzer : IRepositoryAnalyzer
 
         var sourceInfo = RepositorySource.Parse(repository.GitUrl);
         if (sourceInfo.SourceType == RepositorySourceType.LocalDirectory &&
-            IsLocalGitRepository(sourceInfo.Location))
+            TryOpenExactGitWorkdir(sourceInfo.Location, out var localRepository))
         {
-            return await Task.Run(() =>
+            using (localRepository)
             {
-                cancellationToken.ThrowIfCancellationRequested();
+                return await Task.Run(() =>
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
 
-                using var localRepository = new GitRepository(sourceInfo.Location);
-                var branch = localRepository.Branches[branchName];
-                return branch?.Tip?.Sha;
-            }, cancellationToken);
+                    return ResolveLocalSourceBranchTip(localRepository, branchName)?.Sha;
+                }, cancellationToken);
+            }
         }
 
         if (sourceInfo.SourceType != RepositorySourceType.Git)
@@ -387,20 +388,38 @@ public class RepositoryAnalyzer : IRepositoryAnalyzer
             "Preparing local git workspace from target branch. SourcePath: {SourcePath}, Branch: {Branch}, TargetPath: {Path}",
             workspace.SourceLocation, workspace.BranchName, workspace.WorkingDirectory);
 
+        if (!TryOpenExactGitWorkdir(workspace.SourceLocation, out var sourceRepository))
+        {
+            throw new InvalidOperationException($"Local git source is not an exact Git workdir: {workspace.SourceLocation}");
+        }
+
+        using (sourceRepository)
+        {
+            var targetTip = ResolveLocalSourceBranchTip(sourceRepository, workspace.BranchName)
+                ?? throw new InvalidOperationException(
+                    $"Branch '{workspace.BranchName}' not found in local git source: {workspace.SourceLocation}");
+
+            _logger.LogInformation(
+                "Resolved local git source branch. SourcePath: {SourcePath}, Branch: {Branch}, Commit: {CommitId}",
+                workspace.SourceLocation, workspace.BranchName, targetTip.Sha);
+        }
+
         var originalGitUrl = workspace.GitUrl;
         workspace.GitUrl = workspace.SourceLocation;
 
         try
         {
-            var repoExists = Directory.Exists(workspace.WorkingDirectory) &&
-                             Directory.Exists(Path.Combine(workspace.WorkingDirectory, ".git"));
-
-            if (repoExists)
+            if (IsValidWorkspaceForSource(workspace.WorkingDirectory, workspace.SourceLocation))
             {
                 await PullRepositoryAsync(workspace, credentials: null, cancellationToken);
             }
             else
             {
+                _logger.LogWarning(
+                    "Existing local git workspace is missing, invalid, or points at a different source; recloning. SourcePath: {SourcePath}, Branch: {Branch}, TargetPath: {Path}",
+                    workspace.SourceLocation, workspace.BranchName, workspace.WorkingDirectory);
+
+                DeleteWorkspaceDirectoryWithinRepositoryRoot(workspace.WorkingDirectory, workspace.SourceLocation);
                 await CloneRepositoryAsync(workspace, credentials: null, cancellationToken);
             }
 
@@ -488,24 +507,128 @@ public class RepositoryAnalyzer : IRepositoryAnalyzer
 
     private static bool IsLocalGitRepository(string path)
     {
+        if (!TryOpenExactGitWorkdir(path, out var repository))
+        {
+            return false;
+        }
+
+        repository.Dispose();
+        return true;
+    }
+
+    private static Commit? ResolveLocalSourceBranchTip(GitRepository repository, string branchName)
+    {
+        return repository.Branches[branchName]?.Tip ??
+               repository.Branches[$"origin/{branchName}"]?.Tip;
+    }
+
+    private static bool IsValidWorkspaceForSource(string workspacePath, string sourcePath)
+    {
+        if (!TryOpenExactGitWorkdir(workspacePath, out var repository))
+        {
+            return false;
+        }
+
+        using (repository)
+        {
+            var remote = repository.Network.Remotes["origin"];
+            return remote != null && LocalPathEquals(remote.Url, sourcePath);
+        }
+    }
+
+    private static bool TryOpenExactGitWorkdir(string path, out GitRepository repository)
+    {
+        repository = null!;
+
         if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path))
         {
             return false;
         }
 
-        if (Directory.Exists(Path.Combine(path, ".git")) || File.Exists(Path.Combine(path, ".git")))
-        {
-            return true;
-        }
-
         try
         {
-            return GitRepository.IsValid(path);
+            var candidate = new GitRepository(path);
+            var workingDirectory = candidate.Info.WorkingDirectory;
+            if (!LocalPathEquals(workingDirectory, path))
+            {
+                candidate.Dispose();
+                return false;
+            }
+
+            repository = candidate;
+            return true;
+        }
+        catch (RepositoryNotFoundException)
+        {
+            return false;
         }
         catch (LibGit2SharpException)
         {
             return false;
         }
+    }
+
+    private void DeleteWorkspaceDirectoryWithinRepositoryRoot(string workspacePath, string sourcePath)
+    {
+        if (!Directory.Exists(workspacePath))
+        {
+            return;
+        }
+
+        var normalizedWorkspace = NormalizeLocalPath(workspacePath);
+        var normalizedSource = NormalizeLocalPath(sourcePath);
+        if (PathsEqual(normalizedWorkspace, normalizedSource))
+        {
+            throw new InvalidOperationException(
+                $"Refusing to delete local git source while preparing workspace: {workspacePath}");
+        }
+
+        var normalizedRoot = NormalizeLocalPath(_options.RepositoriesDirectory);
+        if (PathsEqual(normalizedWorkspace, normalizedRoot) ||
+            !IsPathUnder(normalizedWorkspace, normalizedRoot))
+        {
+            throw new InvalidOperationException(
+                $"Refusing to delete workspace outside repository root. Workspace: {workspacePath}, Root: {_options.RepositoriesDirectory}");
+        }
+
+        DeleteDirectoryRecursive(workspacePath);
+    }
+
+    private static bool LocalPathEquals(string pathA, string pathB)
+    {
+        return PathsEqual(NormalizeLocalPath(pathA), NormalizeLocalPath(pathB));
+    }
+
+    private static bool PathsEqual(string normalizedPathA, string normalizedPathB)
+    {
+        return string.Equals(normalizedPathA, normalizedPathB, GetPathComparison());
+    }
+
+    private static bool IsPathUnder(string normalizedPath, string normalizedParent)
+    {
+        var parentWithSeparator = normalizedParent.EndsWith(Path.DirectorySeparatorChar)
+            ? normalizedParent
+            : normalizedParent + Path.DirectorySeparatorChar;
+
+        return normalizedPath.StartsWith(parentWithSeparator, GetPathComparison());
+    }
+
+    private static string NormalizeLocalPath(string path)
+    {
+        if (Uri.TryCreate(path, UriKind.Absolute, out var uri) && uri.IsFile)
+        {
+            path = uri.LocalPath;
+        }
+
+        return Path.GetFullPath(path)
+            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+    }
+
+    private static StringComparison GetPathComparison()
+    {
+        return OperatingSystem.IsWindows()
+            ? StringComparison.OrdinalIgnoreCase
+            : StringComparison.Ordinal;
     }
 
     private static string ComputeDirectorySnapshotId(string directoryPath)
