@@ -457,6 +457,7 @@ public class RepositoryAnalyzer : IRepositoryAnalyzer
     {
         var sourceSafeDirectories = BuildGitCliSafeDirectories(sourcePath);
         var workspaceSafeDirectories = BuildGitCliSafeDirectories(workspace.WorkingDirectory, sourcePath);
+        var sourceUploadPackArgument = BuildGitCliUploadPackArgument(sourceSafeDirectories);
 
         var targetCommit = await GetGitCliBranchHeadCommitAsync(
                 sourcePath,
@@ -478,7 +479,7 @@ public class RepositoryAnalyzer : IRepositoryAnalyzer
         {
             await RunGitCliAsync(
                 workspace.WorkingDirectory,
-                ["fetch", "origin"],
+                ["fetch", sourceUploadPackArgument, "origin"],
                 cancellationToken,
                 throwOnError: true,
                 safeDirectories: workspaceSafeDirectories);
@@ -498,7 +499,14 @@ public class RepositoryAnalyzer : IRepositoryAnalyzer
             Directory.CreateDirectory(Path.GetDirectoryName(workspace.WorkingDirectory)!);
             await RunGitCliAsync(
                 Directory.GetCurrentDirectory(),
-                ["clone", "--no-checkout", sourcePath, workspace.WorkingDirectory],
+                [
+                    "clone",
+                    "--no-local",
+                    sourceUploadPackArgument,
+                    "--no-checkout",
+                    sourcePath,
+                    workspace.WorkingDirectory
+                ],
                 cancellationToken,
                 throwOnError: true,
                 safeDirectories: BuildGitCliSafeDirectories(sourcePath, workspace.WorkingDirectory));
@@ -507,7 +515,7 @@ public class RepositoryAnalyzer : IRepositoryAnalyzer
         workspaceSafeDirectories = BuildGitCliSafeDirectories(workspace.WorkingDirectory, sourcePath);
         await RunGitCliAsync(
             workspace.WorkingDirectory,
-            ["fetch", "origin"],
+            ["fetch", sourceUploadPackArgument, "origin"],
             cancellationToken,
             throwOnError: true,
             safeDirectories: workspaceSafeDirectories);
@@ -896,9 +904,10 @@ public class RepositoryAnalyzer : IRepositoryAnalyzer
         IReadOnlyList<string> safeDirectories)
     {
         _logger.LogInformation(
-            "Running git command. WorkingDirectory: {WorkingDirectory}, Arguments: {Arguments}, SafeDirectories: {SafeDirectories}",
+            "Running git command. WorkingDirectory: {WorkingDirectory}, Arguments: {Arguments}, FullArguments: {FullArguments}, SafeDirectories: {SafeDirectories}",
             workingDirectory,
             string.Join(' ', arguments),
+            string.Join(' ', BuildGitCliProcessArguments(arguments, safeDirectories).Select(QuoteGitCliArgumentForLog)),
             string.Join(", ", safeDirectories));
     }
 
@@ -917,18 +926,62 @@ public class RepositoryAnalyzer : IRepositoryAnalyzer
             CreateNoWindow = true
         };
 
-        foreach (var safeDirectory in safeDirectories.Where(path => !string.IsNullOrWhiteSpace(path)))
-        {
-            startInfo.ArgumentList.Add("-c");
-            startInfo.ArgumentList.Add($"safe.directory={safeDirectory}");
-        }
-
-        foreach (var argument in arguments)
+        foreach (var argument in BuildGitCliProcessArguments(arguments, safeDirectories))
         {
             startInfo.ArgumentList.Add(argument);
         }
 
         return Process.Start(startInfo);
+    }
+
+    private static IEnumerable<string> BuildGitCliProcessArguments(
+        IReadOnlyList<string> arguments,
+        IReadOnlyList<string> safeDirectories)
+    {
+        foreach (var safeDirectory in safeDirectories.Where(path => !string.IsNullOrWhiteSpace(path)))
+        {
+            yield return "-c";
+            yield return $"safe.directory={safeDirectory}";
+        }
+
+        foreach (var argument in arguments)
+        {
+            yield return argument;
+        }
+    }
+
+    private static string BuildGitCliUploadPackArgument(IReadOnlyList<string> safeDirectories)
+    {
+        var uploadPackArguments = new List<string> { "git" };
+        foreach (var safeDirectory in safeDirectories.Where(path => !string.IsNullOrWhiteSpace(path)))
+        {
+            uploadPackArguments.Add("-c");
+            uploadPackArguments.Add($"safe.directory={safeDirectory}");
+        }
+
+        uploadPackArguments.Add("upload-pack");
+        return $"--upload-pack={string.Join(' ', uploadPackArguments.Select(QuoteGitCliArgumentForShell))}";
+    }
+
+    private static string QuoteGitCliArgumentForLog(string argument)
+    {
+        return argument.Any(char.IsWhiteSpace)
+            ? $"\"{argument.Replace("\"", "\\\"", StringComparison.Ordinal)}\""
+            : argument;
+    }
+
+    private static string QuoteGitCliArgumentForShell(string argument)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return argument.Any(char.IsWhiteSpace)
+                ? $"\"{argument.Replace("\"", "\\\"", StringComparison.Ordinal)}\""
+                : argument;
+        }
+
+        return argument.Contains('\'', StringComparison.Ordinal) || argument.Any(char.IsWhiteSpace)
+            ? $"'{argument.Replace("'", "'\"'\"'", StringComparison.Ordinal)}'"
+            : argument;
     }
 
     private static IReadOnlyList<string> BuildGitCliSafeDirectories(params string[] paths)

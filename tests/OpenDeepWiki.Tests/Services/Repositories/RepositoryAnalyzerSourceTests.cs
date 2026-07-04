@@ -421,6 +421,28 @@ public class RepositoryAnalyzerSourceTests
         Assert.Contains(NormalizePath(commonGitDir), safeDirectories);
     }
 
+    [Fact]
+    public void BuildGitCliUploadPackArgument_IncludesSafeDirectoriesBeforeUploadPack()
+    {
+        var sourceRoot = NormalizePath(Path.Combine(CreateTempDirectory(), "source with space"));
+        var gitDir = NormalizePath(Path.Combine(sourceRoot, ".git"));
+        var argument = InvokeBuildGitCliUploadPackArgument([sourceRoot, gitDir]);
+        var processArguments = InvokeBuildGitCliProcessArguments(
+            ["clone", "--no-local", argument, "--no-checkout", sourceRoot, "/tmp/target"],
+            [sourceRoot, gitDir]);
+
+        Assert.Contains($"-c 'safe.directory={sourceRoot}'", argument);
+        Assert.Contains($"-c 'safe.directory={gitDir}'", argument);
+        Assert.EndsWith(" upload-pack", argument);
+        Assert.Equal("-c", processArguments[0]);
+        Assert.Equal($"safe.directory={sourceRoot}", processArguments[1]);
+        Assert.Equal("-c", processArguments[2]);
+        Assert.Equal($"safe.directory={gitDir}", processArguments[3]);
+        Assert.Equal("clone", processArguments[4]);
+        Assert.Equal("--no-local", processArguments[5]);
+        Assert.Equal(argument, processArguments[6]);
+    }
+
     private static RepositoryAnalyzer CreateAnalyzer(string repositoriesRoot, RepositoryAnalyzerOptions? options = null)
     {
         return new RepositoryAnalyzer(
@@ -439,6 +461,28 @@ public class RepositoryAnalyzerSourceTests
             BindingFlags.NonPublic | BindingFlags.Static);
         Assert.NotNull(method);
         return Assert.IsAssignableFrom<IReadOnlyList<string>>(method.Invoke(null, [paths]));
+    }
+
+    private static string InvokeBuildGitCliUploadPackArgument(IReadOnlyList<string> safeDirectories)
+    {
+        var method = typeof(RepositoryAnalyzer).GetMethod(
+            "BuildGitCliUploadPackArgument",
+            BindingFlags.NonPublic | BindingFlags.Static);
+        Assert.NotNull(method);
+        return Assert.IsType<string>(method.Invoke(null, [safeDirectories]));
+    }
+
+    private static string[] InvokeBuildGitCliProcessArguments(
+        IReadOnlyList<string> arguments,
+        IReadOnlyList<string> safeDirectories)
+    {
+        var method = typeof(RepositoryAnalyzer).GetMethod(
+            "BuildGitCliProcessArguments",
+            BindingFlags.NonPublic | BindingFlags.Static);
+        Assert.NotNull(method);
+        var result = Assert.IsAssignableFrom<IEnumerable<string>>(
+            method.Invoke(null, [arguments, safeDirectories]));
+        return result.ToArray();
     }
 
     private static string ResolveGitDirPointerForTest(string gitFile, string worktreePath)
