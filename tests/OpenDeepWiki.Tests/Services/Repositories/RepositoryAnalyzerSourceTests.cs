@@ -169,6 +169,45 @@ public class RepositoryAnalyzerSourceTests
         Assert.NotEqual(aWorkspace.WorkingDirectory, bWorkspace.WorkingDirectory);
     }
 
+    [Fact]
+    public async Task PrepareWorkspaceAsync_WhenLocalDirectorySourceIsGitRepository_UsesTargetBranchHead()
+    {
+        var repositoriesRoot = CreateTempDirectory();
+        var sourceRoot = CreateTempDirectory();
+        var (aCommit, bCommit) = CreateGitRepositoryWithBranches(
+            sourceRoot,
+            "smart-hw/os_services_develop",
+            "smart-hw/rv1106_develop");
+        var analyzer = CreateAnalyzer(
+            repositoriesRoot,
+            new RepositoryAnalyzerOptions
+            {
+                RepositoriesDirectory = repositoriesRoot,
+                AllowedLocalPathRoots = [Path.GetDirectoryName(sourceRoot)!]
+            });
+        var repository = new Repository
+        {
+            Id = Guid.NewGuid().ToString(),
+            OwnerUserId = Guid.NewGuid().ToString(),
+            OrgName = "YD_HW/services",
+            RepoName = "youdao-input-event-monitor",
+            GitUrl = RepositorySource.EncodeLocalDirectoryPath(sourceRoot)
+        };
+
+        var aWorkspace = await analyzer.PrepareWorkspaceAsync(repository, "smart-hw/os_services_develop");
+        var bWorkspace = await analyzer.PrepareWorkspaceAsync(repository, "smart-hw/rv1106_develop");
+        var bRemoteHead = await analyzer.GetRemoteBranchHeadCommitAsync(repository, "smart-hw/rv1106_develop");
+
+        Assert.Equal(RepositorySourceType.LocalDirectory, bWorkspace.SourceType);
+        Assert.True(bWorkspace.SupportsIncrementalUpdates);
+        Assert.Equal(aCommit, aWorkspace.CommitId);
+        Assert.Equal("A branch", File.ReadAllText(Path.Combine(aWorkspace.WorkingDirectory, "branch.txt")));
+        Assert.Equal(bCommit, bWorkspace.CommitId);
+        Assert.Equal(bCommit, bRemoteHead);
+        Assert.Equal("B branch", File.ReadAllText(Path.Combine(bWorkspace.WorkingDirectory, "branch.txt")));
+        Assert.NotEqual(aWorkspace.WorkingDirectory, bWorkspace.WorkingDirectory);
+    }
+
     private static RepositoryAnalyzer CreateAnalyzer(string repositoriesRoot, RepositoryAnalyzerOptions? options = null)
     {
         return new RepositoryAnalyzer(

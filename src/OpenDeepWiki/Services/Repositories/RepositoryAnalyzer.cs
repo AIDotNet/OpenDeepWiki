@@ -80,6 +80,19 @@ public class RepositoryAnalyzer : IRepositoryAnalyzer
         }
 
         var sourceInfo = RepositorySource.Parse(repository.GitUrl);
+        if (sourceInfo.SourceType == RepositorySourceType.LocalDirectory &&
+            IsLocalGitRepository(sourceInfo.Location))
+        {
+            return await Task.Run(() =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                using var localRepository = new GitRepository(sourceInfo.Location);
+                var branch = localRepository.Branches[branchName];
+                return branch?.Tip?.Sha;
+            }, cancellationToken);
+        }
+
         if (sourceInfo.SourceType != RepositorySourceType.Git)
         {
             _logger.LogDebug(
@@ -175,6 +188,12 @@ public class RepositoryAnalyzer : IRepositoryAnalyzer
         {
             await PrepareArchiveWorkspaceAsync(workspace, cancellationToken);
             workspace.CommitId = ComputeDirectorySnapshotId(workspace.WorkingDirectory);
+        }
+        else if (IsLocalGitRepository(workspace.SourceLocation))
+        {
+            await PrepareLocalGitWorkspaceAsync(workspace, cancellationToken);
+            workspace.CommitId = GetHeadCommitId(workspace.WorkingDirectory);
+            workspace.SupportsIncrementalUpdates = true;
         }
         else
         {
@@ -353,6 +372,46 @@ public class RepositoryAnalyzer : IRepositoryAnalyzer
         CopyDirectory(workspace.SourceLocation, workspace.WorkingDirectory);
     }
 
+    private async Task PrepareLocalGitWorkspaceAsync(
+        RepositoryWorkspace workspace,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (string.IsNullOrWhiteSpace(workspace.SourceLocation) || !Directory.Exists(workspace.SourceLocation))
+        {
+            throw new DirectoryNotFoundException($"Local git source not found: {workspace.SourceLocation}");
+        }
+
+        _logger.LogInformation(
+            "Preparing local git workspace from target branch. SourcePath: {SourcePath}, Branch: {Branch}, TargetPath: {Path}",
+            workspace.SourceLocation, workspace.BranchName, workspace.WorkingDirectory);
+
+        var originalGitUrl = workspace.GitUrl;
+        workspace.GitUrl = workspace.SourceLocation;
+
+        try
+        {
+            var repoExists = Directory.Exists(workspace.WorkingDirectory) &&
+                             Directory.Exists(Path.Combine(workspace.WorkingDirectory, ".git"));
+
+            if (repoExists)
+            {
+                await PullRepositoryAsync(workspace, credentials: null, cancellationToken);
+            }
+            else
+            {
+                await CloneRepositoryAsync(workspace, credentials: null, cancellationToken);
+            }
+
+            workspace.LocalDirectoryImportModeUsed = LocalDirectoryImportMode.Copy;
+        }
+        finally
+        {
+            workspace.GitUrl = originalGitUrl;
+        }
+    }
+
     private void CopyDirectory(string sourceDirectory, string destinationDirectory)
     {
         var sourceInfo = new DirectoryInfo(sourceDirectory);
@@ -425,6 +484,28 @@ public class RepositoryAnalyzer : IRepositoryAnalyzer
     {
         return !string.IsNullOrEmpty(fileSystemInfo.LinkTarget) ||
                fileSystemInfo.Attributes.HasFlag(FileAttributes.ReparsePoint);
+    }
+
+    private static bool IsLocalGitRepository(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path))
+        {
+            return false;
+        }
+
+        if (Directory.Exists(Path.Combine(path, ".git")) || File.Exists(Path.Combine(path, ".git")))
+        {
+            return true;
+        }
+
+        try
+        {
+            return GitRepository.IsValid(path);
+        }
+        catch (LibGit2SharpException)
+        {
+            return false;
+        }
     }
 
     private static string ComputeDirectorySnapshotId(string directoryPath)
