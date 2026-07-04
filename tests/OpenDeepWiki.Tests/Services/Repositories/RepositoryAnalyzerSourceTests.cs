@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using System.Reflection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using OpenDeepWiki.Entities;
@@ -388,6 +389,38 @@ public class RepositoryAnalyzerSourceTests
         Assert.Equal("B branch", File.ReadAllText(Path.Combine(workspace.WorkingDirectory, "branch.txt")));
     }
 
+    [Fact]
+    public void BuildGitCliSafeDirectories_WhenSourceIsGitWorktree_IncludesWorktreeGitFileAndCommonGitDir()
+    {
+        var sourceRoot = CreateTempDirectory();
+        var worktreeRoot = CreateTempDirectory();
+        Directory.Delete(worktreeRoot);
+        CreateGitRepositoryWithBranches(
+            sourceRoot,
+            "smart-hw/os_services_develop",
+            "smart-hw/rv1106_develop");
+        using (var sourceRepository = new GitRepository(sourceRoot))
+        {
+            sourceRepository.Worktrees.Add(
+                "smart-hw/os_services_develop",
+                "source-worktree",
+                worktreeRoot,
+                isLocked: false);
+        }
+
+        var gitFile = Path.Combine(worktreeRoot, ".git");
+        var gitDir = ResolveGitDirPointerForTest(gitFile, worktreeRoot);
+        var commonGitDir = ResolveCommonGitDirForTest(gitDir);
+        var safeDirectories = InvokeBuildGitCliSafeDirectories(worktreeRoot)
+            .Select(NormalizePath)
+            .ToArray();
+
+        Assert.Contains(NormalizePath(worktreeRoot), safeDirectories);
+        Assert.Contains(NormalizePath(gitFile), safeDirectories);
+        Assert.Contains(NormalizePath(gitDir), safeDirectories);
+        Assert.Contains(NormalizePath(commonGitDir), safeDirectories);
+    }
+
     private static RepositoryAnalyzer CreateAnalyzer(string repositoriesRoot, RepositoryAnalyzerOptions? options = null)
     {
         return new RepositoryAnalyzer(
@@ -397,6 +430,33 @@ public class RepositoryAnalyzerSourceTests
                 AllowedLocalPathRoots = []
             }),
             NullLogger<RepositoryAnalyzer>.Instance);
+    }
+
+    private static IReadOnlyList<string> InvokeBuildGitCliSafeDirectories(params string[] paths)
+    {
+        var method = typeof(RepositoryAnalyzer).GetMethod(
+            "BuildGitCliSafeDirectories",
+            BindingFlags.NonPublic | BindingFlags.Static);
+        Assert.NotNull(method);
+        return Assert.IsAssignableFrom<IReadOnlyList<string>>(method.Invoke(null, [paths]));
+    }
+
+    private static string ResolveGitDirPointerForTest(string gitFile, string worktreePath)
+    {
+        var firstLine = File.ReadLines(gitFile).First();
+        Assert.StartsWith("gitdir:", firstLine, StringComparison.OrdinalIgnoreCase);
+        var gitDir = firstLine["gitdir:".Length..].Trim();
+        return Path.IsPathRooted(gitDir)
+            ? NormalizePath(gitDir)
+            : NormalizePath(Path.Combine(worktreePath, gitDir));
+    }
+
+    private static string ResolveCommonGitDirForTest(string gitDir)
+    {
+        var commonDir = File.ReadLines(Path.Combine(gitDir, "commondir")).First().Trim();
+        return Path.IsPathRooted(commonDir)
+            ? NormalizePath(commonDir)
+            : NormalizePath(Path.Combine(gitDir, commonDir));
     }
 
     private static string CreateTempDirectory()
