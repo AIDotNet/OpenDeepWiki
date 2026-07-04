@@ -95,7 +95,7 @@ public class RepositoryAnalyzer : IRepositoryAnalyzer
                 }, cancellationToken);
             }
 
-            return await GetGitCliBranchHeadCommitAsync(localGitSource.RepositoryPath, branchName, cancellationToken);
+            return (await GetGitCliBranchHeadCommitAsync(localGitSource.RepositoryPath, branchName, cancellationToken))?.CommitId;
         }
 
         if (sourceInfo.SourceType == RepositorySourceType.LocalDirectory)
@@ -459,7 +459,7 @@ public class RepositoryAnalyzer : IRepositoryAnalyzer
         var workspaceSafeDirectories = BuildGitCliSafeDirectories(workspace.WorkingDirectory, sourcePath);
         var sourceUploadPackArgument = BuildGitCliUploadPackArgument(sourceSafeDirectories);
 
-        var targetCommit = await GetGitCliBranchHeadCommitAsync(
+        var targetBranch = await GetGitCliBranchHeadCommitAsync(
                 sourcePath,
                 workspace.BranchName,
                 cancellationToken,
@@ -468,8 +468,8 @@ public class RepositoryAnalyzer : IRepositoryAnalyzer
                 $"Branch '{workspace.BranchName}' not found in local git source: {sourcePath}");
 
         _logger.LogInformation(
-            "Resolved local git source branch via git CLI. SourcePath: {SourcePath}, Branch: {Branch}, Commit: {CommitId}",
-            sourcePath, workspace.BranchName, targetCommit);
+            "Resolved local git source branch via git CLI. SourcePath: {SourcePath}, Branch: {Branch}, SourceRef: {SourceRef}, FetchRefSpec: {FetchRefSpec}, Commit: {CommitId}",
+            sourcePath, workspace.BranchName, targetBranch.SourceRef, targetBranch.FetchRefSpec, targetBranch.CommitId);
 
         if (await IsValidGitCliWorkspaceForSourceAsync(
                 workspace.WorkingDirectory,
@@ -477,12 +477,12 @@ public class RepositoryAnalyzer : IRepositoryAnalyzer
                 workspaceSafeDirectories,
                 cancellationToken))
         {
-            await RunGitCliAsync(
+            await FetchGitCliBranchAsync(
                 workspace.WorkingDirectory,
-                ["fetch", sourceUploadPackArgument, "origin"],
-                cancellationToken,
-                throwOnError: true,
-                safeDirectories: workspaceSafeDirectories);
+                sourceUploadPackArgument,
+                targetBranch,
+                workspaceSafeDirectories,
+                cancellationToken);
         }
         else
         {
@@ -513,21 +513,27 @@ public class RepositoryAnalyzer : IRepositoryAnalyzer
         }
 
         workspaceSafeDirectories = BuildGitCliSafeDirectories(workspace.WorkingDirectory, sourcePath);
+        await FetchGitCliBranchAsync(
+            workspace.WorkingDirectory,
+            sourceUploadPackArgument,
+            targetBranch,
+            workspaceSafeDirectories,
+            cancellationToken);
+        await EnsureGitCliWorkspaceHasCommitAsync(
+            workspace.WorkingDirectory,
+            targetBranch.CommitId,
+            workspaceSafeDirectories,
+            cancellationToken,
+            targetBranch.FetchRefSpec);
         await RunGitCliAsync(
             workspace.WorkingDirectory,
-            ["fetch", sourceUploadPackArgument, "origin"],
+            ["checkout", "-B", workspace.BranchName, targetBranch.CommitId],
             cancellationToken,
             throwOnError: true,
             safeDirectories: workspaceSafeDirectories);
         await RunGitCliAsync(
             workspace.WorkingDirectory,
-            ["checkout", "-B", workspace.BranchName, targetCommit],
-            cancellationToken,
-            throwOnError: true,
-            safeDirectories: workspaceSafeDirectories);
-        await RunGitCliAsync(
-            workspace.WorkingDirectory,
-            ["reset", "--hard", targetCommit],
+            ["reset", "--hard", targetBranch.CommitId],
             cancellationToken,
             throwOnError: true,
             safeDirectories: workspaceSafeDirectories);
@@ -742,7 +748,7 @@ public class RepositoryAnalyzer : IRepositoryAnalyzer
         return true;
     }
 
-    private async Task<string?> GetGitCliBranchHeadCommitAsync(
+    private async Task<GitCliBranchHead?> GetGitCliBranchHeadCommitAsync(
         string sourcePath,
         string branchName,
         CancellationToken cancellationToken,
@@ -752,30 +758,98 @@ public class RepositoryAnalyzer : IRepositoryAnalyzer
 
         var localResult = await RunGitCliAsync(
             sourcePath,
-            ["rev-parse", "--verify", $"{branchName}^{{commit}}"],
+            ["rev-parse", "--verify", $"refs/heads/{branchName}^{{commit}}"],
             cancellationToken,
             throwOnError: false,
             safeDirectories: safeDirectories);
         if (localResult.ExitCode == 0)
         {
-            return localResult.Output.Trim();
+            return new GitCliBranchHead(
+                localResult.Output.Trim(),
+                $"refs/heads/{branchName}",
+                $"+refs/heads/{branchName}:refs/remotes/origin/{branchName}");
         }
 
         var remoteResult = await RunGitCliAsync(
             sourcePath,
-            ["rev-parse", "--verify", $"origin/{branchName}^{{commit}}"],
+            ["rev-parse", "--verify", $"refs/remotes/origin/{branchName}^{{commit}}"],
             cancellationToken,
             throwOnError: false,
             safeDirectories: safeDirectories);
         if (remoteResult.ExitCode == 0)
         {
-            return remoteResult.Output.Trim();
+            return new GitCliBranchHead(
+                remoteResult.Output.Trim(),
+                $"refs/remotes/origin/{branchName}",
+                $"+refs/remotes/origin/{branchName}:refs/remotes/origin/{branchName}");
+        }
+
+        var matchingRemoteResult = await RunGitCliAsync(
+            sourcePath,
+            ["rev-parse", "--verify", $"refs/remotes/{branchName}^{{commit}}"],
+            cancellationToken,
+            throwOnError: false,
+            safeDirectories: safeDirectories);
+        if (matchingRemoteResult.ExitCode == 0)
+        {
+            return new GitCliBranchHead(
+                matchingRemoteResult.Output.Trim(),
+                $"refs/remotes/{branchName}",
+                $"+refs/remotes/{branchName}:refs/remotes/origin/{branchName}");
         }
 
         _logger.LogWarning(
-            "Unable to resolve local git source branch via git CLI. SourcePath: {SourcePath}, Branch: {Branch}, LocalError: {LocalError}, RemoteError: {RemoteError}",
-            sourcePath, branchName, localResult.Error, remoteResult.Error);
+            "Unable to resolve local git source branch via git CLI. SourcePath: {SourcePath}, Branch: {Branch}, LocalError: {LocalError}, OriginRemoteError: {OriginRemoteError}, MatchingRemoteError: {MatchingRemoteError}",
+            sourcePath, branchName, localResult.Error, remoteResult.Error, matchingRemoteResult.Error);
         return null;
+    }
+
+    private async Task FetchGitCliBranchAsync(
+        string workspacePath,
+        string sourceUploadPackArgument,
+        GitCliBranchHead targetBranch,
+        IReadOnlyList<string> safeDirectories,
+        CancellationToken cancellationToken)
+    {
+        await RunGitCliAsync(
+            workspacePath,
+            ["fetch", sourceUploadPackArgument, "origin", targetBranch.FetchRefSpec],
+            cancellationToken,
+            throwOnError: true,
+            safeDirectories: safeDirectories);
+    }
+
+    private async Task EnsureGitCliWorkspaceHasCommitAsync(
+        string workspacePath,
+        string targetCommit,
+        IReadOnlyList<string> safeDirectories,
+        CancellationToken cancellationToken,
+        string fetchRefSpec)
+    {
+        var result = await RunGitCliAsync(
+            workspacePath,
+            ["cat-file", "-t", targetCommit],
+            cancellationToken,
+            throwOnError: false,
+            safeDirectories: safeDirectories);
+        if (result.ExitCode == 0 &&
+            string.Equals(result.Output.Trim(), "commit", StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        var showRef = await RunGitCliAsync(
+            workspacePath,
+            ["show-ref"],
+            cancellationToken,
+            throwOnError: false,
+            safeDirectories: safeDirectories);
+
+        throw new InvalidOperationException(
+            $"Fetched local git source ref but target commit is not available in workspace. " +
+            $"Workspace: {workspacePath}, Commit: {targetCommit}, FetchRefSpec: {fetchRefSpec}, " +
+            $"CatFileExitCode: {result.ExitCode}, CatFileOutput: {result.Output}, CatFileError: {result.Error}, " +
+            $"ShowRef: {showRef.Output}");
     }
 
     private async Task<bool> IsValidGitCliWorkspaceForSourceAsync(
@@ -1154,6 +1228,8 @@ public class RepositoryAnalyzer : IRepositoryAnalyzer
     }
 
     private readonly record struct LocalGitSource(string RepositoryPath, LocalGitAccessMode AccessMode);
+
+    private readonly record struct GitCliBranchHead(string CommitId, string SourceRef, string FetchRefSpec);
 
     private readonly record struct GitCliResult(int ExitCode, string Output, string Error);
 

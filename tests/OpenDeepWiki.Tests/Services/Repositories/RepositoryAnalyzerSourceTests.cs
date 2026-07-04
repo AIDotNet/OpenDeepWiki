@@ -443,6 +443,64 @@ public class RepositoryAnalyzerSourceTests
         Assert.Equal(argument, processArguments[6]);
     }
 
+    [Fact]
+    public async Task GetGitCliBranchHeadCommitAsync_WhenLocalBranchExists_ReturnsExplicitFetchRefSpec()
+    {
+        var repositoriesRoot = CreateTempDirectory();
+        var sourceRoot = CreateTempDirectory();
+        var (_, bCommit) = CreateGitRepositoryWithBranches(
+            sourceRoot,
+            "smart-hw/os_services_develop",
+            "smart-hw/rv1106_develop");
+        var analyzer = CreateAnalyzer(repositoriesRoot);
+
+        var result = await InvokeGetGitCliBranchHeadCommitAsync(
+            analyzer,
+            sourceRoot,
+            "smart-hw/rv1106_develop");
+
+        Assert.NotNull(result);
+        Assert.Equal(bCommit, GetReflectedStringProperty(result, "CommitId"));
+        Assert.Equal("refs/heads/smart-hw/rv1106_develop", GetReflectedStringProperty(result, "SourceRef"));
+        Assert.Equal(
+            "+refs/heads/smart-hw/rv1106_develop:refs/remotes/origin/smart-hw/rv1106_develop",
+            GetReflectedStringProperty(result, "FetchRefSpec"));
+    }
+
+    [Fact]
+    public async Task GetGitCliBranchHeadCommitAsync_WhenMatchingRemoteRefExists_ReturnsRemoteFetchRefSpec()
+    {
+        var repositoriesRoot = CreateTempDirectory();
+        var sourceRoot = CreateTempDirectory();
+        var (aCommit, bCommit) = CreateGitRepositoryWithBranches(
+            sourceRoot,
+            "smart-hw/os_services_develop",
+            "smart-hw/rv1106_develop");
+        using (var sourceRepository = new GitRepository(sourceRoot))
+        {
+            sourceRepository.Refs.Add(
+                "refs/remotes/smart-hw/rv1106_develop",
+                bCommit,
+                true);
+            GitCommands.Checkout(sourceRepository, (LibGit2Sharp.Commit)sourceRepository.Lookup(aCommit));
+            sourceRepository.Branches.Remove("smart-hw/rv1106_develop");
+        }
+
+        var analyzer = CreateAnalyzer(repositoriesRoot);
+
+        var result = await InvokeGetGitCliBranchHeadCommitAsync(
+            analyzer,
+            sourceRoot,
+            "smart-hw/rv1106_develop");
+
+        Assert.NotNull(result);
+        Assert.Equal(bCommit, GetReflectedStringProperty(result, "CommitId"));
+        Assert.Equal("refs/remotes/smart-hw/rv1106_develop", GetReflectedStringProperty(result, "SourceRef"));
+        Assert.Equal(
+            "+refs/remotes/smart-hw/rv1106_develop:refs/remotes/origin/smart-hw/rv1106_develop",
+            GetReflectedStringProperty(result, "FetchRefSpec"));
+    }
+
     private static RepositoryAnalyzer CreateAnalyzer(string repositoriesRoot, RepositoryAnalyzerOptions? options = null)
     {
         return new RepositoryAnalyzer(
@@ -483,6 +541,27 @@ public class RepositoryAnalyzerSourceTests
         var result = Assert.IsAssignableFrom<IEnumerable<string>>(
             method.Invoke(null, [arguments, safeDirectories]));
         return result.ToArray();
+    }
+
+    private static async Task<object?> InvokeGetGitCliBranchHeadCommitAsync(
+        RepositoryAnalyzer analyzer,
+        string sourcePath,
+        string branchName)
+    {
+        var method = typeof(RepositoryAnalyzer).GetMethod(
+            "GetGitCliBranchHeadCommitAsync",
+            BindingFlags.NonPublic | BindingFlags.Instance);
+        Assert.NotNull(method);
+        var task = Assert.IsAssignableFrom<Task>(method.Invoke(
+            analyzer,
+            [sourcePath, branchName, CancellationToken.None, null]));
+        await task;
+        return task.GetType().GetProperty("Result")?.GetValue(task);
+    }
+
+    private static string GetReflectedStringProperty(object value, string propertyName)
+    {
+        return Assert.IsType<string>(value.GetType().GetProperty(propertyName)?.GetValue(value));
     }
 
     private static string ResolveGitDirPointerForTest(string gitFile, string worktreePath)
