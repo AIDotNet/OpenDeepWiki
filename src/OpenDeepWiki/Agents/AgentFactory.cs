@@ -64,19 +64,25 @@ namespace OpenDeepWiki.Agents
 
         /// <summary>
         /// Creates an HttpClient with the full handler chain:
-        ///   FinishReasonNormalizingHandler -> LoggingHttpHandler -> HttpClientHandler
+        ///   ThoughtSignatureHandler -> FinishReasonNormalizingHandler -> LoggingHttpHandler
+        ///   -> HttpClientHandler
         ///
-        /// FinishReasonNormalizingHandler is outermost so it transforms the SSE response
-        /// AFTER LoggingHttpHandler's retry logic has delivered the final response.
-        /// This ensures Gemini's non-OpenAI finish_reason values (STOP, MAX_TOKENS,
-        /// SAFETY, etc.) are mapped to the OpenAI SDK's expected set before deserialization.
+        /// FinishReasonNormalizingHandler sits above LoggingHttpHandler so it transforms the
+        /// SSE response AFTER the retry logic has delivered the final response. This ensures
+        /// Gemini's non-OpenAI finish_reason values (STOP, MAX_TOKENS, SAFETY, etc.) are
+        /// mapped to the OpenAI SDK's expected set before deserialization.
+        ///
+        /// ThoughtSignatureHandler is outermost so it sees the request before it is sent and
+        /// the response after everything below has settled. It carries Gemini 3's
+        /// thought_signature from one turn to the next, which the OpenAI SDK would otherwise
+        /// drop, making the second call of any tool conversation fail with 400.
         /// </summary>
         private static HttpClient CreateHttpClient()
         {
             var handler = new FinishReasonNormalizingHandler(
                 new LoggingHttpHandler(
                     new HttpClientHandler()));
-            return new HttpClient(handler)
+            return new HttpClient(new ThoughtSignatureHandler(handler))
             {
                 Timeout = TimeSpan.FromSeconds(300)
             };
