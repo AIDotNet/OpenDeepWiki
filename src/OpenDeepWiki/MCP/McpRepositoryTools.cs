@@ -70,7 +70,8 @@ public class McpRepositoryTools
             return JsonSerializer.Serialize(new { error = true, message = $"No documentation in language '{language}'" });
 
         var tools = new List<AITool>();
-        var repoPath = BuildRepositoryPath(repoOptions.Value, resolvedOwner!, resolvedName!);
+        var repoPath = RepositoryWorkspacePath.Resolve(
+            repoOptions.Value, resolvedOwner!, resolvedName!, branch.BranchName);
         if (Directory.Exists(repoPath))
         {
             try
@@ -184,7 +185,13 @@ public class McpRepositoryTools
         if (repository == null)
             return JsonSerializer.Serialize(new { error = true, message = $"Repository {resolvedOwner}/{resolvedName} not found" });
 
-        var repoPath = BuildRepositoryPath(repoOptions.Value, resolvedOwner!, resolvedName!);
+        // The MCP scope carries owner/repo only, so the branch owning the workspace has to
+        // come from the database.
+        var branch = await context.RepositoryBranches
+            .FirstOrDefaultAsync(b => b.RepositoryId == repository.Id && !b.IsDeleted, cancellationToken);
+
+        var repoPath = RepositoryWorkspacePath.Resolve(
+            repoOptions.Value, resolvedOwner!, resolvedName!, branch?.BranchName);
         if (!Directory.Exists(repoPath))
             return JsonSerializer.Serialize(new { error = true, message = "Repository workspace not found on server" });
 
@@ -236,7 +243,13 @@ public class McpRepositoryTools
         if (repository == null)
             return JsonSerializer.Serialize(new { error = true, message = $"Repository {resolvedOwner}/{resolvedName} not found" });
 
-        var repoPath = BuildRepositoryPath(repoOptions.Value, resolvedOwner!, resolvedName!);
+        // The MCP scope carries owner/repo only, so the branch owning the workspace has to
+        // come from the database.
+        var branch = await context.RepositoryBranches
+            .FirstOrDefaultAsync(b => b.RepositoryId == repository.Id && !b.IsDeleted, cancellationToken);
+
+        var repoPath = RepositoryWorkspacePath.Resolve(
+            repoOptions.Value, resolvedOwner!, resolvedName!, branch?.BranchName);
         if (!Directory.Exists(repoPath))
             return JsonSerializer.Serialize(new { error = true, message = "Repository workspace not found on server" });
 
@@ -419,24 +432,6 @@ public class McpRepositoryTools
             "azureopenai" => AiRequestType.AzureOpenAI,
             _ => AiRequestType.OpenAI
         };
-    }
-
-    private static string BuildRepositoryPath(RepositoryAnalyzerOptions options, string owner, string repo)
-    {
-        var safeOwner = SanitizePathComponent(owner);
-        var safeRepo = SanitizePathComponent(repo);
-        return Path.Combine(options.RepositoriesDirectory, safeOwner, safeRepo, "tree");
-    }
-
-    private static string SanitizePathComponent(string component)
-    {
-        var sanitized = component
-            .Replace('/', '_')
-            .Replace('\\', '_')
-            .Replace("..", "_")
-            .Trim();
-
-        return string.IsNullOrWhiteSpace(sanitized) ? "_" : sanitized;
     }
 
     private static string NormalizeRelativePath(string? path)
