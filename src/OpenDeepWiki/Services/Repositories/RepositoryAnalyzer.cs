@@ -351,12 +351,14 @@ public class RepositoryAnalyzer : IRepositoryAnalyzer
     /// </summary>
     private string GetWorkingDirectory(string organization, string repositoryName, string branchName)
     {
-        // Sanitize organization and repository names to prevent path traversal
+        // Sanitize organization and repository names to prevent path traversal. Unlike the
+        // readers, the analyzer creates the workspace, so an unusable component must throw
+        // instead of falling back to a placeholder.
         var safeOrg = SanitizePathComponent(organization);
         var safeRepo = SanitizePathComponent(repositoryName);
         var safeBranch = SanitizePathComponent(branchName);
 
-        return Path.Combine(_options.RepositoriesDirectory, safeOrg, safeRepo, "branches", safeBranch, "tree");
+        return RepositoryWorkspacePath.ForBranch(_options, safeOrg, safeRepo, safeBranch);
     }
 
     private async Task PrepareArchiveWorkspaceAsync(

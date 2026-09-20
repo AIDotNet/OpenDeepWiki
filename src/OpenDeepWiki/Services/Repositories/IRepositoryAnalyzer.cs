@@ -74,7 +74,7 @@ public class RepositoryWorkspace
 {
     /// <summary>
     /// The absolute path to the working directory containing the repository files.
-    /// Format: /data/{organization}/{name}/tree/
+    /// Format: /data/{organization}/{name}/branches/{branch}/tree/
     /// </summary>
     public string WorkingDirectory { get; set; } = string.Empty;
 

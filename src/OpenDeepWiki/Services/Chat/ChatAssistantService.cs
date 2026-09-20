@@ -465,7 +465,7 @@ public class ChatAssistantService : IChatAssistantService
         var tools = new List<AITool>();
 
         // Calculate repository path from Owner/Repo
-        var repositoryPath = GetRepositoryPath(request.Context.Owner, request.Context.Repo);
+        var repositoryPath = GetRepositoryPath(request.Context.Owner, request.Context.Repo, request.Context.Branch);
 
         // Initialize GitTool with calculated repository path
         GitTool? gitTool = null;
@@ -1252,12 +1252,12 @@ public class ChatAssistantService : IChatAssistantService
     }
 
     /// <summary>
-    /// Gets the repository working directory path based on owner and repo name.
-    /// The repository is cloned to {RepositoriesDirectory}/{org}/{repo}/tree/
+    /// Gets the repository working directory path based on owner, repo name and branch.
+    /// The repository is cloned to {RepositoriesDirectory}/{org}/{repo}/branches/{branch}/tree/
     /// </summary>
-    private string GetRepositoryPath(string owner, string repo)
+    private string GetRepositoryPath(string owner, string repo, string? branch)
     {
-        return Path.Combine(_repoOptions.RepositoriesDirectory, owner, repo, "tree");
+        return RepositoryWorkspacePath.Resolve(_repoOptions, owner, repo, branch);
     }
 
     /// <summary>

@@ -340,7 +340,7 @@ public class EmbedService : IEmbedService
 
         if (!string.IsNullOrWhiteSpace(request.Owner) && !string.IsNullOrWhiteSpace(request.Repo))
         {
-            var repositoryPath = GetRepositoryPath(request.Owner, request.Repo);
+            var repositoryPath = GetRepositoryPath(request.Owner, request.Repo, request.Branch);
             if (Directory.Exists(repositoryPath))
             {
                 try
@@ -822,11 +822,12 @@ public class EmbedService : IEmbedService
     }
 
     /// <summary>
-    /// Gets the repository working directory path based on owner and repo name.
+    /// Gets the repository working directory path based on owner, repo name and branch.
+    /// The branch is optional here; the workspace is then resolved without it.
     /// </summary>
-    private string GetRepositoryPath(string owner, string repo)
+    private string GetRepositoryPath(string owner, string repo, string? branch)
     {
-        return Path.Combine(_repoOptions.RepositoriesDirectory, owner, repo, "tree");
+        return RepositoryWorkspacePath.Resolve(_repoOptions, owner, repo, branch);
     }
 
     /// <summary>
