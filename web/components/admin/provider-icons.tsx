@@ -13,6 +13,7 @@ const iconUrlMap: Record<string, string> = {
   "copilot-oauth": "https://github.githubassets.com/favicons/favicon.png",
   orcarouter: "https://www.orcarouter.ai/favicon.ico",
   requesty: "https://www.requesty.ai/favicon.ico",
+  cheaperinference: "https://www.cheaperinference.com/icon.svg",
 };
 
 const providerIconSlugMap: Record<string, string> = {
