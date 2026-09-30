@@ -16,8 +16,8 @@ public class AiProviderPresetSeederTests
     {
         var catalog = new AiProviderPresetCatalog();
 
-        Assert.Equal(28, catalog.Presets.Count);
-        Assert.Equal(444, catalog.Presets.Sum(p => p.DefaultModels.Count));
+        Assert.Equal(29, catalog.Presets.Count);
+        Assert.Equal(445, catalog.Presets.Sum(p => p.DefaultModels.Count));
         Assert.Contains(catalog.Presets, p => p.BuiltinId == "routin-ai" && p.DefaultEnabled == true);
         Assert.Contains(catalog.Presets, p => p.BuiltinId == "codex-oauth" && p.AuthMode == "oauth");
         Assert.Contains(catalog.Presets.Single(p => p.BuiltinId == "openai").DefaultModels,
@@ -41,8 +41,20 @@ public class AiProviderPresetSeederTests
         await seeder.EnsureBuiltInProvidersAsync();
         await seeder.EnsureBuiltInProvidersAsync();
 
-        Assert.Equal(28, await context.AiProviderConfigs.CountAsync(p => !p.IsDeleted));
-        Assert.Equal(444, await context.AiModelConfigs.CountAsync(m => !m.IsDeleted));
+        Assert.Equal(29, await context.AiProviderConfigs.CountAsync(p => !p.IsDeleted));
+        Assert.Equal(445, await context.AiModelConfigs.CountAsync(m => !m.IsDeleted));
+
+        var apiRoute = await context.AiProviderConfigs.SingleAsync(p => p.Name == "api-route");
+        Assert.True(apiRoute.IsBuiltIn);
+        Assert.False(apiRoute.IsActive);
+        Assert.Equal("OpenAI", apiRoute.ProviderType);
+        Assert.Equal("https://global.api-route.com/v1", apiRoute.BaseUrl);
+        Assert.Equal("deepseek-v4-flash", apiRoute.DefaultModelId);
+        Assert.Equal("https://www.api-route.com/images/logo-ginkgo.png", apiRoute.IconUrl);
+        var apiRouteModel = await context.AiModelConfigs.SingleAsync(m =>
+            m.ProviderId == apiRoute.Id && m.ModelId == "deepseek-v4-flash");
+        Assert.Null(apiRouteModel.InputTokenPrice);
+        Assert.Null(apiRouteModel.OutputTokenPrice);
 
         var codex = await context.AiProviderConfigs.SingleAsync(p => p.Name == "codex-oauth");
         Assert.True(codex.IsBuiltIn);

@@ -23,7 +23,8 @@ public sealed class AiProviderPresetSeeder : IAiProviderPresetSeeder
             ["routin-ai-plan"] = "https://routin.ai/icons/favicon.ico",
             ["copilot-oauth"] = "https://github.githubassets.com/favicons/favicon.png",
             ["orcarouter"] = "https://www.orcarouter.ai/favicon.ico",
-            ["requesty"] = "https://www.requesty.ai/favicon.ico"
+            ["requesty"] = "https://www.requesty.ai/favicon.ico",
+            ["api-route"] = "https://www.api-route.com/images/logo-ginkgo.png"
         };
 
     private static readonly IReadOnlyDictionary<string, string> OpenCoworkProviderIconSlugs =
