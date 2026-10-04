@@ -1,8 +1,0 @@
-{
-  "title": "部署",
-  "pages": [
-    "docker-compose",
-    "database",
-    "ai-providers"
-  ]
-}

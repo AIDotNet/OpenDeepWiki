@@ -1,9 +1,0 @@
-{
-  "title": "快速开始",
-  "pages": [
-    "index",
-    "docker-deployment",
-    "windows-deployment",
-    "local-development"
-  ]
-}

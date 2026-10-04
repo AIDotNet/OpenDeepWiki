@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "permissions": {
+    "allow": [
+      "Bash(head:*)"
+    ],
+    "ask": [],
+    "deny": []
+  }
+}
