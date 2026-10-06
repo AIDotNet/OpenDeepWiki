@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
+import { cache } from "react";
 import { fetchRepoDoc, fetchRepoTree } from "@/lib/repository-api";
 import { extractHeadings } from "@/lib/markdown";
 import { MarkdownRenderer } from "@/components/repo/markdown-renderer";
@@ -30,7 +31,9 @@ interface RepoDocPageProps {
   }>;
 }
 
-async function getDocData(owner: string, repo: string, slug: string, branch?: string, lang?: string) {
+// React cache：同一次请求中 generateMetadata 与页面共享文档数据，
+// 避免爬虫抓一次页面触发两次 doc 查询
+const getDocData = cache(async (owner: string, repo: string, slug: string, branch?: string, lang?: string) => {
   try {
     const doc = await fetchRepoDoc(owner, repo, slug, branch, lang);
     if (!doc.exists) {
@@ -41,7 +44,7 @@ async function getDocData(owner: string, repo: string, slug: string, branch?: st
   } catch {
     return null;
   }
-}
+});
 
 function findNodeBySlug(nodes: RepoTreeNode[], slug: string): RepoTreeNode | null {
   for (const node of nodes) {

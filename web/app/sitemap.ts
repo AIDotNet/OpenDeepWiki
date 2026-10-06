@@ -4,12 +4,14 @@ import type { RepoTreeNode, RepositoryItemResponse } from "@/types/repository";
 import { buildRepoBasePath, buildRepoDocPath } from "@/lib/repo-route";
 import { absoluteUrl } from "@/lib/repo-seo";
 
-export const dynamic = "force-dynamic";
+// ISR 全路由缓存：/sitemap.xml 响应按 revalidate 周期复用，
+// 爬虫高频抓取不再触发后端全量遍历；进程内缓存继续做构建单飞
+export const revalidate = 3600;
 
 const PAGE_SIZE = 100;
 const MAX_REPOSITORIES = 1000;
 const MAX_URLS = 50000;
-const TREE_CONCURRENCY = 8;
+const TREE_CONCURRENCY = 4;
 const DEFAULT_SITEMAP_REVALIDATE_SECONDS = 3600;
 
 type SitemapCacheEntry = {
@@ -128,7 +130,7 @@ function addTreeUrls(
 
 async function loadRepoSitemapSource(repo: RepositoryItemResponse): Promise<RepoSitemapSource | null> {
   try {
-    const tree = await fetchRepoTree(repo.orgName, repo.repoName);
+    const tree = await fetchRepoTree(repo.orgName, repo.repoName, undefined, undefined, true);
     if (!tree.exists || tree.statusName !== "Completed" || tree.nodes.length === 0) {
       return null;
     }
@@ -165,7 +167,7 @@ async function buildSitemapUrls(): Promise<{ urls: MetadataRoute.Sitemap; comple
         isPublic: true,
         status: 2,
         sortBy: "updatedAt",
-      });
+      }, true);
 
       total = response.total;
       if (response.items.length === 0) {
