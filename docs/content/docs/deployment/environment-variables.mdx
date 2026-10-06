@@ -1,16 +1,16 @@
 ---
-title: 环境变量
+title: "环境变量大全"
 description: 用于配置 OpenDeepWiki 后端和前端服务的所有环境变量的完整参考。
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 
-# 环境变量
+# 环境变量大全
 
 本页提供 OpenDeepWiki 支持的所有环境变量的完整参考。变量可以通过 Docker Compose `environment` 部分、项目根目录的 `.env` 文件或系统环境变量设置。
 
 <Callout type="info">
-  环境变量优先于 `appsettings.json` 中的值。
+  环境变量优先于 `appsettings.json` 中的值。OpenDeepWiki 在启动时自动从当前目录加载 `.env` 文件。部分 `WIKI_*` 运行参数也可以在管理后台的[系统设置](/docs/admin-guide/system-settings)中查看和调整。
 </Callout>
 
 ## 数据库
@@ -26,7 +26,7 @@ import { Callout } from "fumadocs-ui/components/callout";
 Host=<host>;Port=5432;Database=opendeepwiki;Username=<user>;Password=<password>
 ```
 
-详见 [数据库配置](/docs/deployment/database)。
+详见 [PostgreSQL 部署](/docs/deployment/postgresql)。
 
 ## JWT 认证
 
@@ -52,48 +52,40 @@ JWT 发行者、受众和过期时间通过 `appsettings.json` 的 `Jwt` 部分�
 
 ## AI 服务（聊天）
 
-这些变量配置用于聊天和对话功能的 AI 服务。
-
 | 变量 | 必需 | 默认值 | 描述 |
 |---|---|---|---|
 | `CHAT_API_KEY` | 是 | — | 聊天 AI 服务的 API 密钥 |
 | `ENDPOINT` | 是 | `https://api.routin.ai/v1`（内置默认） | 聊天 AI 服务端点 URL |
 | `CHAT_REQUEST_TYPE` | 否 | `OpenAI` | AI 提供商类型：`OpenAI`、`AzureOpenAI`、`Anthropic`、`OpenAIResponses`、`DeepSeekOpenAI` |
 
-这些变量配置用于生成文档目录（目录）结构的 AI 模型。
-
 ## Wiki 生成 — 目录
-
-这些变量配置用于生成文档目录（目录）结构的 AI 模型。
 
 | 变量 | 必需 | 默认值 | 描述 |
 |---|---|---|---|
 | `WIKI_CATALOG_MODEL` | 否 | `gpt-4o` | 目录生成的模型名称 |
 | `WIKI_CATALOG_ENDPOINT` | 是 | — | 目录生成的 API 端点 |
 | `WIKI_CATALOG_API_KEY` | 是 | — | 目录生成的 API 密钥 |
-| `WIKI_CATALOG_REQUEST_TYPE` | 否 | `OpenAI` | 提供商类型：`OpenAI`、`AzureOpenAI`、`Anthropic`、`OpenAIResponses`、`DeepSeekOpenAI` |
+| `WIKI_CATALOG_REQUEST_TYPE` | 否 | `OpenAI` | 提供商类型 |
 
 ## Wiki 生成 — 内容
-
-这些变量配置用于生成文档页面内容的 AI 模型。
 
 | 变量 | 必需 | 默认值 | 描述 |
 |---|---|---|---|
 | `WIKI_CONTENT_MODEL` | 否 | `gpt-4o` | 内容生成的模型名称 |
 | `WIKI_CONTENT_ENDPOINT` | 是 | — | 内容生成的 API 端点 |
 | `WIKI_CONTENT_API_KEY` | 是 | — | 内容生成的 API 密钥 |
-| `WIKI_CONTENT_REQUEST_TYPE` | 否 | `OpenAI` | 提供商类型：`OpenAI`、`AzureOpenAI`、`Anthropic`、`OpenAIResponses`、`DeepSeekOpenAI` |
+| `WIKI_CONTENT_REQUEST_TYPE` | 否 | `OpenAI` | 提供商类型 |
 
 ## Wiki 生成 — 翻译（可选）
 
-翻译配置是可选的。如果未设置，系统将回退到 wiki 内容配置。
+翻译配置是可选的。如果未设置，系统将回退到 Wiki 内容配置。
 
 | 变量 | 必需 | 默认值 | 描述 |
 |---|---|---|---|
-| `WIKI_TRANSLATION_MODEL` | 否 | 与 `WIKI_CONTENT_MODEL` 相同 | 翻译的模型名称 |
-| `WIKI_TRANSLATION_ENDPOINT` | 否 | 与 `WIKI_CONTENT_ENDPOINT` 相同 | 翻译的 API 端点 |
-| `WIKI_TRANSLATION_API_KEY` | 否 | 与 `WIKI_CONTENT_API_KEY` 相同 | 翻译的 API 密钥 |
-| `WIKI_TRANSLATION_REQUEST_TYPE` | 否 | 与 `WIKI_CONTENT_REQUEST_TYPE` 相同 | 提供商类型 |
+| `WIKI_TRANSLATION_MODEL` | 否 | 同 `WIKI_CONTENT_MODEL` | 翻译的模型名称 |
+| `WIKI_TRANSLATION_ENDPOINT` | 否 | 同 `WIKI_CONTENT_ENDPOINT` | 翻译的 API 端点 |
+| `WIKI_TRANSLATION_API_KEY` | 否 | 同 `WIKI_CONTENT_API_KEY` | 翻译的 API 密钥 |
+| `WIKI_TRANSLATION_REQUEST_TYPE` | 否 | 同 `WIKI_CONTENT_REQUEST_TYPE` | 提供商类型 |
 
 ## Wiki 生成 — 常规
 
@@ -101,9 +93,8 @@ JWT 发行者、受众和过期时间通过 `appsettings.json` 的 `Jwt` 部分�
 |---|---|---|---|
 | `WIKI_PARALLEL_COUNT` | 否 | `5` | 并行文档生成任务数。更高的值加快生成但使用更多资源 |
 | `WIKI_MAX_CONCURRENT_GENERATIONS` | 否 | `1` | 整个集群同时进行仓库 Wiki 生成的上限。多实例共享这个配额 |
-| `WIKI_LANGUAGES` | 否 | `en,zh,zh-tw,ja,ko,es,fr,de,pt-br,pl,ru,ar` | 多语言 wiki 生成的目标语言逗号分隔列表 |
-| `REPOSITORIES_DIRECTORY` | 否 | `/data` | 用于存储克隆仓库文件的目录 |
-| `WIKI_MAX_OUTPUT_TOKENS` | 否 | `32000` | 单次 AI 生成的最大输出 Token 数，防止回复过长 |
+| `WIKI_LANGUAGES` | 否 | `en,zh,zh-tw,ja,ko,es,fr,de,pt-br,pl,ru,ar` | 多语言 Wiki 生成的目标语言逗号分隔列表 |
+| `WIKI_MAX_OUTPUT_TOKENS` | 否 | `32000` | 单次 AI 生成的最大输出 Token 数 |
 | `WIKI_DOCUMENT_GENERATION_TIMEOUT_MINUTES` | 否 | `60` | 单篇文档生成任务的超时时间（分钟） |
 | `WIKI_TRANSLATION_TIMEOUT_MINUTES` | 否 | `45` | 翻译任务允许的最长执行时间（分钟） |
 | `WIKI_TITLE_TRANSLATION_TIMEOUT_MINUTES` | 否 | `2` | 目录标题翻译的超时时间（分钟） |
@@ -111,20 +102,7 @@ JWT 发行者、受众和过期时间通过 `appsettings.json` 的 `Jwt` 部分�
 | `WIKI_DIRECTORY_TREE_MAX_DEPTH` | 否 | `2` | 扫描仓库目录结构时的最大深度 |
 | `WIKI_MAX_RETRY_ATTEMPTS` | 否 | `3` | 调用 AI 接口失败时的最大重试次数 |
 | `WIKI_RETRY_DELAY_MS` | 否 | `1000` | AI 调用重试之间的等待时间（毫秒） |
-| `WIKI_PROMPTS_DIRECTORY` | 否 | `prompts` | 自定义 wiki 生成提示模板所在目录 |
-
-## 增量更新
-
-这些设置通过 `appsettings.json` 的 `IncrementalUpdate` 部分配置。它们控制检查仓库更新的后台工作者。
-
-| 设置 | 默认值 | 描述 |
-|---|---|---|
-| `IncrementalUpdate:PollingIntervalSeconds` | `60` | 工作者检查待处理更新任务的频率（秒） |
-| `IncrementalUpdate:DefaultUpdateIntervalMinutes` | `60` | 仓库更新检查之间的默认间隔（分钟） |
-| `IncrementalUpdate:MinUpdateIntervalMinutes` | `5` | 允许的最小更新间隔（分钟） |
-| `IncrementalUpdate:MaxRetryAttempts` | `3` | 失败更新的最大重试次数 |
-| `IncrementalUpdate:RetryBaseDelayMs` | `1000` | 重试之间的基础延迟（毫秒），使用指数退避 |
-| `IncrementalUpdate:ManualTriggerPriority` | `100` | 手动触发的更新任务的优先级值 |
+| `WIKI_PROMPTS_DIRECTORY` | 否 | `prompts` | 自定义 Wiki 生成提示模板所在目录 |
 
 ## 仓库导入与存储
 
@@ -135,14 +113,29 @@ JWT 发行者、受众和过期时间通过 `appsettings.json` 的 `Jwt` 部分�
 | `RepositoryAnalyzer__LocalDirectoryImportMode` | 否 | `Copy` | 本地目录导入模式：`Copy`（复制）或 `Reference`（引用） |
 | `RepositoryAnalyzer__CleanupAfterProcessing` | 否 | `false` | 处理完成后是否清理工作区 |
 
-## 功能标志
+## 增量更新
+
+通过 `appsettings.json` 的 `IncrementalUpdate` 部分配置，控制检查仓库更新的后台 Worker：
+
+| 设置 | 默认值 | 描述 |
+|---|---|---|
+| `IncrementalUpdate:PollingIntervalSeconds` | `60` | Worker 检查待处理更新任务的频率（秒） |
+| `IncrementalUpdate:DefaultUpdateIntervalMinutes` | `60` | 仓库更新检查之间的默认间隔（分钟） |
+| `IncrementalUpdate:MinUpdateIntervalMinutes` | `5` | 允许的最小更新间隔（分钟） |
+| `IncrementalUpdate:MaxRetryAttempts` | `3` | 失败更新的最大重试次数 |
+| `IncrementalUpdate:RetryBaseDelayMs` | `1000` | 重试之间的基础延迟（毫秒），使用指数退避 |
+| `IncrementalUpdate:ManualTriggerPriority` | `100` | 手动触发的更新任务的优先级值 |
+
+机制说明见 [增量更新](/docs/advanced/incremental-updates)。
+
+## MCP
 
 | 变量 | 必需 | 默认值 | 描述 |
 |---|---|---|---|
 | `MCP_ENABLED` | 否 | `true` | 是否启用 MCP 端点 |
 | `MCP_STREAMABLE` | 否 | — | 为外部 AI 服务配置 MCP Streamable HTTP 端点。格式：`serviceName=url,serviceName2=url2` |
 
-详见 [MCP 协议](/docs/mcp)。
+详见 [MCP 集成](/docs/mcp)。
 
 ## Graphify 图谱产物（可选）
 
@@ -165,12 +158,10 @@ JWT 发行者、受众和过期时间通过 `appsettings.json` 的 `Jwt` 部分�
 
 ## 前端（Web）
 
-这些变量配置 Next.js 前端应用。
-
 | 变量 | 必需 | 默认值 | 描述 |
 |---|---|---|---|
 | `NODE_ENV` | 否 | `production` | Node.js 环境模式 |
-| `API_PROXY_URL` | 是 | `http://localhost:5265` | 前端代理的后端 API URL。在 Docker 中，使用服务名称：`http://opendeepwiki:8080` |
+| `API_PROXY_URL` | 是 | `http://localhost:5265` | 前端代理的后端 API URL。在 Docker 中使用服务名称：`http://opendeepwiki:8080` |
 | `SITE_URL` | 否 | `http://localhost:8090` | 公开站点 URL，用于 sitemap、robots.txt、canonical URL 和社交分享元数据。生产环境应配置为实际访问域名 |
 | `SITEMAP_REVALIDATE_SECONDS` | 否 | `3600` | sitemap 缓存 TTL（秒） |
 
@@ -197,9 +188,5 @@ WIKI_CONTENT_ENDPOINT=https://api.openai.com/v1
 WIKI_CONTENT_API_KEY=sk-your-api-key
 
 # 多语言
-WIKI_LANGUAGES=en,zh,zh-tw,ja,ko,es,fr,de,pt-br,pl,ru,ar
+WIKI_LANGUAGES=en,zh
 ```
-
-<Callout type="info">
-  OpenDeepWiki 在启动时自动从当前目录或应用程序目录加载 `.env` 文件（`Program.cs` 中的 `LoadEnvFile`）。无需额外配置。
-</Callout>

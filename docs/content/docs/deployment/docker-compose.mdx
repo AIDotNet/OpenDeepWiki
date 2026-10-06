@@ -1,36 +1,54 @@
 ---
-title: Docker Compose 部署
-description: OpenDeepWiki 的完整 Docker Compose 部署指南，包括环境变量、卷和生产配置。
+title: "Docker Compose 部署详解"
+description: OpenDeepWiki 的完整 Docker Compose 部署指南，包括服务架构、环境变量、卷和生产配置。
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
+import { Steps, Step } from "fumadocs-ui/components/steps";
 
-# Docker Compose 部署
+# Docker Compose 部署详解
 
-OpenDeepWiki 在项目根目录提供 `compose.yaml`，定义了两个服务：后端 API 和前端 web 应用。PostgreSQL 用户可直接使用 `compose.pgsql.yaml`。
+OpenDeepWiki 在项目根目录提供 `compose.yaml`，定义了两个服务：后端 API 和前端 Web 应用。PostgreSQL 用户可直接使用 `compose.pgsql.yaml`（见 [PostgreSQL 部署](/docs/deployment/postgresql)）。
 
 ## 服务架构
 
 | 服务 | 容器端口 | 默认宿主机映射 | 描述 |
 |---|---|---|---|
-| `opendeepwiki` | `8080` | `8081:8080` | 带有 AI 处理的 ASP.NET Core 后端 API |
+| `opendeepwiki` | `8080` | `8081:8080` | ASP.NET Core 后端 API + 后台 Worker |
 | `web` | `3000` | `8090:3000` | Next.js 前端应用 |
 
 > 端口映射以仓库中 `compose.yaml` 的实际内容为准，可按需修改。前端通过内部网络使用 `API_PROXY_URL=http://opendeepwiki:8080` 访问后端。
 
 ## 快速部署
 
+<Steps>
+
+<Step>
+
+克隆仓库并进入目录：
+
 ```bash
-# 克隆仓库
 git clone https://github.com/AIDotNet/OpenDeepWiki.git
 cd OpenDeepWiki
+```
 
-# 编辑 compose.yaml 中的环境变量（见下文）
-# 然后启动所有服务
+</Step>
+
+<Step>编辑 `compose.yaml` 中的环境变量（AI 配置与 JWT 密钥，[完整变量说明](/docs/deployment/environment-variables)）。</Step>
+
+<Step>
+
+启动所有服务：
+
+```bash
 docker compose up -d
 ```
 
 在 `http://localhost:8090` 访问应用。
+
+</Step>
+
+</Steps>
 
 ## 完整 compose.yaml 参考
 
@@ -116,7 +134,7 @@ services:
   根目录提供 `.env.example`，可复制为 `.env` 后通过 `${VAR:-default}` 插值注入配置，无需直接修改 `compose.yaml`。
 </Callout>
 
-## 环境变量
+## 环境变量速查
 
 ### 必需变量
 
@@ -130,7 +148,7 @@ services:
 | `WIKI_CONTENT_API_KEY` | 内容生成的 API 密钥 | `sk-...` |
 | `WIKI_CONTENT_ENDPOINT` | 内容生成端点 | `https://api.openai.com/v1` |
 
-### 可选变量
+### 常用可选变量
 
 | 变量 | 默认值 | 描述 |
 |---|---|---|
@@ -141,12 +159,13 @@ services:
 | `CHAT_REQUEST_TYPE` | `OpenAI` | AI 提供商类型：`OpenAI`、`AzureOpenAI`、`OpenAIResponses`、`Anthropic`、`DeepSeekOpenAI` |
 | `WIKI_PARALLEL_COUNT` | `5` | 并行 wiki 生成任务数 |
 | `WIKI_MAX_CONCURRENT_GENERATIONS` | `1` | 集群同时生成的仓库 Wiki 数量，多实例共享 |
-| `WIKI_LANGUAGES` | `en,zh,zh-tw,ja,ko,es,fr,de,pt-br,pl,ru,ar` | 支持的语言（逗号分隔） |
-| `SITE_URL` | `http://localhost:8090` | 公开站点 URL，用于 sitemap、robots.txt、canonical URL 和社交分享元数据 |
-| `SITEMAP_REVALIDATE_SECONDS` | `3600` | sitemap 缓存 TTL（秒） |
-| `LOCAL_IMPORT_ROOT` | — | 允许导入的本地目录根路径（本地目录导入白名单） |
+| `WIKI_LANGUAGES` | `en,zh,...`（12 种） | 支持的语言（逗号分隔） |
+| `SITE_URL` | `http://localhost:8090` | 公开站点 URL，用于 sitemap、robots.txt 和 SEO 元数据 |
+| `LOCAL_IMPORT_ROOT` | — | 允许导入的本地目录根路径（白名单） |
 | `MCP_ENABLED` | `true` | 是否启用 MCP 端点 |
-| `GRAPHIFY_*` 系列 | — | Graphify 图谱产物配置（Backend、Model、OpenAI 凭证等） |
+| `GRAPHIFY_*` 系列 | — | Graphify 图谱产物配置 |
+
+完整变量表见 [环境变量大全](/docs/deployment/environment-variables)。
 
 <Callout type="warn">
   在生产环境中始终更改 `JWT_SECRET_KEY`。默认密钥仅用于开发。
@@ -162,12 +181,13 @@ volumes:
 ```
 
 此目录包含：
+
 - SQLite 数据库文件（使用 SQLite 时）
-- 用于分析的克隆仓库文件
-- 生成的文档数据
+- 用于分析的克隆仓库工作区
+- Graphify 图谱产物等生成数据
 
 <Callout type="warn">
-  定期备份 `./data` 目录。它包含所有生成的文档和仓库数据。
+  定期备份 `./data` 目录。它包含所有生成的文档和仓库数据。备份策略见[升级与备份](/docs/deployment/upgrade-backup)。
 </Callout>
 
 ## 健康检查
@@ -200,32 +220,15 @@ docker compose build opendeepwiki   # 仅后端
 docker compose build web            # 仅前端
 ```
 
-## 常见操作
+## 常用运维命令
 
 ```bash
-# 后台启动
-docker compose up -d
-
-# 查看日志
-docker compose logs -f
-
-# 查看特定服务的日志
-docker compose logs -f opendeepwiki
-
-# 重启服务
-docker compose restart
-
-# 停止服务
-docker compose down
+docker compose up -d                # 后台启动
+docker compose logs -f              # 跟随查看全部日志
+docker compose logs -f opendeepwiki # 只看后端日志
+docker compose restart              # 重启服务
+docker compose down                 # 停止服务（保留卷）
 ```
-
-## 一键部署
-
-### Sealos
-
-一键部署 OpenDeepWiki 到 Sealos：
-
-[![Deploy on Sealos](https://raw.githubusercontent.com/labring-actions/templates/main/Deploy-on-Sealos.svg)](https://bja.sealos.run/?openapp=system-template%3FtemplateName%3DOpenDeepWiki)
 
 ## 故障排除
 
@@ -242,5 +245,10 @@ docker compose down
 
 ### 磁盘空间不足
 
-- 克隆的仓库存储在 `./data` 中。通过 web UI 或 API 清理旧仓库
-- 对于大型部署，考虑从 SQLite 切换到 [PostgreSQL](/docs/deployment/database)（可直接使用 `compose.pgsql.yaml`）
+- 克隆的仓库存储在 `./data` 中。通过 Web UI 或 API 清理不再需要的仓库
+- 对于大型部署，考虑从 SQLite 切换到 [PostgreSQL](/docs/deployment/postgresql)
+
+### 仓库克隆失败（私有仓库）
+
+- 检查填写 Git 用户名与访问令牌（Token）而非登录密码
+- GitHub Token 需要 `repo` 读权限；企业 Git 需确认网络可达

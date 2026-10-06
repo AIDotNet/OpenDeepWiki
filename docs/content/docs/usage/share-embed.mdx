@@ -1,0 +1,84 @@
+---
+title: "分享与嵌入"
+description: 通过聊天分享链接与嵌入式聊天应用，把仓库知识库带出站点。
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+
+# 分享与嵌入
+
+除了站内阅读，OpenDeepWiki 提供两种把知识"带出去"的方式：**聊天分享链接**和**嵌入式聊天应用（Chat App）**。
+
+## 聊天分享链接
+
+把一段有价值的对话直接分享给同事：
+
+1. 在仓库 AI 助手中完成一段对话
+2. 点击面板中的分享按钮，生成 `/share/{shareId}` 链接
+3. 对方打开即可看到这段对话的快照（问题、回答、引用的文档）
+
+分享的是**快照**——之后知识库更新不影响已分享内容。
+
+## 嵌入式聊天应用（Chat App）
+
+把某个仓库的知识库做成聊天窗口，嵌入到你的官网、文档站或内部工具：
+
+<Steps>
+
+<Step>
+
+### 创建应用
+
+进入**工作区 → 我的应用**，点击创建：
+
+![我的应用](/images/my-apps.png)
+
+</Step>
+
+<Step>
+
+### 配置应用
+
+| 配置 | 说明 |
+| --- | --- |
+| 关联仓库 | 选择要作为知识源的公开仓库 |
+| 允许域名 | 白名单：只有这些站点可以嵌入（防盗用） |
+| 系统提示 | 定制助手的人设与回答风格 |
+| 模型 | 选择后台启用的模型 |
+| 外观 | 主题色、图标、欢迎语 |
+
+</Step>
+
+<Step>
+
+### 获取嵌入代码
+
+保存后复制生成的 `<script>` 嵌入代码，粘贴到目标网站的 `</body>` 前：
+
+```html
+<script
+  src="https://your-opendeepwiki.example/embed.js"
+  data-app-id="你的应用ID"
+  defer
+>
+</script>
+```
+
+页面右下角会出现聊天悬浮窗，访客提问即基于该仓库知识回答。
+
+</Step>
+
+</Steps>
+
+<Callout type="info">
+  `web/public/embed.js` 是官方提供的嵌入脚本。允许域名为空表示不限制，生产环境建议填写实际域名。
+</Callout>
+
+## 嵌入与 MCP 的选择
+
+| 需求 | 建议 |
+| --- | --- |
+| 给"人"看：网站访客自助问答 | 嵌入式 Chat App |
+| 给"Agent"用：IDE/Agent 查询仓库知识 | [MCP 服务](/docs/mcp) |
+| 分享单段对话 | 聊天分享链接 |

@@ -1,0 +1,14 @@
+{
+  "title": "功能使用",
+  "description": "日常使用 OpenDeepWiki 的完整教程",
+  "icon": "BookOpen",
+  "pages": [
+    "index",
+    "add-repository",
+    "browse-docs",
+    "chat",
+    "mindmap",
+    "share-embed",
+    "translations"
+  ]
+}

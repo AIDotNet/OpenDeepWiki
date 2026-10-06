@@ -17,6 +17,7 @@ import type {
   BranchGenerationErrorResponse
 } from "@/types/repository";
 import { ApiError, api, buildApiUrl } from "./api-client";
+import { cachedFetchJson } from "./ssr-cache";
 import { getServerToken } from "./auth-api";
 
 type RepositoryListParams = {
@@ -32,6 +33,13 @@ type RepositoryListParams = {
 };
 
 const LIST_ALL_PAGE_SIZE = 200;
+
+// SSR 只读接口的进程内缓存时长（匿名请求生效；带 token 的请求直连后端）
+// 与后端 RepositoryPublicReadCache 的 TTL 分层保持一致
+const TREE_DOC_BRANCHES_TTL_MS = 120_000;
+const REPOSITORY_LIST_TTL_MS = 30_000;
+const GIT_PLATFORM_TTL_MS = 300_000;
+const PROCESSING_STATUS_TTL_MS = 10_000;
 
 /**
  * Returns Authorization header for SSR fetches if a JWT cookie is present.
@@ -56,13 +64,9 @@ export async function fetchRepoBranches(owner: string, repo: string) {
     `/api/v1/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/branches`,
   );
 
-  const response = await fetch(url, { cache: "no-store", headers: await getSSRAuthHeaders() });
-
-  if (!response.ok) {
-    throw new Error("Failed to fetch repository branches");
-  }
-
-  return (await response.json()) as RepoBranchesResponse;
+  return cachedFetchJson<RepoBranchesResponse>(url, {
+    headers: await getSSRAuthHeaders(),
+  }, TREE_DOC_BRANCHES_TTL_MS);
 }
 
 /**
@@ -74,32 +78,24 @@ export async function fetchGitBranches(gitUrl: string): Promise<GitBranchesRespo
   
   const url = buildApiUrl(`/api/v1/repositories/branches?${params.toString()}`);
 
-  const response = await fetch(url, { cache: "no-store", headers: await getSSRAuthHeaders() });
-
-  if (!response.ok) {
-    return { branches: [], defaultBranch: null, isSupported: false };
-  }
-
-  return (await response.json()) as GitBranchesResponse;
+  return cachedFetchJson<GitBranchesResponse>(url, {
+    headers: await getSSRAuthHeaders(),
+  }, GIT_PLATFORM_TTL_MS).catch(() => ({ branches: [], defaultBranch: null, isSupported: false }));
 }
 
-export async function fetchRepoTree(owner: string, repo: string, branch?: string, lang?: string) {
+export async function fetchRepoTree(owner: string, repo: string, branch?: string, lang?: string, skipAuth = false) {
   const params = new URLSearchParams();
   if (branch) params.set("branch", branch);
   if (lang) params.set("lang", lang);
-  
+
   const queryString = params.toString();
   const url = buildApiUrl(
     `/api/v1/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/tree${queryString ? `?${queryString}` : ""}`,
   );
 
-  const response = await fetch(url, { cache: "no-store", headers: await getSSRAuthHeaders() });
-
-  if (!response.ok) {
-    throw new Error("Failed to fetch repository tree");
-  }
-
-  return (await response.json()) as RepoTreeResponse;
+  return cachedFetchJson<RepoTreeResponse>(url, {
+    headers: skipAuth ? {} : await getSSRAuthHeaders(),
+  }, TREE_DOC_BRANCHES_TTL_MS);
 }
 
 export async function fetchRepoDoc(owner: string, repo: string, slug: string, branch?: string, lang?: string) {
@@ -113,13 +109,9 @@ export async function fetchRepoDoc(owner: string, repo: string, slug: string, br
     `/api/v1/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/docs/${encodedSlug}${queryString ? `?${queryString}` : ""}`,
   );
 
-  const response = await fetch(url, { cache: "no-store", headers: await getSSRAuthHeaders() });
-
-  if (!response.ok) {
-    throw new Error("Failed to fetch repository doc");
-  }
-
-  return (await response.json()) as RepoDocResponse;
+  return cachedFetchJson<RepoDocResponse>(url, {
+    headers: await getSSRAuthHeaders(),
+  }, TREE_DOC_BRANCHES_TTL_MS);
 }
 
 export async function fetchGraphifyReport(owner: string, repo: string, branch?: string) {
@@ -131,13 +123,9 @@ export async function fetchGraphifyReport(owner: string, repo: string, branch?: 
     `/api/v1/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/graphify/report${queryString ? `?${queryString}` : ""}`,
   );
 
-  const response = await fetch(url, { cache: "no-store", headers: await getSSRAuthHeaders() });
-
-  if (!response.ok) {
-    throw new Error("Failed to fetch Graphify report");
-  }
-
-  return response.text();
+  return cachedFetchJson<string>(url, {
+    headers: await getSSRAuthHeaders(),
+  }, GIT_PLATFORM_TTL_MS);
 }
 
 
@@ -175,7 +163,7 @@ export async function submitLocalDirectoryRepository(
 /**
  * Fetch repository list with optional filters
  */
-export async function fetchRepositoryList(params?: RepositoryListParams): Promise<RepositoryListResponse> {
+export async function fetchRepositoryList(params?: RepositoryListParams, skipAuth = false): Promise<RepositoryListResponse> {
   const searchParams = new URLSearchParams();
   
   // page and pageSize are required by the backend API
@@ -192,13 +180,9 @@ export async function fetchRepositoryList(params?: RepositoryListParams): Promis
   const queryString = searchParams.toString();
   const url = buildApiUrl(`/api/v1/repositories/list${queryString ? `?${queryString}` : ""}`);
 
-  const response = await fetch(url, { cache: "no-store", headers: await getSSRAuthHeaders() });
-
-  if (!response.ok) {
-    throw new Error("Failed to fetch repository list");
-  }
-
-  return await response.json();
+  return cachedFetchJson<RepositoryListResponse>(url, {
+    headers: skipAuth ? {} : await getSSRAuthHeaders(),
+  }, REPOSITORY_LIST_TTL_MS);
 }
 
 export async function fetchAllRepositoryList(
@@ -256,13 +240,10 @@ export async function fetchRepoStatus(owner: string, repo: string): Promise<Repo
     `/api/v1/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/tree`,
   );
 
-  const response = await fetch(url, { cache: "no-store", headers: await getSSRAuthHeaders() });
-
-  if (!response.ok) {
-    throw new Error("Failed to fetch repository status");
-  }
-
-  return (await response.json()) as RepoTreeResponse;
+  // 生成状态轮询接口：仅短缓存，保证处理进度相对新鲜
+  return cachedFetchJson<RepoTreeResponse>(url, {
+    headers: await getSSRAuthHeaders(),
+  }, PROCESSING_STATUS_TTL_MS);
 }
 
 
@@ -290,13 +271,10 @@ export async function fetchProcessingLogs(
     `/api/v1/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/processing-logs${queryString ? `?${queryString}` : ""}`
   );
 
-  const response = await fetch(url, { cache: "no-store", headers: await getSSRAuthHeaders() });
-
-  if (!response.ok) {
-    throw new Error("Failed to fetch processing logs");
-  }
-
-  return (await response.json()) as ProcessingLogResponse;
+  // 处理日志轮询接口：仅短缓存，保证处理进度相对新鲜
+  return cachedFetchJson<ProcessingLogResponse>(url, {
+    headers: await getSSRAuthHeaders(),
+  }, PROCESSING_STATUS_TTL_MS);
 }
 
 
@@ -311,24 +289,21 @@ export async function checkGitHubRepo(
     `/api/v1/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/check`
   );
 
-  const response = await fetch(url, { cache: "no-store", headers: await getSSRAuthHeaders() });
-
-  if (!response.ok) {
-    return {
-      exists: false,
-      name: null,
-      description: null,
-      defaultBranch: null,
-      starCount: 0,
-      forkCount: 0,
-      language: null,
-      avatarUrl: null,
-      isPrivate: false,
-      gitUrl: null,
-    };
-  }
-
-  return (await response.json()) as GitRepoCheckResponse;
+  // 后端已对 Git 平台 API 做缓存，此处进一步挡住爬虫扫描无效路径的外部调用
+  return cachedFetchJson<GitRepoCheckResponse>(url, {
+    headers: await getSSRAuthHeaders(),
+  }, GIT_PLATFORM_TTL_MS).catch(() => ({
+    exists: false,
+    name: null,
+    description: null,
+    defaultBranch: null,
+    starCount: 0,
+    forkCount: 0,
+    language: null,
+    avatarUrl: null,
+    isPrivate: false,
+    gitUrl: null,
+  }));
 }
 
 /**
@@ -364,13 +339,9 @@ export async function fetchMindMap(
     `/api/v1/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/mindmap${queryString ? `?${queryString}` : ""}`
   );
 
-  const response = await fetch(url, { cache: "no-store", headers: await getSSRAuthHeaders() });
-
-  if (!response.ok) {
-    throw new Error("Failed to fetch mind map");
-  }
-
-  return (await response.json()) as MindMapResponse;
+  return cachedFetchJson<MindMapResponse>(url, {
+    headers: await getSSRAuthHeaders(),
+  }, GIT_PLATFORM_TTL_MS);
 }
 
 export async function enqueueBranchFullGeneration(

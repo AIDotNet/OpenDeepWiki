@@ -22,6 +22,14 @@ public class AiProviderPresetSeederTests
         Assert.Contains(catalog.Presets, p => p.BuiltinId == "codex-oauth" && p.AuthMode == "oauth");
         Assert.Contains(catalog.Presets.Single(p => p.BuiltinId == "openai").DefaultModels,
             model => model.Id == "gpt-5.2");
+        Assert.Contains(catalog.Presets.Single(p => p.BuiltinId == "openai").DefaultModels,
+            model => model.Id == "gpt-6-astra");
+        Assert.Contains(catalog.Presets.Single(p => p.BuiltinId == "anthropic").DefaultModels,
+            model => model.Id == "claude-opus-5-5");
+        Assert.Contains(catalog.Presets.Single(p => p.BuiltinId == "moonshot").DefaultModels,
+            model => model.Id == "kimi-k3");
+        Assert.Contains(catalog.Presets.Single(p => p.BuiltinId == "bigmodel").DefaultModels,
+            model => model.Id == "glm-5.3");
         Assert.Contains(catalog.Presets,
             p => p.BuiltinId == "orcarouter" &&
                  p.DefaultBaseUrl == "https://api.orcarouter.ai/v1" &&
@@ -46,7 +54,19 @@ public class AiProviderPresetSeederTests
         await seeder.EnsureBuiltInProvidersAsync();
 
         Assert.Equal(29, await context.AiProviderConfigs.CountAsync(p => !p.IsDeleted));
-        Assert.Equal(450, await context.AiModelConfigs.CountAsync(m => !m.IsDeleted));
+        Assert.Equal(611, await context.AiModelConfigs.CountAsync(m => !m.IsDeleted));
+
+        var apiRoute = await context.AiProviderConfigs.SingleAsync(p => p.Name == "api-route");
+        Assert.True(apiRoute.IsBuiltIn);
+        Assert.False(apiRoute.IsActive);
+        Assert.Equal("OpenAI", apiRoute.ProviderType);
+        Assert.Equal("https://global.api-route.com/v1", apiRoute.BaseUrl);
+        Assert.Equal("deepseek-v4-flash", apiRoute.DefaultModelId);
+        Assert.Equal("https://www.api-route.com/images/logo-ginkgo.png", apiRoute.IconUrl);
+        var apiRouteModel = await context.AiModelConfigs.SingleAsync(m =>
+            m.ProviderId == apiRoute.Id && m.ModelId == "deepseek-v4-flash");
+        Assert.Null(apiRouteModel.InputTokenPrice);
+        Assert.Null(apiRouteModel.OutputTokenPrice);
 
         var codex = await context.AiProviderConfigs.SingleAsync(p => p.Name == "codex-oauth");
         Assert.True(codex.IsBuiltIn);

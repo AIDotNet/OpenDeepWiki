@@ -1,0 +1,14 @@
+{
+  "title": "深入教程",
+  "description": "面向开发者的架构与二次开发教程",
+  "icon": "Brain",
+  "pages": [
+    "index",
+    "architecture",
+    "pipeline",
+    "prompts",
+    "incremental-updates",
+    "data-models",
+    "contributing"
+  ]
+}

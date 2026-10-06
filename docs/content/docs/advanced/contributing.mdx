@@ -1,0 +1,83 @@
+---
+title: "二次开发指南"
+description: 本地开发、代码规范、测试与贡献流程。
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+
+# 二次开发指南
+
+## 环境准备
+
+按[本地开发环境](/docs/getting-started/local-development)搭建：.NET 10 SDK + Node.js 18+，前后端分离启动、热更新。
+
+## 代码规范
+
+| 端 | 约定 |
+| --- | --- |
+| C# | 4 空格缩进；启用可空引用类型；类型/方法 `PascalCase`；接口 `I*` 前缀；异步方法 `*Async` 后缀 |
+| TypeScript/React | 2 空格缩进；组件 `PascalCase`；函数/变量 `camelCase`；文件名 `kebab-case` |
+| 提交信息 | Conventional 前缀（`feat:`、`fix:`、`chore:`、`docs:`）+ 简短祈使句摘要 |
+
+保持与既有文件风格一致：动手前先读同目录相邻代码。
+
+## 典型开发任务路径
+
+### 新增一个 API 端点
+
+1. 在 `src/OpenDeepWiki/Endpoints/` 找到对应领域的端点组（如 `RepositoriesEndpoints`）
+2. 以 MiniApis 风格添加端点方法，走"端点 → 领域服务"链路，不要在端点里写业务
+3. 需要鉴权时套用现有的用户上下文/角色检查模式
+4. 在 `tests/OpenDeepWiki.Tests/` 补测试
+
+### 新增后台任务
+
+参考 `RepositoryProcessingWorker` / `MindMapWorker` 的模式：
+
+1. 任务状态落库（实体 + 枚举）
+2. Worker 轮询消费，处理成功/失败都要回写状态与错误信息
+3. 尊重全局生成配额与仓库级生成锁
+
+### 前端新增页面
+
+1. App Router 下新增路由段（`web/app/...`）
+2. 组件放 `web/components/`，API 调用封装进 `web/lib/`
+3. 面向用户的文案走 `i18n/` 语言包（8 个语言文件都要补）
+
+## 测试
+
+```bash
+# 后端：xUnit + FsCheck
+dotnet test tests/OpenDeepWiki.Tests/OpenDeepWiki.Tests.csproj
+
+# 前端 lint
+cd web && npm run lint
+
+# 构建
+dotnet build OpenDeepWiki.sln
+cd web && npm run build
+```
+
+新增服务层逻辑请把测试放到 `tests/OpenDeepWiki.Tests/Services/`；属性/不变量类验证优先考虑 FsCheck 性质测试。
+
+## 调试技巧
+
+| 场景 | 工具 |
+| --- | --- |
+| API 探索 | `http://localhost:5265/v1/scalar`（Development 环境开放） |
+| 后端日志 | 控制台 + `logs/` 目录，Serilog |
+| 数据库 | SQLite 用任意 SQLite 客户端打开 `/data/opendeepwiki.db`（或工作区 `opendeepwiki.db`） |
+| AI 请求 | 临时调高 Serilog `OpenDeepWiki` 级别为 `Debug` 观察请求/响应 |
+| 前端 | Next.js dev 模式 + 浏览器 DevTools；API 代理看 `API_PROXY_URL` |
+
+## 贡献回上游
+
+1. Fork 并创建特性分支
+2. 保持提交原子性，遵循提交信息规范
+3. 提交 Pull Request：说明改动动机、列出已运行的测试命令；UI 改动附截图或 GIF
+4. 不提交密钥与个人配置；AI Key 通过环境变量或 `.env`（已 gitignore）注入
+
+<Callout type="info">
+  大改动（新存储 Provider、新聊天渠道）建议先开 Issue 讨论设计，避免返工。
+</Callout>

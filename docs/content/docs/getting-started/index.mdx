@@ -1,121 +1,58 @@
 ---
-title: 快速开始
-description: 在 5 分钟内使用 Docker Compose 运行 OpenDeepWiki。
+title: "OpenDeepWiki 是什么"
+description: 认识 OpenDeepWiki：它能解决什么问题、由哪些部分组成、适合谁使用。
 ---
 
 import { Steps, Step } from "fumadocs-ui/components/steps";
 import { Callout } from "fumadocs-ui/components/callout";
 
-# 快速开始
+# OpenDeepWiki 是什么
 
-最快的方式是使用 Docker Compose 运行 OpenDeepWiki。本指南将引导你完成设置。
+OpenDeepWiki 把 **Git 仓库、ZIP 压缩包、本地目录** 自动转换成一份可检索、可对话、可分享的**代码知识库**。你只需要提供一个仓库地址和一个 AI 模型的 API Key，剩下的——目录规划、文档撰写、多语言翻译、思维导图——全部由 AI 流水线完成。
 
-## 前置条件
+## 解决什么问题
 
-- 已安装 [Docker](https://docs.docker.com/get-docker/) 和 [Docker Compose](https://docs.docker.com/compose/install/)
-- 从 AI 提供商获得 API 密钥（OpenAI、Azure OpenAI、Anthropic 或兼容端点）
+| 痛点 | OpenDeepWiki 的答案 |
+| --- | --- |
+| 接手陌生仓库无从下手 | 自动生成项目概览 + 层级 Wiki，配合思维导图快速建立全局认知 |
+| 文档长期失修 | 仓库更新后可触发增量更新，文档跟随代码演进 |
+| 团队知识口口相传 | 私有仓库知识库 + AI 对话，新人提问即可获得有出处的回答 |
+| 外部用户看不懂开源项目 | 公开仓库 SEO 友好路由，让搜索引擎收录你的文档 |
+| 工具链割裂 | MCP 服务让 Claude、Cursor 等工具直接查询仓库知识 |
 
-## 设置
+## 系统组成
+
+OpenDeepWiki 由两大部分组成：
+
+- **后端 API（ASP.NET Core / .NET 10）**：仓库克隆与解析、AI 文档生成、翻译、思维导图、MCP 端点、后台 Worker 队列
+- **前端站点（Next.js 16 / React 19）**：公共文档站、AI 对话、管理后台
+
+数据层支持 **SQLite**（默认，零配置）与 **PostgreSQL**（生产推荐）。
+
+## 一次典型的使用流程
 
 <Steps>
 
-<Step>
-### 克隆仓库
+<Step>部署 OpenDeepWiki（Docker 最快，5 分钟）</Step>
 
-```bash
-git clone https://github.com/AIDotNet/OpenDeepWiki.git
-cd OpenDeepWiki
-```
-</Step>
+<Step>使用默认管理员账号登录</Step>
 
-<Step>
-### 配置环境变量
+<Step>粘贴一个 GitHub 仓库地址，点击生成</Step>
 
-编辑 `compose.yaml` 文件并设置你的 AI 提供商凭证。最少需要把 JWT 密钥和 AI 配置改成真实值：
+<Step>等待后台 Worker 完成"目录 → 正文 → 翻译 → 思维导图"流水线</Step>
 
-```yaml title="compose.yaml"
-services:
-  opendeepwiki:
-    environment:
-      # 数据库（sqlite 是默认值，无需额外设置）
-      - DB_TYPE=sqlite
-      - CONNECTION_STRING=Data Source=/data/opendeepwiki.db
-
-      - JWT_SECRET_KEY=replace-this-in-production
-
-      # AI 服务 — 用于聊天功能
-      - CHAT_API_KEY=your-api-key
-      - ENDPOINT=https://api.openai.com/v1
-      - CHAT_REQUEST_TYPE=OpenAI
-
-      # Wiki 目录生成
-      - WIKI_CATALOG_MODEL=gpt-4o
-      - WIKI_CATALOG_ENDPOINT=https://api.openai.com/v1
-      - WIKI_CATALOG_API_KEY=your-api-key
-      - WIKI_CATALOG_REQUEST_TYPE=OpenAI
-
-      # Wiki 内容生成
-      - WIKI_CONTENT_MODEL=gpt-4o
-      - WIKI_CONTENT_ENDPOINT=https://api.openai.com/v1
-      - WIKI_CONTENT_API_KEY=your-api-key
-      - WIKI_CONTENT_REQUEST_TYPE=OpenAI
-
-      # 多语言输出（逗号分隔）
-      - WIKI_LANGUAGES=en,zh,zh-tw,ja,ko,es,fr,de,pt-br,pl,ru,ar
-```
-
-<Callout type="info">
-  你可以为所有三个 AI 配置（聊天、目录、内容）使用相同的 API 密钥。仅在想为每个任务使用不同的模型或提供商时才分开设置。
-</Callout>
-</Step>
-
-<Step>
-### 启动服务
-
-```bash
-docker compose up -d
-```
-
-或者如果你已安装 `make`：
-
-```bash
-make up
-```
-
-这将启动两个容器：
-- **opendeepwiki**（后端 API）容器内端口 `8080`（当前 `compose.yaml` 映射到宿主机 `8081`）
-- **web**（Next.js 前端）容器内端口 `3000`（当前 `compose.yaml` 映射到宿主机 `8090`）
-</Step>
+<Step>浏览文档、发起 AI 对话，或把 MCP 端点接入你的编辑器</Step>
 
 </Steps>
 
-两个服务都健康后，在浏览器中打开 [http://localhost:8090](http://localhost:8090)。
-
-## 关键环境变量
-
-| 变量 | 描述 | 默认值 |
-|---|---|---|
-| `DB_TYPE` | 数据库类型：`sqlite` 或 `postgresql` | `sqlite` |
-| `CONNECTION_STRING` | 数据库连接字符串 | `Data Source=/data/opendeepwiki.db` |
-| `JWT_SECRET_KEY` | JWT 签名密钥（生产环境需更改） | 默认密钥 |
-| `CHAT_API_KEY` | 聊天 AI 提供商的 API 密钥 | — |
-| `ENDPOINT` | 聊天 AI 端点 URL | `https://api.openai.com/v1` |
-| `CHAT_REQUEST_TYPE` | 提供商类型：`OpenAI`、`AzureOpenAI`、`OpenAIResponses`、`Anthropic`、`DeepSeekOpenAI` | `OpenAI` |
-| `WIKI_CATALOG_MODEL` | 用于生成 wiki 目录结构的模型 | `gpt-4o` |
-| `WIKI_CONTENT_MODEL` | 用于生成 wiki 内容的模型 | `gpt-4o` |
-| `WIKI_PARALLEL_COUNT` | 并行 wiki 生成任务数 | `5` |
-| `WIKI_LANGUAGES` | 输出的语言代码（逗号分隔） | `en,zh,zh-tw,ja,ko,es,fr,de,pt-br,pl,ru,ar` |
-| `LOCAL_IMPORT_ROOT` | 允许导入的本地目录根路径（本地目录导入功能） | — |
-
-<Callout type="warn">
-  在生产部署中始终更改 `JWT_SECRET_KEY`。默认密钥仅用于开发。
+<Callout type="info">
+  本教程站的截图均来自真实运行的 OpenDeepWiki 实例（演示数据），跟着操作即可复现。
 </Callout>
 
-完整的环境变量参考，请参见 [配置](/docs/configuration/environment-variables)。
+## 学习路径
 
-## 后续步骤
-
-- [Docker 部署](/docs/getting-started/docker-deployment) — 详细的 Docker 部署选项，包括特定架构的构建
-- [Windows 部署](/docs/getting-started/windows-deployment) — 在 Windows 上直接构建和部署，无需 Docker
-- [本地开发](/docs/getting-started/local-development) — 使用 .NET 和 Next.js 设置本地开发环境
-- [架构概览](/docs/architecture) — 了解系统组件如何协作
+- **只想跑起来** → [Docker 快速开始](/docs/getting-started/quick-start-docker)
+- **想全面了解界面** → [界面导览](/docs/getting-started/interface-tour)
+- **准备上生产** → [部署教程](/docs/deployment)
+- **负责账号与权限** → [管理后台](/docs/admin-guide)
+- **想二次开发** → [深入教程](/docs/advanced)

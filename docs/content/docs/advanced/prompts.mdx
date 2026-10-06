@@ -1,0 +1,89 @@
+---
+title: "提示词定制"
+description: 通过修改 prompts/ 目录的提示词模板，定制文档风格与生成行为。
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+# 提示词定制
+
+OpenDeepWiki 的生成质量很大程度上由提示词决定。所有提示词都是**独立的 Markdown 文件**，存放在 `src/OpenDeepWiki/prompts/`，与代码解耦——不改一行 C# 就能定制文档风格。
+
+## 提示词清单
+
+| 文件 | 职责 |
+| --- | --- |
+| `catalog-generator.md` | 规划 Wiki 目录结构（章节、层级、路径） |
+| `content-generator.md` | 逐篇生成文档正文 |
+| `mindmap-generator.md` | 生成项目架构思维导图 |
+| `incremental-updater.md` | 增量更新时决策与重生成 |
+
+## 模板的工作方式
+
+每个文件是"系统提示词"，运行时引擎会拼接**运行时上下文**（仓库目录树、README 摘要、相关源文件等）发给模型。以 `mindmap-generator.md` 为例，其输出格式约定为 Markdown 标题层级：
+
+```
+# Level 1 Topic
+## Level 2 Topic:path/to/related/file
+### Level 3 Topic
+```
+
+前端把这种格式渲染成可视化思维导图，`:path` 后缀用于标注对应源码位置。
+
+## 定制示例
+
+### 让文档更偏入门教学
+
+编辑 `content-generator.md`，在写作风格段追加：
+
+```markdown
+## Style Requirements
+- 面向第一次接触本项目的开发者
+- 每篇文档开头用 2-3 句话说明"读完你能获得什么"
+- 概念必须先解释再使用，避免未定义的缩写
+- 每篇末尾给出"下一步阅读"建议
+```
+
+### 让目录更贴近团队模块划分
+
+编辑 `catalog-generator.md`，补充领域约束：
+
+```markdown
+## Organization Conventions
+- 一级目录优先按业务域划分（订单/库存/网关/基础组件），而非按技术分层
+- 每个一级目录下必须包含一篇《模块职责与边界》
+```
+
+### 控制思维导图粒度
+
+编辑 `mindmap-generator.md` 中的层级规则，例如限制最多两级、每级最多 6 个子节点。
+
+## 部署定制后的提示词
+
+| 部署方式 | 做法 |
+| --- | --- |
+| 源码运行 | 直接改 `src/OpenDeepWiki/prompts/`，重启生效 |
+| Docker 定制构建 | 修改后 `docker compose build` 重建镜像 |
+| 挂载覆盖（推荐） | 在 compose.yaml 中挂载宿主机目录覆盖容器内路径：
+
+```yaml
+services:
+  opendeepwiki:
+    volumes:
+      - ./data:/data
+      - ./custom-prompts:/app/prompts   # 以镜像内实际路径为准
+    environment:
+      - WIKI_PROMPTS_DIRECTORY=custom-prompts
+``` |
+
+`WIKI_PROMPTS_DIRECTORY` 变量可指向不同的提示词目录，便于 A/B 两套风格切换。
+
+<Callout type="warn">
+  提示词模板中的结构化约定（如目录 JSON 字段、思维导图 `:path` 语法）被代码解析，定制时不要破坏这些格式约定；只调整"写作要求/风格/组织方式"等语义部分最安全。
+</Callout>
+
+## 调试建议
+
+1. 改动后用一个小仓库（几十个文件）试生成，快速验证风格变化
+2. 一次只改一个模板，方便归因
+3. 关注 Token 消耗：风格要求越多，输入输出越长

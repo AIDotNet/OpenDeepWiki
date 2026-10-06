@@ -1,0 +1,38 @@
+---
+title: "深入教程总览"
+description: 系统架构、处理流水线、提示词定制与二次开发指南的入口。
+---
+
+import { Cards, Card } from "fumadocs-ui/components/card";
+
+# 深入教程总览
+
+本模块面向想"打开引擎盖"的开发者：理解系统如何运转，以及如何安全地定制与扩展。
+
+<Cards>
+  <Card title="系统架构" href="/docs/advanced/architecture">
+    前后端分工、项目分层与关键技术选型。
+  </Card>
+  <Card title="仓库处理流水线" href="/docs/advanced/pipeline">
+    从克隆到发布的完整生成链路与并发模型。
+  </Card>
+  <Card title="提示词定制" href="/docs/advanced/prompts">
+    修改 prompts/ 目录定制文档风格与生成行为。
+  </Card>
+  <Card title="增量更新" href="/docs/advanced/incremental-updates">
+    定时比对提交、按需重生成的机制与 API。
+  </Card>
+  <Card title="数据模型" href="/docs/advanced/data-models">
+    核心实体、关系图与数据库 Provider。
+  </Card>
+  <Card title="二次开发指南" href="/docs/advanced/contributing">
+    本地开发、代码规范、测试与贡献流程。
+  </Card>
+</Cards>
+
+## 建议阅读顺序
+
+1. [系统架构](/docs/advanced/architecture) → 建立全局图景
+2. [仓库处理流水线](/docs/advanced/pipeline) → 理解核心业务链路
+3. 按需进入 [提示词定制](/docs/advanced/prompts)、[增量更新](/docs/advanced/incremental-updates)、[数据模型](/docs/advanced/data-models)
+4. 动手改代码前读[二次开发指南](/docs/advanced/contributing)

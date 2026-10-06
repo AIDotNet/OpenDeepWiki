@@ -1,0 +1,16 @@
+{
+  "title": "管理后台",
+  "description": "管理员操作手册：账号权限、仓库、模型、密钥与集成管理",
+  "icon": "Wrench",
+  "pages": [
+    "index",
+    "users-roles",
+    "repositories",
+    "ai-providers",
+    "api-keys",
+    "chat-assistant",
+    "skills-mcps",
+    "github-import",
+    "system-settings"
+  ]
+}

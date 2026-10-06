@@ -1,0 +1,169 @@
+---
+title: "升级、备份与迁移"
+description: 安全地升级 OpenDeepWiki 版本、备份数据以及在服务器间迁移。
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+
+# 升级、备份与迁移
+
+## 数据都存在哪里
+
+| 数据 | Docker 位置 | 说明 |
+| --- | --- | --- |
+| SQLite 数据库 | `/data/opendeepwiki.db`（映射宿主机 `./data`） | 全部业务数据 |
+| PostgreSQL | 独立数据库服务 | 用 `pg_dump` 备份 |
+| 仓库工作区 | `/data` 下的仓库目录 | 克隆的源码缓存，可重建 |
+| Graphify 产物 | `/data/graphify-artifacts` | 图谱产物，可重建 |
+| 后端日志 | `logs/`（容器内） | 排障用 |
+
+<Callout type="warn">
+  生成的文档、用户、配置都在数据库里；克隆的仓库工作区可以随时重建。备份的重点是**数据库**。
+</Callout>
+
+## 备份
+
+### SQLite
+
+```bash
+# 热备（推荐）：一致性快照
+docker compose exec opendeepwiki sqlite3 /data/opendeepwiki.db ".backup '/data/backup-$(date +%F).db'"
+
+# 或停机冷备
+docker compose down
+cp -a data data.bak.$(date +%F)
+docker compose up -d
+```
+
+### PostgreSQL
+
+```bash
+docker compose -f compose.pgsql.yaml exec db \
+  pg_dump -U postgres -d opendeepwiki -Fc -f /var/lib/postgresql/data/backup.dump
+
+# 从容器拷出
+docker compose -f compose.pgsql.yaml cp db:/var/lib/postgresql/data/backup.dump ./backup.dump
+```
+
+建议用 cron 每日备份并保留最近 N 份：
+
+```bash
+0 3 * * * cd /opt/opendeepwiki && docker compose exec -T opendeepwiki sqlite3 /data/opendeepwiki.db ".backup '/data/backup-$(date +\%F).db'" && find data -name "backup-*.db" -mtime +7 -delete
+```
+
+## 升级版本
+
+<Steps>
+
+<Step>
+
+
+
+### 升级前备份
+
+按上文方式完成数据库备份，并记录当前版本：
+
+```bash
+docker compose images | grep opendeepwiki
+```
+
+</Step>
+
+<Step>
+
+
+
+### 拉取新代码并重建
+
+```bash
+git pull
+docker compose up -d --build
+```
+
+或使用预构建镜像：
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+</Step>
+
+<Step>
+
+
+
+### 验证
+
+```bash
+curl -s http://localhost:8081/health   # 健康检查
+docker compose logs -f opendeepwiki    # 观察启动日志中的迁移信息
+```
+
+启动时 EF Core 会自动应用数据库迁移（新增表/字段），**通常无需手工操作**。打开站点确认登录、仓库列表、文档阅读正常。
+
+</Step>
+
+</Steps>
+
+<Callout type="warn">
+  跨大版本升级前先阅读 Release Notes：如果涉及破坏性变更（如数据库 Provider 调整），按说明操作，不要直接跳版本。
+</Callout>
+
+## 服务器间迁移
+
+<Steps>
+
+<Step>
+
+旧服务器：停服并完整打包数据目录：
+
+```bash
+docker compose down
+tar czf opendeepwiki-data.tar.gz data/
+```
+
+</Step>
+
+<Step>
+
+传输到新服务器：
+
+```bash
+scp opendeepwiki-data.tar.gz new-server:/opt/opendeepwiki/
+```
+
+</Step>
+
+<Step>
+
+新服务器：安装 Docker 与 OpenDeepWiki（同版本），解压数据目录到相同相对路径，启动：
+
+```bash
+tar xzf opendeepwiki-data.tar.gz
+docker compose up -d
+```
+
+</Step>
+
+<Step>PostgreSQL 部署则改为：新机启动空库 → `pg_restore` 恢复 → 启动应用。</Step>
+
+</Steps>
+
+## 回滚
+
+升级失败需要回滚时：
+
+```bash
+git checkout <旧版本tag>          # 或 docker compose pull 旧镜像
+docker compose up -d --build
+# 如数据库结构已变更，用升级前的备份恢复：
+docker compose down
+cp data/backup-2026-09-30.db data/opendeepwiki.db
+docker compose up -d
+```
+
+<Callout type="info">
+  数据库迁移是单向的：升级后回滚旧版本可能出现新表/新字段残留，一般不影响运行；但若迁移包含数据格式变更，必须用备份恢复。
+</Callout>

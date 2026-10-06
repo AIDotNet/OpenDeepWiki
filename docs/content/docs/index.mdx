@@ -4,33 +4,83 @@ description: OpenDeepWiki — AI 驱动的代码知识库，可在几分钟内�
 ---
 
 import { Cards, Card } from "fumadocs-ui/components/card";
-import { Zap, Globe, GitBranch, Puzzle, Brain, Plug } from "lucide-react";
+import { Zap, Globe, GitBranch, Puzzle, Brain, Plug, BookOpen, Rocket, Wrench, Layers, HelpCircle, Network } from "lucide-react";
 
 # OpenDeepWiki
 
-OpenDeepWiki 是一个开源的、AI 驱动的代码知识库。它分析来自 GitHub、GitLab、Gitee、Gitea 等平台的代码仓库，然后自动生成结构化文档、架构图和知识图谱 — 一切只需几分钟。
+OpenDeepWiki 是一个开源的、AI 驱动的代码知识库。它分析来自 GitHub、GitLab、Gitee、Gitea 等平台的代码仓库，然后自动生成结构化文档、思维导图和知识图谱 — 一切只需几分钟。
 
-基于 **.NET 10** 和 **Microsoft.Agents.AI**（多提供商 AI 代理框架），配合 **Next.js** 前端，OpenDeepWiki 架起了原始代码和人类可读文档之间的桥梁。
+基于 **.NET 10** 和 **Microsoft.Agents.AI**（多提供商 AI 编排框架），配合 **Next.js** 前端，OpenDeepWiki 架起了原始代码和人类可读文档之间的桥梁。
 
 除 Git 仓库外，OpenDeepWiki 还支持上传 ZIP 压缩包和受允许根目录约束的本地目录导入，并通过后台 Worker 处理翻译、思维导图和 Graphify 图谱等衍生产物。
+
+## 它能为你做什么
+
+- **自动生成仓库文档**：README 摘要、项目概览、Wiki 目录与逐模块文档正文
+- **多语言翻译**：一次生成，输出中、英、日、韩等 12 种语言
+- **思维导图**：自动生成项目架构思维导图，支持 PNG/SVG 导出
+- **AI 对话**：基于仓库知识的对话助手，可嵌入任意网站
+- **MCP 服务**：把仓库知识暴露给 Claude、Cursor 等 MCP 客户端
+- **企业级后台**：用户、角色、部门、API Key、AI 模型、技能包统一管理
+
+## 教程导航
+
+本教程站按学习路径组织为八大模块：
+
+<Cards>
+  <Card icon={<Rocket />} title="入门教程" href="/docs/getting-started">
+    从零认识 OpenDeepWiki：5 分钟跑起来、生成第一个知识库、界面导览与本地开发环境。
+  </Card>
+  <Card icon={<Layers />} title="部署教程" href="/docs/deployment">
+    详细部署手册：Docker Compose、PostgreSQL、Windows 裸机、Nginx 反向代理、环境变量大全、升级与备份。
+  </Card>
+  <Card icon={<BookOpen />} title="功能使用" href="/docs/usage">
+    日常使用教程：三种方式添加仓库、浏览文档、AI 对话、思维导图、分享与嵌入、多语言翻译。
+  </Card>
+  <Card icon={<Wrench />} title="管理后台" href="/docs/admin-guide">
+    管理员手册：用户角色部门、仓库管理、AI Provider 与模型、API Key、聊天助手、技能包与 MCP。
+  </Card>
+  <Card icon={<Network />} title="MCP 集成" href="/docs/mcp">
+    把 OpenDeepWiki 作为知识服务器接入 Claude Desktop、Cursor、Windsurf 等 MCP 客户端。
+  </Card>
+  <Card icon={<Brain />} title="深入教程" href="/docs/advanced">
+    面向开发者的深入内容：系统架构、仓库处理流水线、提示词定制、增量更新、数据模型与二次开发。
+  </Card>
+  <Card icon={<HelpCircle />} title="常见问题" href="/docs/faq">
+    部署、生成、对话中的高频问题与排查方法。
+  </Card>
+  <Card icon={<Plug />} title="API 参考" href="/docs/api-reference">
+    REST API 完整参考：认证、仓库、增量更新、聊天与管理接口。
+  </Card>
+</Cards>
+
+## 界面速览
+
+打开站点即可浏览公开仓库知识库；登录后可以导入私有仓库并使用 AI 对话：
+
+![OpenDeepWiki 首页](/images/home-loggedin.png)
+
+导入仓库后，系统自动生成带目录树的 Wiki 文档：
+
+![仓库 Wiki 文档](/images/repo-docs.png)
 
 ## 核心功能
 
 <Cards>
-  <Card icon={<Zap />} title="快速转换" href="/docs/getting-started">
+  <Card icon={<Zap />} title="快速转换" href="/docs/getting-started/first-repository">
     使用 AI 驱动的分析，在几分钟内将任何代码仓库转换为知识库。
   </Card>
-  <Card icon={<Globe />} title="多语言支持" href="/docs/configuration/environment-variables">
-    支持所有编程语言的代码分析和文档生成，支持多语言输出（中文、英文、日文、韩文等）。
+  <Card icon={<Globe />} title="多语言支持" href="/docs/usage/translations">
+    支持所有主流编程语言的代码分析和文档生成，支持 12 种语言输出。
   </Card>
-  <Card icon={<GitBranch />} title="代码结构图" href="/docs/architecture">
-    自动生成 Mermaid 图表，帮助可视化和理解代码结构及其关系。
+  <Card icon={<GitBranch />} title="思维导图" href="/docs/usage/mindmap">
+    自动生成项目架构思维导图，帮助可视化和理解代码结构及其关系。
   </Card>
   <Card icon={<Puzzle />} title="自定义模型支持" href="/docs/deployment/ai-providers">
-    支持 OpenAI、Azure OpenAI、Anthropic 和自定义 API 端点，提供灵活的 AI 提供商配置。
+    支持 OpenAI、Azure OpenAI、Anthropic、DeepSeek 和自定义 API 端点。
   </Card>
-  <Card icon={<Brain />} title="AI 智能分析" href="/docs/architecture/backend">
-    基于 AI 的代码分析，理解代码关系，生成项目概览，创建全面的文档。
+  <Card icon={<Brain />} title="AI 智能分析" href="/docs/advanced/pipeline">
+    基于 AI 的代码分析，理解代码关系，生成项目概览与全面的文档。
   </Card>
   <Card icon={<Plug />} title="MCP 协议" href="/docs/mcp">
     支持模型上下文协议（MCP），使其他 AI 工具可以直接查询你的仓库知识库。
@@ -47,13 +97,13 @@ OpenDeepWiki 是一个开源的、AI 驱动的代码知识库。它分析来自 
 ## 后续步骤
 
 <Cards>
-  <Card title="快速开始" href="/docs/getting-started">
-    在 5 分钟内使用 Docker Compose 运行 OpenDeepWiki。
+  <Card title="5 分钟快速开始" href="/docs/getting-started/quick-start-docker">
+    使用 Docker Compose 运行 OpenDeepWiki。
   </Card>
-  <Card title="架构概览" href="/docs/architecture">
-    了解系统组件及其协作方式。
+  <Card title="生成第一个知识库" href="/docs/getting-started/first-repository">
+    添加仓库并生成你的第一份 Wiki 文档。
   </Card>
-  <Card title="部署指南" href="/docs/deployment/docker-compose">
+  <Card title="详细部署指南" href="/docs/deployment">
     生产环境的详细部署说明。
   </Card>
   <Card title="API 参考" href="/docs/api-reference/repositories">

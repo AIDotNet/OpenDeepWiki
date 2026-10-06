@@ -2,8 +2,10 @@ using System.IO.Compression;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using Moq;
+using OpenDeepWiki.Cache.Memory;
 using OpenDeepWiki.EFCore;
 using OpenDeepWiki.Entities;
 using OpenDeepWiki.Models;
@@ -980,6 +982,7 @@ public class RepositorySourceSubmitTests
             Mock.Of<IOrganizationService>(),
             new RepositoryFullRegenerationCleaner(),
             new RepositoryGenerationLockService(context),
+            new MemoryCacheAdapter(new MemoryCache(new MemoryCacheOptions())),
             Options.Create(analyzerOptions));
     }
 

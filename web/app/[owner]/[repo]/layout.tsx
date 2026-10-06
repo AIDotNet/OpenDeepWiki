@@ -1,4 +1,4 @@
-import React from "react";
+import React, { cache } from "react";
 import type { Metadata } from "next";
 import { fetchRepoTree, fetchRepoBranches, checkGitHubRepo, fetchProcessingLogs } from "@/lib/repository-api";
 import { RepoShell } from "@/components/repo/repo-shell";
@@ -20,33 +20,35 @@ interface RepoLayoutProps {
   }>;
 }
 
-async function getTreeData(owner: string, repo: string) {
+// React cache：同一次请求中 generateMetadata 与 layout 共享结果，
+// 避免爬虫抓一次页面触发两次 tree 查询
+const getTreeData = cache(async (owner: string, repo: string) => {
   try {
     const tree = await fetchRepoTree(owner, repo);
     return tree;
   } catch {
     return null;
   }
-}
+});
 
-async function getBranchesData(owner: string, repo: string) {
+const getBranchesData = cache(async (owner: string, repo: string) => {
   try {
     const branches = await fetchRepoBranches(owner, repo);
     return branches;
   } catch {
     return null;
   }
-}
+});
 
-async function getGitHubInfo(owner: string, repo: string) {
+const getGitHubInfo = cache(async (owner: string, repo: string) => {
   try {
     return await checkGitHubRepo(owner, repo);
   } catch {
     return null;
   }
-}
+});
 
-async function getProcessingStatus(owner: string, repo: string) {
+const getProcessingStatus = cache(async (owner: string, repo: string) => {
   try {
     const logs = await fetchProcessingLogs(owner, repo, undefined, 1);
     if (logs.statusName === "Pending" || logs.statusName === "Processing" || logs.statusName === "Failed") {
@@ -57,7 +59,7 @@ async function getProcessingStatus(owner: string, repo: string) {
   }
 
   return null;
-}
+});
 
 export async function generateMetadata({ params }: Pick<RepoLayoutProps, "params">): Promise<Metadata> {
   const { owner, repo } = await params;

@@ -1,0 +1,56 @@
+---
+title: "多语言翻译"
+description: 文档多语言版本的生成机制、切换方式与成本控制。
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+# 多语言翻译
+
+OpenDeepWiki 支持为同一分支生成多种语言的文档版本，源语言文档生成后由翻译流水线自动产出其余语言。
+
+## 语言是如何决定的
+
+三个环节共同决定语言版本：
+
+| 环节 | 变量/操作 | 说明 |
+| --- | --- | --- |
+| 部署默认值 | `WIKI_LANGUAGES` | 实例支持的语种全集，默认 12 种 |
+| 添加仓库时 | 表单"语言"选择 | 本次生成的**源语言** |
+| 翻译任务 | 后台自动 | 源语言完成后，向 `WIKI_LANGUAGES` 中其余语种派发翻译 |
+
+翻译模型未单独配置时回退到内容生成模型（见 [AI 模型接入](/docs/deployment/ai-providers)），也可用 `WIKI_TRANSLATION_*` 指定更便宜的模型。
+
+## 切换阅读语言
+
+文档页**左上角语言选择器**列出当前分支已就绪的语言版本，切换即读，不会触发新的 AI 请求：
+
+![仓库文档页语言切换](/images/repo-docs.png)
+
+<Callout type="info">
+  某语言尚未翻译完成时，选择器中可能暂时看不到它；翻译完成后自动出现。
+</Callout>
+
+## 成本与耗时控制
+
+翻译成本 = 目录标题翻译 + 全部文档正文翻译，与语种数线性相关：
+
+- **体验阶段**：`WIKI_LANGUAGES=en,zh` 只保留两种语言
+- **翻译模型降级**：`WIKI_TRANSLATION_*` 指向 DeepSeek 等高性价比模型
+- **超时参数**：`WIKI_TRANSLATION_TIMEOUT_MINUTES`（默认 45 分钟）、`WIKI_TITLE_TRANSLATION_TIMEOUT_MINUTES`（默认 2 分钟）
+- **减少语种**：修改 `WIKI_LANGUAGES` 只影响之后的新仓库，已有仓库不受影响
+
+## 增量更新时的翻译
+
+[增量更新](/docs/advanced/incremental-updates)重新生成的文档会自动触发对应章节的增量翻译，而不是整仓重翻，节省大量 Token。
+
+## 常见问题
+
+**翻译一直不出现**
+查看后台[仓库管理](/docs/admin-guide/repositories)的翻译任务状态；常见原因是翻译模型凭证错误或超时，修复后可重试。
+
+**想为已有仓库补一种语言**
+调整部署配置 `WIKI_LANGUAGES` 后，在后台仓库管理中重新触发生成/翻译任务。
+
+**界面语言和文档语言的区别**
+顶栏切换的是 UI 语言（8 种界面文案）；文档语言是内容本身的翻译版本，两者互不影响。

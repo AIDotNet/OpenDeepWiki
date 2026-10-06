@@ -1,26 +1,30 @@
 ---
-title: AI 提供商配置
-description: 为 OpenDeepWiki 中的 wiki 生成、聊天和翻译配置 AI 提供商。
+title: "AI 模型接入"
+description: 为 OpenDeepWiki 的文档生成、聊天和翻译配置 AI 提供商：环境变量方式与管理后台方式。
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
-# AI 提供商配置
+# AI 模型接入
 
-OpenDeepWiki 为三个不同的任务使用 AI 模型，每个都可独立配置：
+OpenDeepWiki 的每个 AI 任务都可以独立配置模型，按需混搭不同服务商：
 
 | 任务 | 用途 | 环境变量前缀 |
 |---|---|---|
 | **聊天** | 对话式 AI 功能 | `CHAT_*`、`ENDPOINT` |
 | **Wiki 目录** | 生成文档结构 | `WIKI_CATALOG_*` |
 | **Wiki 内容** | 生成文档页面 | `WIKI_CONTENT_*` |
-| **翻译**（可选） | 翻译文档 | `WIKI_TRANSLATION_*` |
+| **翻译**（可选） | 翻译文档，未配置时回退到内容生成配置 | `WIKI_TRANSLATION_*` |
 
-所有任务都可以使用相同的提供商，或者为每个任务混合使用不同的提供商和模型。
+两种配置方式：
 
-## 支持的提供商
+- **环境变量**（本章）：部署时定死，适合单机与容器化部署
+- **管理后台**（[AI Provider 与模型管理](/docs/admin-guide/ai-providers)）：运行时可视化增删改，支持多 Provider 多模型轮换，适合团队与生产
 
-OpenDeepWiki 通过 `*_REQUEST_TYPE` 变量支持以下 AI 提供商类型：
+## 支持的提供商类型
+
+通过 `*_REQUEST_TYPE` 变量指定：
 
 | 类型 | 描述 |
 |---|---|
@@ -30,9 +34,13 @@ OpenDeepWiki 通过 `*_REQUEST_TYPE` 变量支持以下 AI 提供商类型：
 | `Anthropic` | Anthropic Claude API |
 | `DeepSeekOpenAI` | DeepSeek OpenAI 兼容端点（含思考模式支持） |
 
-## OpenAI 配置
+## 各服务商配置示例
 
-适用于官方 OpenAI API 和任何 OpenAI 兼容端点（例如 vLLM、Ollama、LiteLLM）。
+<Tabs groupId="provider">
+
+<Tab value="OpenAI / 兼容端点">
+
+适用于官方 OpenAI API 和任何 OpenAI 兼容服务（vLLM、Ollama、LiteLLM、OneAPI 等）：
 
 ```yaml title="compose.yaml"
 environment:
@@ -54,180 +62,106 @@ environment:
   - WIKI_CONTENT_REQUEST_TYPE=OpenAI
 ```
 
-### 为所有任务使用单个 API 密钥
+</Tab>
 
-如果为所有内容使用相同的 OpenAI 密钥，仍需要分别设置每个组。wiki 任务之间没有全局回退。
+<Tab value="DeepSeek">
 
-## Azure OpenAI 配置
-
-对于 Azure OpenAI 服务，将请求类型设置为 `AzureOpenAI` 并使用你的 Azure 端点：
+国内访问友好、价格低，OpenAI 兼容：
 
 ```yaml title="compose.yaml"
 environment:
-  # 聊天
-  - CHAT_API_KEY=your-azure-api-key
-  - ENDPOINT=https://your-resource.openai.azure.com/
-  - CHAT_REQUEST_TYPE=AzureOpenAI
-
-  # Wiki 目录生成
-  - WIKI_CATALOG_MODEL=gpt-4o
-  - WIKI_CATALOG_ENDPOINT=https://your-resource.openai.azure.com/
-  - WIKI_CATALOG_API_KEY=your-azure-api-key
-  - WIKI_CATALOG_REQUEST_TYPE=AzureOpenAI
-
-  # Wiki 内容生成
-  - WIKI_CONTENT_MODEL=gpt-4o
-  - WIKI_CONTENT_ENDPOINT=https://your-resource.openai.azure.com/
-  - WIKI_CONTENT_API_KEY=your-azure-api-key
-  - WIKI_CONTENT_REQUEST_TYPE=AzureOpenAI
-```
-
-<Callout type="info">
-  对于 Azure OpenAI，模型名称应与你的 Azure 部署名称匹配。
-</Callout>
-
-## Anthropic 配置
-
-使用 Anthropic Claude 模型：
-
-```yaml title="compose.yaml"
-environment:
-  # 聊天
-  - CHAT_API_KEY=sk-ant-your-anthropic-key
-  - ENDPOINT=https://api.anthropic.com
-  - CHAT_REQUEST_TYPE=Anthropic
-
-  # Wiki 目录生成
-  - WIKI_CATALOG_MODEL=claude-sonnet-4-20250514
-  - WIKI_CATALOG_ENDPOINT=https://api.anthropic.com
-  - WIKI_CATALOG_API_KEY=sk-ant-your-anthropic-key
-  - WIKI_CATALOG_REQUEST_TYPE=Anthropic
-
-  # Wiki 内容生成
-  - WIKI_CONTENT_MODEL=claude-sonnet-4-20250514
-  - WIKI_CONTENT_ENDPOINT=https://api.anthropic.com
-  - WIKI_CONTENT_API_KEY=sk-ant-your-anthropic-key
-  - WIKI_CONTENT_REQUEST_TYPE=Anthropic
-```
-
-## DeepSeek 配置
-
-使用 DeepSeek 的 OpenAI 兼容端点：
-
-```yaml title="compose.yaml"
-environment:
-  # 聊天
   - CHAT_API_KEY=sk-your-deepseek-key
   - ENDPOINT=https://api.deepseek.com/v1
   - CHAT_REQUEST_TYPE=DeepSeekOpenAI
 
-  # Wiki 内容生成
+  - WIKI_CATALOG_MODEL=deepseek-chat
+  - WIKI_CATALOG_ENDPOINT=https://api.deepseek.com/v1
+  - WIKI_CATALOG_API_KEY=sk-your-deepseek-key
+  - WIKI_CATALOG_REQUEST_TYPE=DeepSeekOpenAI
+
   - WIKI_CONTENT_MODEL=deepseek-chat
   - WIKI_CONTENT_ENDPOINT=https://api.deepseek.com/v1
   - WIKI_CONTENT_API_KEY=sk-your-deepseek-key
   - WIKI_CONTENT_REQUEST_TYPE=DeepSeekOpenAI
 ```
 
-<Callout type="info">
-  `DeepSeekOpenAI` 类型内置了思考模式（reasoner 模型）的请求适配。
-</Callout>
+</Tab>
 
-## 自定义/自托管提供商
+<Tab value="Azure OpenAI">
 
-任何 OpenAI 兼容的 API 都可以通过将端点设置为你的自定义服务器来使用：
+将请求类型设为 `AzureOpenAI`，模型名填 Azure 的**部署名**：
 
 ```yaml title="compose.yaml"
 environment:
-  # 示例：Ollama
-  - WIKI_CONTENT_MODEL=llama3
-  - WIKI_CONTENT_ENDPOINT=http://ollama:11434/v1
-  - WIKI_CONTENT_API_KEY=ollama
-  - WIKI_CONTENT_REQUEST_TYPE=OpenAI
+  - CHAT_API_KEY=your-azure-api-key
+  - ENDPOINT=https://your-resource.openai.azure.com/
+  - CHAT_REQUEST_TYPE=AzureOpenAI
 
-  # 示例：vLLM
-  - WIKI_CATALOG_MODEL=your-model
-  - WIKI_CATALOG_ENDPOINT=http://vllm-server:8000/v1
-  - WIKI_CATALOG_API_KEY=token-abc123
-  - WIKI_CATALOG_REQUEST_TYPE=OpenAI
+  - WIKI_CATALOG_MODEL=gpt-4o            # = Azure 部署名称
+  - WIKI_CATALOG_ENDPOINT=https://your-resource.openai.azure.com/
+  - WIKI_CATALOG_API_KEY=your-azure-api-key
+  - WIKI_CATALOG_REQUEST_TYPE=AzureOpenAI
+
+  - WIKI_CONTENT_MODEL=gpt-4o
+  - WIKI_CONTENT_ENDPOINT=https://your-resource.openai.azure.com/
+  - WIKI_CONTENT_API_KEY=your-azure-api-key
+  - WIKI_CONTENT_REQUEST_TYPE=AzureOpenAI
 ```
 
-## 翻译配置
+</Tab>
 
-翻译是可选的。如果未配置，将回退到 wiki 内容配置。
+<Tab value="Anthropic">
 
 ```yaml title="compose.yaml"
 environment:
-  # 翻译（可选 — 如果未设置，回退到内容配置）
-  - WIKI_TRANSLATION_MODEL=gpt-4o
-  - WIKI_TRANSLATION_ENDPOINT=https://api.openai.com/v1
-  - WIKI_TRANSLATION_API_KEY=sk-your-key
-  - WIKI_TRANSLATION_REQUEST_TYPE=OpenAI
+  - CHAT_API_KEY=sk-ant-your-anthropic-key
+  - ENDPOINT=https://api.anthropic.com
+  - CHAT_REQUEST_TYPE=Anthropic
 
-  # 目标语言（逗号分隔）
-  - WIKI_LANGUAGES=en,zh,zh-tw,ja,ko,es,fr,de,pt-br,pl,ru,ar
+  - WIKI_CATALOG_MODEL=claude-sonnet-4-20250514
+  - WIKI_CATALOG_ENDPOINT=https://api.anthropic.com
+  - WIKI_CATALOG_API_KEY=sk-ant-your-anthropic-key
+  - WIKI_CATALOG_REQUEST_TYPE=Anthropic
+
+  - WIKI_CONTENT_MODEL=claude-sonnet-4-20250514
+  - WIKI_CONTENT_ENDPOINT=https://api.anthropic.com
+  - WIKI_CONTENT_API_KEY=sk-ant-your-anthropic-key
+  - WIKI_CONTENT_REQUEST_TYPE=Anthropic
 ```
 
-## Wiki 生成选项
+</Tab>
 
-控制 wiki 生成行为的其他选项：
+</Tabs>
 
-| 变量 | 默认值 | 描述 |
-|---|---|---|
-| `WIKI_PARALLEL_COUNT` | `5` | 并行文档生成任务数 |
-| `WIKI_LANGUAGES` | `en,zh,zh-tw,ja,ko,es,fr,de,pt-br,pl,ru,ar` | 目标语言的逗号分隔列表 |
+## 翻译配置（可选）
 
-这些也可以在 `appsettings.json` 的 `WikiGenerator` 部分设置：
+不配置 `WIKI_TRANSLATION_*` 时自动回退到内容生成的模型。想让翻译走便宜模型可以单独指定：
 
-```json title="appsettings.json"
-{
-  "WikiGenerator": {
-    "CatalogModel": "gpt-4o",
-    "ContentModel": "gpt-4o",
-    "ParallelCount": 5,
-    "MaxOutputTokens": 32000,
-    "MaxRetryAttempts": 3,
-    "Languages": "en,zh,zh-tw,ja,ko,es,fr,de,pt-br,pl,ru,ar"
-  }
-}
+```yaml
+- WIKI_TRANSLATION_MODEL=deepseek-chat
+- WIKI_TRANSLATION_ENDPOINT=https://api.deepseek.com/v1
+- WIKI_TRANSLATION_API_KEY=sk-your-deepseek-key
+- WIKI_TRANSLATION_REQUEST_TYPE=DeepSeekOpenAI
 ```
 
-## 完整环境变量参考
+相关超时与重试参数（`WIKI_TRANSLATION_TIMEOUT_MINUTES` 等）见[环境变量大全](/docs/deployment/environment-variables)。
 
-### 聊天 AI
+## 选型建议
 
-| 变量 | 必需 | 默认值 | 描述 |
-|---|---|---|---|
-| `CHAT_API_KEY` | 是 | — | 聊天服务的 API 密钥 |
-| `ENDPOINT` | 是 | `https://api.routin.ai/v1`（内置默认） | 聊天 AI 端点 |
-| `CHAT_REQUEST_TYPE` | 否 | `OpenAI` | 提供商类型 |
-
-### Wiki 目录生成
-
-| 变量 | 必需 | 默认值 | 描述 |
-|---|---|---|---|
-| `WIKI_CATALOG_MODEL` | 否 | `gpt-4o` | 目录生成模型 |
-| `WIKI_CATALOG_ENDPOINT` | 是 | — | 目录生成端点 |
-| `WIKI_CATALOG_API_KEY` | 是 | — | 目录生成的 API 密钥 |
-| `WIKI_CATALOG_REQUEST_TYPE` | 否 | `OpenAI` | 提供商类型 |
-
-### Wiki 内容生成
-
-| 变量 | 必需 | 默认值 | 描述 |
-|---|---|---|---|
-| `WIKI_CONTENT_MODEL` | 否 | `gpt-4o` | 内容生成模型 |
-| `WIKI_CONTENT_ENDPOINT` | 是 | — | 内容生成端点 |
-| `WIKI_CONTENT_API_KEY` | 是 | — | 内容生成的 API 密钥 |
-| `WIKI_CONTENT_REQUEST_TYPE` | 否 | `OpenAI` | 提供商类型 |
+| 场景 | 目录生成 | 内容生成 | 说明 |
+| --- | --- | --- | --- |
+| 追求质量 | 强推理模型（Claude/GPT 高端） | 强推理模型 | 大仓库结构复杂时差异明显 |
+| 追求性价比 | 中端模型 | 中端模型 + 便宜模型翻译 | 目录质量决定整体结构，值得用好模型 |
+| 本地离线 | Ollama (qwen2.5-coder 等) | 同左 | `ENDPOINT=http://host.docker.internal:11434/v1` |
 
 <Callout type="info">
-  除环境变量外，管理员还可以在后台「模型管理」中配置 Provider/Model 绑定，系统设置中的绑定优先于环境变量默认值。
+  Token 消耗与仓库大小、语言数量成正比。`WIKI_LANGUAGES` 每多一种语言，翻译成本线性增加；体验阶段建议只保留 `en,zh`。
 </Callout>
 
-### Wiki 翻译（可选）
+## 验证 AI 链路
 
-| 变量 | 必需 | 默认值 | 描述 |
-|---|---|---|---|
-| `WIKI_TRANSLATION_MODEL` | 否 | 与内容模型相同 | 翻译模型 |
-| `WIKI_TRANSLATION_ENDPOINT` | 否 | 与内容端点相同 | 翻译端点 |
-| `WIKI_TRANSLATION_API_KEY` | 否 | 与内容 API 密钥相同 | 翻译的 API 密钥 |
-| `WIKI_TRANSLATION_REQUEST_TYPE` | 否 | 与内容类型相同 | 提供商类型 |
+配置完成后：
+
+1. 重启服务：`docker compose up -d`
+2. 登录 → 添加一个小型仓库（建议先用几百个文件的仓库试水）
+3. 在管理后台[仓库管理](/docs/admin-guide/repositories)观察处理日志，若目录生成卡住通常是 Key/Endpoint 不通

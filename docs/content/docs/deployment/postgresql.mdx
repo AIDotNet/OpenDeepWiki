@@ -1,0 +1,129 @@
+---
+title: "PostgreSQL 部署"
+description: 使用 PostgreSQL 作为 OpenDeepWiki 的数据库后端，适合团队与生产环境。
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+
+# PostgreSQL 部署
+
+OpenDeepWiki 支持 **SQLite**（默认）和 **PostgreSQL** 两种数据库后端，由 `DB_TYPE` 环境变量控制。
+
+| 对比项 | SQLite | PostgreSQL |
+| --- | --- | --- |
+| 安装成本 | 零配置 | 需要数据库服务 |
+| 并发写入 | 单写者，适合单实例 | 优秀的并发能力 |
+| 适用规模 | 个人、小团队、演示 | 团队协作、生产环境 |
+| 备份 | 复制单文件 | `pg_dump` / 流复制 |
+
+## 方式一：使用仓库自带的 PostgreSQL 编排（推荐）
+
+仓库根目录提供 `compose.pgsql.yaml`，已包含 PostgreSQL 服务、健康检查和后端依赖顺序：
+
+```bash
+docker compose -f compose.pgsql.yaml up -d --build
+```
+
+该编排的默认连接串为：
+
+```
+Host=postgres;Port=5432;Database=opendeepwiki;Username=postgres;Password=opendeepwiki123
+```
+
+<Callout type="warn">
+  生产环境务必修改默认数据库密码，并确认 `pgdata` 卷已持久化。
+</Callout>
+
+## 方式二：自定义 Docker Compose
+
+把 PostgreSQL 服务加入你自己的 `compose.yaml`：
+
+```yaml title="compose.yaml"
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=opendeepwiki
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=your-secure-password
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  opendeepwiki:
+    # ...其余配置同 SQLite 编排...
+    environment:
+      - DB_TYPE=postgresql
+      - CONNECTION_STRING=Host=db;Database=opendeepwiki;Username=postgres;Password=your-secure-password
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    # ...其余配置...
+
+volumes:
+  pgdata:
+```
+
+## 方式三：使用外部 PostgreSQL 实例
+
+如果数据库由 DBA 或云 RDS 管理，只需要改后端的环境变量。以下两组变量**等价**，任选其一：
+
+```yaml
+# 组 1：ASP.NET Core 原生风格
+- Database__Type=postgresql
+- ConnectionStrings__Default=Host=your-host;Port=5432;Database=opendeepwiki;Username=postgres;Password=secret
+```
+
+```yaml
+# 组 2：简写风格
+- DB_TYPE=postgresql
+- CONNECTION_STRING=Host=your-host;Port=5432;Database=opendeepwiki;Username=postgres;Password=secret
+```
+
+## 从 SQLite 迁移到 PostgreSQL
+
+OpenDeepWiki 不会自动迁移数据。迁移步骤：
+
+<Steps>
+
+<Step>备份现有数据：停止服务后复制 `./data` 目录（内含 SQLite 文件与仓库工作区）。</Step>
+
+<Step>启动 PostgreSQL 并创建空数据库 `opendeepwiki`。OpenDeepWiki 首次连接时会**自动建表**（EF Core 迁移）。</Step>
+
+<Step>切换环境变量为 `DB_TYPE=postgresql` 并重启，系统会初始化新的管理员账号。</Step>
+
+<Step>已有仓库需要在管理后台重新添加（AI 生成会重新计费，建议挑低峰期操作）；仓库工作区文件可以原样拷贝到新实例的数据目录以复用克隆缓存。</Step>
+
+</Steps>
+
+## 验证数据库连接
+
+```bash
+# 进入后端容器检查
+docker compose -f compose.pgsql.yaml exec opendeepwiki curl -s http://localhost:8080/health
+# 期望输出 {"status":"healthy",...}
+
+# 在 PostgreSQL 中确认建表
+docker compose -f compose.pgsql.yaml exec db psql -U postgres -d opendeepwiki -c "\dt"
+```
+
+## 常见问题
+
+**启动时报 `Failed to connect to database`**
+检查 `CONNECTION_STRING` 的主机名：容器网络内应使用服务名（如 `db`），而不是 `localhost`。
+
+**中文或 Emoji 写入报错**
+确认数据库编码为 `UTF8`（官方 `postgres:16` 镜像默认即 UTF8）。
+
+**连接数耗尽**
+OpenDeepWiki 使用 EF Core 连接池；若多实例部署，适当调大 PostgreSQL 的 `max_connections`。

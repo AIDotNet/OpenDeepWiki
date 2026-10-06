@@ -4,7 +4,9 @@ WORKDIR /app
 
 # 安装依赖
 COPY package.json package-lock.json* ./
-RUN if [ -f package-lock.json ]; then npm install --prefer-offline; else npm install; fi
+# 有 lockfile 时用 npm ci：按锁定版本安装，跳过依赖树解析（规避 npm 10.x 在
+# 解析 peer 依赖时 "Cannot read properties of null (reading 'edgesOut')" 的崩溃），构建可复现
+RUN if [ -f package-lock.json ]; then npm ci --prefer-offline --no-audit --no-fund; else npm install --no-audit --no-fund; fi
 
 # 构建阶段
 FROM node:22-bookworm AS builder

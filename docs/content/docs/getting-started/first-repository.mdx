@@ -1,0 +1,96 @@
+---
+title: "生成第一个知识库"
+description: 手把手添加一个 Git 仓库，生成你的第一份 Wiki 文档并浏览它。
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+
+# 生成第一个知识库
+
+本章演示最常用的场景：粘贴一个 Git 仓库地址，让 OpenDeepWiki 生成完整文档。截图以 OpenDeepWiki 自身仓库为例。
+
+## 添加仓库
+
+<Steps>
+
+<Step>
+
+### 进入"私有仓库"页面
+
+登录后，在左侧边栏点击**工作区 → 私有仓库**：
+
+![私有仓库页面](/images/add-repository.png)
+
+</Step>
+
+<Step>
+
+### 点击"添加私人仓库"
+
+表单提供三种来源：**Git 仓库**、**ZIP 压缩包**、**服务器目录**。选择 *Git 仓库*，填写：
+
+| 字段 | 说明 | 示例 |
+| --- | --- | --- |
+| Git 地址 | 支持 GitHub / GitLab / Gitee / Gitea 等 | `https://github.com/AIDotNet/OpenDeepWiki` |
+| 组织/命名空间 | 文档路由的一级路径 | `AIDotNet` |
+| 仓库名称 | 文档路由的二级路径 | `OpenDeepWiki` |
+| 分支名称 | 要生成文档的分支 | `main` |
+| 语言 | 文档生成语言 | 简体中文 |
+| 生成 SKILL | 是否同时产出 SKILL 包 | 按需 |
+| 公开仓库 | 开启后任何人可浏览 | 按需 |
+
+![添加仓库表单](/images/add-repository-form.png)
+
+私有仓库可展开"认证信息"填写 Git 用户名和访问令牌（Token）。
+
+</Step>
+
+<Step>
+
+### 提交并等待生成
+
+点击提交后，仓库进入处理队列。后台 Worker 会依次执行：
+
+1. **克隆/检出** — 把仓库工作区准备到 `REPOSITORIES_DIRECTORY`
+2. **目录扫描** — 构建目录树与文件清单（自动尊重 `.gitignore`）
+3. **生成 Wiki 目录** — AI 规划章节结构
+4. **并行生成正文** — 按目录逐篇生成文档（`WIKI_PARALLEL_COUNT` 控制并发）
+5. **翻译与思维导图** — 按 `WIKI_LANGUAGES` 生成多语言版本和项目架构思维导图
+
+仓库越大耗时越长，中型仓库通常几分钟到十几分钟。可在后台[仓库管理](/docs/admin-guide/repositories)查看实时进度与处理日志。
+
+</Step>
+
+<Step>
+
+### 浏览生成的文档
+
+生成完成后，访问 `/{组织}/{仓库}`（例如 `/AIDotNet/OpenDeepWiki`）即可看到文档：
+
+![生成的 Wiki 文档](/images/repo-docs.png)
+
+页面结构说明：
+
+- **左上**：分支与文档语言切换器，以及分支生成状态（Completed 表示生成完成）
+- **左侧**：Wiki 目录树，与仓库结构对应，支持多级折叠
+- **中间**：文档正文，支持 Markdown 表格、代码块、Mermaid 图
+- **右侧**：当前文档的标题锚点导航
+
+点击二级目录（如《Docker 部署》）阅读具体章节：
+
+![二级文档页面](/images/repo-doc-detail.png)
+
+</Step>
+
+</Steps>
+
+<Callout type="info">
+  文档路由是 SEO 友好的：`/{owner}/{repo}/{path}`，公开仓库的文档会被搜索引擎收录，也可以直接分享给同事。
+</Callout>
+
+## 下一步
+
+- [界面导览](/docs/getting-started/interface-tour) — 全面了解每个页面的功能
+- [AI 对话](/docs/usage/chat) — 直接向仓库知识库提问
+- [思维导图](/docs/usage/mindmap) — 生成并导出项目架构思维导图

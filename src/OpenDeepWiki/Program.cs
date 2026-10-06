@@ -1,4 +1,5 @@
 using System.Text;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -217,6 +218,29 @@ try
     // 注册缓存框架（默认内存实现）
     builder.Services.AddOpenDeepWikiCache();
 
+    // 全局限流：爬虫风暴的兜底保护，防止并发抓取耗尽数据库连接
+    // 正常用户远达不到该阈值；登录用户（带 Authorization）额度更高
+    builder.Services.AddRateLimiter(options =>
+    {
+        options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+        options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+            RateLimitPartition.GetTokenBucketLimiter(
+                BuildClientPartitionKey(context),
+                _ => new TokenBucketRateLimiterOptions
+                {
+                    TokenLimit = context.User.Identity?.IsAuthenticated == true ? 600 : 300,
+                    TokensPerPeriod = 150,
+                    ReplenishmentPeriod = TimeSpan.FromSeconds(10),
+                    QueueLimit = 0,
+                    AutoReplenishment = true
+                }));
+        options.OnRejected = static (context, _) =>
+        {
+            context.HttpContext.Response.Headers.RetryAfter = "10";
+            return ValueTask.CompletedTask;
+        };
+    });
+
     // 注册处理日志服务（使用 Singleton，因为它内部使用 IServiceScopeFactory 创建独立 scope）
     builder.Services.AddSingleton<IProcessingLogService, ProcessingLogService>();
 
@@ -377,6 +401,9 @@ try
     app.UseAuthentication();
     app.UseAuthorization();
 
+    // 限流放在认证之后，使分区策略能区分登录用户与匿名流量
+    app.UseRateLimiter();
+
     // MCP server endpoints (official MCP server + scope via ConfigureSessionOptions)
     if (mcpEnabled)
     {
@@ -430,6 +457,16 @@ catch (Exception ex)
 finally
 {
     await Log.CloseAndFlushAsync();
+}
+
+/// <summary>
+/// 限流分区 key：优先取反代透传的真实客户端 IP，认证用户叠加用户标识
+/// </summary>
+static string BuildClientPartitionKey(HttpContext context)
+{
+    var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+    var user = context.User.Identity?.Name;
+    return user is null ? ip : $"{ip}|{user}";
 }
 
 /// <summary>

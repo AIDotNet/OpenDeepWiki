@@ -1,10 +1,9 @@
 ---
-title: Windows 部署
+title: "Windows 部署"
 description: 在 Windows 上构建和部署 OpenDeepWiki，包括后端发布、前端构建和一键启动。
 ---
 
 import { Steps, Step } from "fumadocs-ui/components/steps";
-import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 import { Callout } from "fumadocs-ui/components/callout";
 
 # Windows 部署
@@ -15,12 +14,12 @@ import { Callout } from "fumadocs-ui/components/callout";
 
 | 工具 | 版本 | 用途 |
 |---|---|---|
-| [.NET SDK](https://dotnet.microsoft.com/download) | 10.0+（预览版） | 后端构建和发布 |
+| [.NET SDK](https://dotnet.microsoft.com/download) | 10.0+ | 后端构建和发布 |
 | [Node.js](https://nodejs.org/) | 18+ | 前端构建和运行 |
 | [Git](https://git-scm.com/) | 最新版 | 仓库克隆（后端运行时使用） |
 
 <Callout type="info">
-  后端目标是 `net10.0`。确保已安装 .NET 10 预览版 SDK，使用 `dotnet --version` 检查。
+  后端目标是 `net10.0`。确保已安装 .NET 10 SDK，使用 `dotnet --version` 检查。
 </Callout>
 
 ## 一键构建
@@ -32,6 +31,7 @@ publish.bat
 ```
 
 脚本会自动完成以下操作：
+
 1. 清理旧的发布目录
 2. 使用 `dotnet publish` 构建后端为单文件自包含可执行程序（`win-x64`）
 3. 安装前端依赖并构建 Next.js standalone 产物
@@ -45,6 +45,7 @@ publish.bat
 <Steps>
 
 <Step>
+
 ### 构建后端
 
 ```batch
@@ -58,9 +59,11 @@ dotnet publish src/OpenDeepWiki/OpenDeepWiki.csproj -c Release -o publish\backen
 ```batch
 xcopy /E /I /Y src\OpenDeepWiki\Prompts publish\backend\Prompts
 ```
+
 </Step>
 
 <Step>
+
 ### 构建前端
 
 ```batch
@@ -81,6 +84,7 @@ xcopy /E /I /Y web\public publish\frontend\public
 <Callout type="info">
   前端使用 Next.js standalone 模式输出，运行时只需要 Node.js，不需要 `node_modules`。
 </Callout>
+
 </Step>
 
 </Steps>
@@ -149,7 +153,7 @@ WIKI_CONTENT_REQUEST_TYPE=OpenAI
 WIKI_PARALLEL_COUNT=5
 
 # 多语言支持（逗号分隔）
-WIKI_LANGUAGES=en,zh,zh-tw,ja,ko,es,fr,de,pt-br,pl,ru,ar
+WIKI_LANGUAGES=en,zh
 
 # JWT 配置（生产环境请修改）
 JWT_SECRET_KEY=your-secret-key-change-in-production
@@ -188,6 +192,7 @@ publish\start-all.bat
 ```
 
 启动后：
+
 - 后端 API：`http://localhost:8080`
 - 前端应用：`http://localhost:3000`
 
@@ -225,23 +230,6 @@ pm2 save
   使用 Windows 服务或 PM2 可以实现开机自启和进程守护，适合生产环境。
 </Callout>
 
-## 数据库选择
-
-### SQLite（默认）
-
-无需额外设置，数据库文件自动创建在后端目录中。适合小规模部署和测试。
-
-### PostgreSQL
-
-生产环境推荐使用 PostgreSQL，修改 `.env` 中的数据库配置：
-
-```ini
-DB_TYPE=postgresql
-CONNECTION_STRING=Host=localhost;Database=opendeepwiki;Username=postgres;Password=your-password
-```
-
-详见 [数据库配置](/docs/deployment/database)。
-
 ## 故障排除
 
 ### 后端启动失败
@@ -269,5 +257,5 @@ URLS=http://localhost:9090
 
 ### 构建失败
 
-- 后端构建失败：确保已安装 .NET 10 预览版 SDK（`dotnet --list-sdks`）
+- 后端构建失败：确保已安装 .NET 10 SDK（`dotnet --list-sdks`）
 - 前端构建失败：确保 Node.js 版本 ≥ 18（`node --version`），尝试删除 `web/node_modules` 后重新 `npm install`

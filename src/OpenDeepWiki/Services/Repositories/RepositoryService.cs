@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using OpenDeepWiki.Cache.Abstractions;
 using OpenDeepWiki.EFCore;
 using OpenDeepWiki.Entities;
 using OpenDeepWiki.Models;
@@ -21,6 +22,7 @@ public class RepositoryService(
     IOrganizationService organizationService,
     IRepositoryFullRegenerationCleaner fullRegenerationCleaner,
     IRepositoryGenerationLockService generationLockService,
+    ICache cache,
     IOptions<RepositoryAnalyzerOptions> repositoryOptions)
 {
     [HttpPost("/submit")]
@@ -513,6 +515,15 @@ public class RepositoryService(
             // 重置状态为 Pending，Worker 会自动拾取处理
             repository.Status = RepositoryStatus.Pending;
             await context.SaveChangesAsync();
+
+            // 更换仓库级缓存版本号，让 tree/docs/branches 的旧缓存立即失效
+            await cache.SetAsync(
+                RepositoryPublicReadCache.BuildVersionKey(request.Owner, request.Repo),
+                Guid.NewGuid().ToString("N"),
+                new CacheEntryOptions
+                {
+                    AbsoluteExpirationRelativeToNow = RepositoryPublicReadCache.VersionTtl
+                });
 
             return Results.Ok(new RegenerateResponse
             {

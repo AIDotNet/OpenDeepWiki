@@ -1,0 +1,60 @@
+---
+title: "浏览文档"
+description: 高效阅读生成的 Wiki 文档：目录树、分支切换、语言切换与文档内导航。
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+# 浏览文档
+
+仓库生成完成后，访问 `/{owner}/{repo}`（如 `/AIDotNet/OpenDeepWiki`）进入文档页：
+
+![仓库文档页](/images/repo-docs.png)
+
+## 页面结构
+
+| 区域 | 功能 |
+| --- | --- |
+| 左侧面板 | 分支/语言切换器、生成状态、项目架构入口、导出 SKILL、Wiki 目录树 |
+| 中间正文 | Markdown 渲染：标题层级、表格、代码高亮、Mermaid 图 |
+| 右侧边栏 | 当前文档的标题锚点（TOC），点击快速跳转 |
+
+## 目录树
+
+- AI 按仓库结构规划章节，一级目录通常是"项目简介、快速开始、架构设计"等主题
+- 多级目录可折叠，点击章节名即加载正文
+- URL 与章节一一对应（如 `/AIDotNet/OpenDeepWiki/quick-start/docker-deployment`），可直接收藏和分享：
+
+![二级文档页](/images/repo-doc-detail.png)
+
+## 分支切换
+
+文档按**分支**生成。左上角分支选择器列出已生成文档的所有分支，切换后目录与正文随之更新。新分支需要重新生成或触发[增量更新](/docs/advanced/incremental-updates)。
+
+## 语言切换
+
+语言选择器列出当前分支已生成的语言版本（取决于部署时 `WIKI_LANGUAGES` 与生成时的语言选择）。切换语言不会重新请求 AI，读取的是已翻译好的文档。详见[多语言翻译](/docs/usage/translations)。
+
+## 文档中的代码与图表
+
+正文支持：
+
+- **代码高亮**：主流语言均支持，可直接复制
+- **Mermaid 图**：AI 会在讲解架构/流程时插入流程图、时序图
+- **表格**：字段说明、配置对照等结构化信息
+- **源文件标注**：每篇文档由哪些源文件生成，帮助溯源到代码
+
+## 导出 SKILL
+
+左侧"导出 SKILL"按钮把当前分支文档打包为 SKILL ZIP，可在支持 Agent Skill 的工具（如 Claude Code、NextCoWork）中作为技能加载，离线复用这份知识库。
+
+## 常见问题
+
+**目录是空的或只有部分章节**
+生成中断了。到管理后台[仓库管理](/docs/admin-guide/repositories)查看日志，修复后重新生成。
+
+**文档内容与最新代码不一致**
+文档是生成时刻的快照。仓库更新后可在后台触发[增量更新](/docs/advanced/incremental-updates)。
+
+**右侧 TOC 不显示**
+该章节文档较短没有二级标题，属正常现象。

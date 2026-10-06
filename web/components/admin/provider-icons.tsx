@@ -14,6 +14,7 @@ const iconUrlMap: Record<string, string> = {
   orcarouter: "https://www.orcarouter.ai/favicon.ico",
   requesty: "https://www.requesty.ai/favicon.ico",
   cheaperinference: "https://www.cheaperinference.com/icon.svg",
+  "api-route": "https://www.api-route.com/images/logo-ginkgo.png",
 };
 
 const providerIconSlugMap: Record<string, string> = {

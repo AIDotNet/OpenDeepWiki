@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using OpenDeepWiki.Cache.Abstractions;
+using OpenDeepWiki.Cache.Memory;
 using OpenDeepWiki.Entities;
 using OpenDeepWiki.Services.Graphify;
 using OpenDeepWiki.Services.Repositories;
@@ -289,7 +291,8 @@ public class RepositoryDocsServiceGraphifyTests
         return new RepositoryDocsService(
             context,
             gitPlatform,
-            cache ?? new Mock<ICache>(MockBehavior.Strict).Object,
+            // GetTreeAsync 会读取缓存版本号与缓存条目，使用真实内存实现
+            cache ?? new MemoryCacheAdapter(new MemoryCache(new MemoryCacheOptions())),
             graphifyArtifactService ?? new Mock<IGraphifyArtifactService>(MockBehavior.Strict).Object,
             new RepositorySkillMarkdownBuilder());
     }
