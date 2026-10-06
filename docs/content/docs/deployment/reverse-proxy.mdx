@@ -1,0 +1,160 @@
+---
+title: "反向代理与 HTTPS"
+description: 使用 Nginx 或 Caddy 为 OpenDeepWiki 配置统一入口、域名与 HTTPS 证书。
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+
+# 反向代理与 HTTPS
+
+生产部署建议把前后端统一收口到一个反向代理（Nginx / Caddy）之后：一个域名、一份证书、WebSocket 友好，同时避免跨域问题。
+
+OpenDeepWiki 对外只需要暴露**前端站点**（它会把 API 请求代理到后端），MCP 端点在后端上，通过代理按路径转发即可。
+
+## 拓扑
+
+```
+浏览器 / MCP 客户端
+        │ https://wiki.example.com
+        ▼
+   ┌─────────┐    /            ┌─────────────┐
+   │  Nginx  │ ──────────────► │ web (:3000) │
+   │  (443)  │    /api/...     └─────────────┘
+   │         │ ──────────────► ┌──────────────────┐
+   │         │    /health 等    │ backend (:8080) │
+   └─────────┘                 └──────────────────┘
+```
+
+## Nginx 配置示例
+
+<Steps>
+
+<Step>
+
+### 前置配置
+
+假设：前端映射在宿主机 `127.0.0.1:8090`，后端在 `127.0.0.1:8081`（对应 `compose.yaml` 默认端口），域名 `wiki.example.com`。
+
+先把 `compose.yaml` 的端口绑定改为仅监听本机回环（更安全）：
+
+```yaml
+services:
+  opendeepwiki:
+    ports:
+      - "127.0.0.1:8081:8080"
+  web:
+    ports:
+      - "127.0.0.1:8090:3000"
+```
+
+同时设置前端环境变量 `SITE_URL=https://wiki.example.com`（影响 sitemap、robots.txt 与 SEO 元数据），并重启容器。
+
+</Step>
+
+<Step>
+
+### 站点配置
+
+```nginx title="/etc/nginx/conf.d/opendeepwiki.conf"
+# HTTP 跳转 HTTPS
+server {
+    listen 80;
+    server_name wiki.example.com;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name wiki.example.com;
+
+    ssl_certificate     /etc/nginx/certs/wiki.example.com.pem;
+    ssl_certificate_key /etc/nginx/certs/wiki.example.com.key;
+
+    client_max_body_size 512m;   # ZIP 压缩包导入可能很大
+
+    # 前端站点（默认入口）
+    location / {
+        proxy_pass http://127.0.0.1:8090;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # Next.js HMR / SSE 友好
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 300s;
+    }
+
+    # MCP 端点（SSE 传输必须关闭缓冲）
+    location /api/mcp {
+        proxy_pass http://127.0.0.1:8081;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 3600s;
+    }
+
+    # 健康检查直连后端（可选）
+    location /health {
+        proxy_pass http://127.0.0.1:8081;
+    }
+}
+```
+
+</Step>
+
+<Step>
+
+### 启用并验证
+
+```bash
+nginx -t && systemctl reload nginx
+curl -s https://wiki.example.com/health
+# {"status":"healthy",...}
+```
+
+</Step>
+
+</Steps>
+
+## Caddy 配置示例（自动 HTTPS）
+
+如果不想手工管理证书，Caddy 两行搞定自动签发：
+
+```ini title="Caddyfile"
+wiki.example.com {
+    encode gzip
+    reverse_proxy /api/mcp* h2c://127.0.0.1:8081 {
+        flush_interval -1
+    }
+    reverse_proxy 127.0.0.1:8090
+}
+```
+
+## 证书获取
+
+| 方式 | 命令/说明 |
+| --- | --- |
+| Let's Encrypt（certbot） | `certbot --nginx -d wiki.example.com` 自动改写 Nginx 配置 |
+| acme.sh + DNS 验证 | 适合无法开放 80 端口的内网 |
+| 云厂商免费证书 | 阿里云/腾讯云控制台签发后上传 |
+
+## 常见问题
+
+**ZIP 上传报 413**
+Nginx 默认 `client_max_body_size 1m`，按上文设置为 `512m` 或按需调整。
+
+**MCP 客户端连接超时或收不到事件**
+SSE/Streamable HTTP 要求代理**关闭缓冲**：Nginx 加 `proxy_buffering off`，Caddy 加 `flush_interval -1`。
+
+**登录后跳转变成 http**
+确认设置了 `X-Forwarded-Proto` 头，并且前端 `SITE_URL` 与实际访问域名一致。
+
+**管理后台部分接口 404**
+检查是否把 `/api/` 前缀错误地只转发给了前端——前端会自行代理大多数 API，但 MCP 等直连后端的路径需要单独转发规则。

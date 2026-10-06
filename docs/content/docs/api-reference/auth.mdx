@@ -1,0 +1,143 @@
+---
+title: 认证 API
+description: 用户认证和 OAuth 登录的 API 端点
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# 认证 API
+
+OpenDeepWiki 提供用户注册、登录和 OAuth 第三方登录功能。
+
+---
+
+## 用户登录
+
+```
+POST /api/auth/login
+```
+
+### 请求体
+
+| 字段 | 类型 | 必需 | 描述 |
+|---|---|---|---|
+| `email` | string | 是 | 用户邮箱 |
+| `password` | string | 是 | 用户密码 |
+
+### 响应
+
+```json
+{
+  "success": true,
+  "data": {
+    "token": "eyJhbGciOiJIUzI1NiIs...",
+    "expiresAt": "2025-01-16T10:30:00Z",
+    "user": {
+      "id": "user-id",
+      "name": "username",
+      "email": "[email]",
+      "avatar": "https://..."
+    }
+  }
+}
+```
+
+### 错误响应
+
+| 状态 | 描述 |
+|---|---|
+| 401 | 邮箱或密码错误 |
+| 400 | 请求参数无效 |
+
+---
+
+## 用户注册
+
+```
+POST /api/auth/register
+```
+
+### 请求体
+
+| 字段 | 类型 | 必需 | 描述 |
+|---|---|---|---|
+| `name` | string | 是 | 用户名 |
+| `email` | string | 是 | 邮箱地址 |
+| `password` | string | 是 | 密码 |
+
+### 响应
+
+成功注册后返回 JWT 令牌和用户信息，格式与登录响应相同。
+
+### 错误响应
+
+| 状态 | 描述 |
+|---|---|
+| 400 | 邮箱已被注册或参数无效 |
+
+---
+
+## 获取当前用户信息
+
+```
+GET /api/auth/me
+```
+
+<Callout type="info">
+需要在 `Authorization` 头中包含有效的 JWT 令牌。
+</Callout>
+
+### 响应
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "user-id",
+    "name": "username",
+    "email": "[email]",
+    "avatar": "https://...",
+    "roles": ["admin"]
+  }
+}
+```
+
+---
+
+## OAuth 登录
+
+OpenDeepWiki 支持通过 GitHub 和 Gitee 进行 OAuth 第三方登录。
+
+### 获取 OAuth 授权 URL
+
+```
+GET /api/oauth/{provider}/authorize?state={state}
+```
+
+| 参数 | 类型 | 必需 | 描述 |
+|---|---|---|---|
+| `provider` | string | 是 | OAuth 提供商：`github`、`gitee` |
+| `state` | string | 否 | 用于防止 CSRF 的状态参数 |
+
+### 响应
+
+```json
+{
+  "success": true,
+  "data": {
+    "authorizationUrl": "https://github.com/login/oauth/authorize?..."
+  }
+}
+```
+
+### OAuth 回调
+
+```
+GET /api/oauth/{provider}/callback?code={code}&state={state}
+```
+
+OAuth 提供商在用户授权后回调此端点。成功后返回 JWT 令牌和用户信息。
+
+<Callout type="info">
+OAuth 配置通过 `appsettings.json` 的 `OAuth` 部分设置，包括 `ClientId` 和 `ClientSecret`。
+</Callout>

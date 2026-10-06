@@ -1,0 +1,126 @@
+---
+title: "Docker 快速开始"
+description: 使用 Docker Compose 在 5 分钟内运行 OpenDeepWiki 并完成初始化配置。
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+
+# Docker 快速开始
+
+这是体验 OpenDeepWiki 的最快路径：Docker Compose 一键拉起后端 API 与前端站点，使用 SQLite 存储，无需安装数据库。
+
+## 前置条件
+
+| 要求 | 说明 |
+| --- | --- |
+| Docker 与 Docker Compose | 版本 20+，Compose V2（`docker compose` 命令） |
+| 一个 LLM API Key | OpenAI、DeepSeek、Kimi、通义千问等任意 OpenAI 兼容服务均可 |
+| 2 GB 可用内存 | 后端 + 前端两个容器 |
+
+## 启动步骤
+
+<Steps>
+
+<Step>
+
+### 克隆仓库
+
+```bash
+git clone https://github.com/AIDotNet/OpenDeepWiki.git
+cd OpenDeepWiki
+```
+
+</Step>
+
+<Step>
+
+### 修改 compose.yaml 配置
+
+最少需要修改两处：**JWT 密钥**和 **AI 配置**。打开 `compose.yaml`，找到 `opendeepwiki` 服务的 `environment` 段：
+
+```yaml
+services:
+  opendeepwiki:
+    environment:
+      - JWT_SECRET_KEY=replace-this-in-production
+
+      - CHAT_API_KEY=your-chat-api-key
+      - ENDPOINT=https://api.openai.com/v1
+      - CHAT_REQUEST_TYPE=OpenAI
+
+      - WIKI_CATALOG_MODEL=gpt-4o
+      - WIKI_CATALOG_ENDPOINT=https://api.openai.com/v1
+      - WIKI_CATALOG_API_KEY=your-catalog-api-key
+      - WIKI_CATALOG_REQUEST_TYPE=OpenAI
+
+      - WIKI_CONTENT_MODEL=gpt-4o
+      - WIKI_CONTENT_ENDPOINT=https://api.openai.com/v1
+      - WIKI_CONTENT_API_KEY=your-content-api-key
+      - WIKI_CONTENT_REQUEST_TYPE=OpenAI
+
+      - WIKI_LANGUAGES=en,zh
+      - WIKI_PARALLEL_COUNT=5
+```
+
+配置要点：
+
+- 三组 `*_API_KEY` / `*_ENDPOINT` / `*_MODEL` 可以填**同一个服务商**，也可以按用途拆分（目录生成、正文生成对模型要求不同）
+- 以 DeepSeek 为例：`ENDPOINT=https://api.deepseek.com/v1`，`CHAT_REQUEST_TYPE=DeepSeekOpenAI`，模型填 `deepseek-chat`
+- `WIKI_LANGUAGES` 决定生成哪些语言版本，语言越多耗时越长，体验阶段建议 `en,zh`
+- 也可以不改 `compose.yaml`，复制 `.env.example` 为 `.env` 后通过环境变量注入
+
+</Step>
+
+<Step>
+
+### 启动服务
+
+```bash
+docker compose up -d --build
+```
+
+或使用 Makefile：
+
+```bash
+make build
+make up
+```
+
+首次构建镜像需要几分钟。完成后查看状态：
+
+```bash
+docker compose ps
+```
+
+</Step>
+
+<Step>
+
+### 验证并登录
+
+- Web 界面：`http://localhost:8090`
+- 后端健康检查：`http://localhost:8081/health`
+
+全新数据库首次启动后会自动创建管理员账号：
+
+| 项目 | 值 |
+| --- | --- |
+| 邮箱 | `admin@routin.ai` |
+| 密码 | `Admin@123` |
+
+打开首页，点击右上角**登录**：
+
+![OpenDeepWiki 首页](/images/home-explore.png)
+
+</Step>
+
+</Steps>
+
+<Callout type="warn">
+  正式部署前请务必修改默认 JWT 密钥和管理员密码。完整的生产部署说明见 [Docker Compose 部署详解](/docs/deployment/docker-compose)。
+</Callout>
+
+## 下一步
+
+服务已经跑起来了，接着生成你的第一个知识库：[添加第一个仓库](/docs/getting-started/first-repository)。

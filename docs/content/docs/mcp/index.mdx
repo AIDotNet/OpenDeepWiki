@@ -1,0 +1,167 @@
+---
+title: MCP 协议
+description: 通过模型上下文协议（MCP）使用 Streamable HTTP 或 SSE 传输模式将 OpenDeepWiki 与 AI 工具集成。
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+# MCP 协议
+
+OpenDeepWiki 支持 [模型上下文协议（MCP）](https://modelcontextprotocol.io/) — 一个开放标准，使 AI 应用能够通过统一接口与外部工具和数据源交互。
+
+通过 MCP 支持，OpenDeepWiki 可以充当 **仓库知识服务器**，允许 Claude、Windsurf、Cursor 和其他 MCP 兼容客户端等 AI 助手直接查询和分析你的仓库文档。
+
+## 工作原理
+
+OpenDeepWiki 为每个仓库公开一个 MCP 服务器端点。当 AI 客户端通过 MCP 连接时，它可以：
+
+- 查询特定仓库的生成文档
+- 搜索和检索代码分析结果
+- 访问架构图和数据模型信息
+
+MCP 端点需要两个查询参数：
+
+| 参数 | 描述 | 示例 |
+|---|---|---|
+| `owner` | 仓库组织或所有者名称 | `AIDotNet` |
+| `name` | 仓库名称 | `OpenDeepWiki` |
+
+## 传输模式
+
+OpenDeepWiki 支持两种 MCP 传输模式：
+
+### Streamable HTTP（推荐）
+
+Streamable HTTP 是现代推荐的传输模式。如果你的 MCP 客户端支持，请使用此模式。
+
+**端点：** `/api/mcp`
+
+```json
+{
+  "mcpServers": {
+    "OpenDeepWiki": {
+      "url": "http://your-server:8080/api/mcp?owner=AIDotNet&name=OpenDeepWiki"
+    }
+  }
+}
+```
+
+### SSE（服务器发送事件）
+
+如果你的 MCP 客户端不支持 Streamable HTTP，使用 SSE 传输模式作为回退。
+
+**端点：** `/api/mcp/sse`
+
+```json
+{
+  "mcpServers": {
+    "OpenDeepWiki": {
+      "url": "http://your-server:8080/api/mcp/sse?owner=AIDotNet&name=OpenDeepWiki"
+    }
+  }
+}
+```
+
+<Callout type="info">
+  将 `your-server:8080` 替换为 OpenDeepWiki 实例的实际 IP 地址和端口。
+</Callout>
+
+## 客户端配置示例
+
+### Claude Desktop
+
+将以下内容添加到你的 Claude Desktop MCP 配置文件：
+
+```json
+{
+  "mcpServers": {
+    "OpenDeepWiki": {
+      "url": "http://localhost:8080/api/mcp?owner=AIDotNet&name=OpenDeepWiki"
+    }
+  }
+}
+```
+
+### Cursor / Windsurf
+
+对于可能不支持 Streamable HTTP 的客户端，使用 SSE 端点：
+
+```json
+{
+  "mcpServers": {
+    "OpenDeepWiki": {
+      "url": "http://localhost:8080/api/mcp/sse?owner=AIDotNet&name=OpenDeepWiki",
+      "supportsStreamableHttp": false
+    }
+  }
+}
+```
+
+## MCP_ENABLED 环境变量
+
+设置 `MCP_ENABLED=false` 可完全关闭 MCP 端点注册（默认为 `true`）。适用于只把 OpenDeepWiki 当作文档站或聊天服务使用、不对外暴露 MCP 的部署。
+
+## MCP_STREAMABLE 环境变量
+
+`MCP_STREAMABLE` 环境变量允许你在服务器级别为特定 AI 服务配置 MCP Streamable HTTP 支持。这在 OpenDeepWiki 充当 MCP **客户端**连接到外部 MCP 工具服务器时使用。
+
+### 格式
+
+```
+MCP_STREAMABLE=serviceName1=streamableUrl1,serviceName2=streamableUrl2
+```
+
+### Docker Compose 配置
+
+```yaml
+services:
+  opendeepwiki:
+    environment:
+      - MCP_STREAMABLE=claude=http://localhost:8080/api/mcp,windsurf=http://localhost:8080/api/mcp
+```
+
+### 参数
+
+| 部分 | 描述 |
+|---|---|
+| `serviceName` | AI 服务的名称（例如 `claude`、`windsurf`） |
+| `streamableUrl` | 该服务的 Streamable HTTP 端点 URL |
+
+多个服务配置用逗号分隔。
+
+<Callout type="warn">
+  如果你不需要配置外部 MCP 工具集成，请将 `MCP_STREAMABLE` 留空或不设置。
+</Callout>
+
+## 站内 MCP 服务页
+
+前台「工具 → MCP 服务」页面汇总了当前实例的 MCP 端点与接入说明，可直接复制配置片段：
+
+![MCP 服务页面](/images/mcp-services.png)
+
+## 验证 MCP 连接
+
+配置 MCP 客户端后，你可以通过提出关于仓库的问题来验证连接。例如：
+
+> "What is OpenDeepWiki?"
+
+如果连接正常工作，AI 助手将使用 MCP 服务器检索文档并基于仓库的生成知识库提供知情答案。
+
+## 故障排除
+
+### 连接被拒绝
+
+- 确保 OpenDeepWiki 后端正在运行且可从你的 MCP 客户端访问
+- 验证端口号与你的部署配置匹配
+- 如果从远程机器连接，检查防火墙规则
+
+### 空响应
+
+- 确保仓库已处理且文档已生成
+- 验证 `owner` 和 `name` 参数与 OpenDeepWiki 中的现有仓库匹配
+
+### SSE 超时
+
+- 某些客户端的默认超时设置可能太短
+- 检查你的客户端 MCP 配置中的超时选项
+- 如果你的客户端支持，考虑切换到 Streamable HTTP

@@ -1,0 +1,15 @@
+{
+  "title": "部署教程",
+  "description": "从体验到生产的详细部署手册",
+  "icon": "Layers",
+  "pages": [
+    "index",
+    "docker-compose",
+    "postgresql",
+    "windows",
+    "reverse-proxy",
+    "ai-providers",
+    "environment-variables",
+    "upgrade-backup"
+  ]
+}

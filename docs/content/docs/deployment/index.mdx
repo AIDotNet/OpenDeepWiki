@@ -1,0 +1,47 @@
+---
+title: "部署概览与选型"
+description: 对比各种部署方式，选择适合你场景的部署方案。
+---
+
+import { Cards, Card } from "fumadocs-ui/components/card";
+import { Callout } from "fumadocs-ui/components/callout";
+
+# 部署概览与选型
+
+OpenDeepWiki 由**后端 API** 和**前端站点**两个服务组成，可以合部署也可以分部署。本章帮你快速定位合适的部署方案。
+
+## 部署方式对比
+
+| 方式 | 难度 | 适用场景 | 参考文档 |
+| --- | --- | --- | --- |
+| Docker Compose + SQLite | ★ | 个人体验、小团队、内网部署 | [Docker Compose 部署详解](/docs/deployment/docker-compose) |
+| Docker Compose + PostgreSQL | ★★ | 团队协作、生产环境（推荐） | [PostgreSQL 部署](/docs/deployment/postgresql) |
+| Windows 裸机 | ★★ | Windows 服务器、无 Docker 环境 | [Windows 部署](/docs/deployment/windows) |
+| Linux 裸机 + systemd | ★★★ | 需要精细控制进程的场合 | 参考 [Windows 部署](/docs/deployment/windows) 的发布流程，Linux 下改用 `dotnet publish -r linux-x64` + systemd 单元 |
+| Sealos 云平台 | ★ | 一键云端部署 | [![Deploy on Sealos](https://raw.githubusercontent.com/labring-actions/templates/main/Deploy-on-Sealos.svg)](https://bja.sealos.run/?openapp=system-template%3FtemplateName%3DOpenDeepWiki) |
+
+## 无论哪种方式，都需要准备
+
+1. **一个 LLM API Key** — 目录生成、正文生成、翻译、聊天都依赖 AI 模型。支持 OpenAI、Azure OpenAI、Anthropic、DeepSeek 及任意 OpenAI 兼容端点（详见 [AI 模型接入](/docs/deployment/ai-providers)）
+2. **修改 JWT 密钥** — 默认密钥仅用于开发，生产必须更换
+3. **修改管理员密码** — 全新数据库首次启动会创建 `admin@routin.ai / Admin@123`
+4. **持久化存储** — 仓库工作区与 SQLite 数据都在数据目录中，务必挂载/备份
+
+## 生产环境额外建议
+
+<Callout type="warn">
+  生产环境强烈建议：PostgreSQL 数据库 + HTTPS 反向代理 + 修改所有默认凭证。
+</Callout>
+
+- **数据库**：并发写入场景（多仓库同时生成、多人对话）PostgreSQL 明显更稳，见 [PostgreSQL 部署](/docs/deployment/postgresql)
+- **HTTPS**：通过 Nginx/Caddy 反向代理统一入口并配置证书，见 [反向代理与 HTTPS](/docs/deployment/reverse-proxy)
+- **可观测**：后端日志写入 `logs/` 目录，容器部署用 `docker compose logs -f` 查看；健康检查端点为 `/health`
+- **配置管理**：所有配置项集中在 [环境变量大全](/docs/deployment/environment-variables)
+- **运维**：升级、备份与数据迁移见 [升级与备份](/docs/deployment/upgrade-backup)
+
+## 部署后的第一件事
+
+1. 用 `admin@routin.ai / Admin@123` 登录
+2. 进入管理后台，在 [AI 模型管理](/docs/admin-guide/ai-providers) 核对模型配置
+3. 在[系统设置](/docs/admin-guide/system-settings)修改管理员密码
+4. 跟着[生成第一个知识库](/docs/getting-started/first-repository)验证 AI 链路可用

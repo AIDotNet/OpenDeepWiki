@@ -1,0 +1,10 @@
+{
+  "title": "API 参考",
+  "pages": [
+    "auth",
+    "repositories",
+    "incremental-updates",
+    "chat",
+    "admin"
+  ]
+}

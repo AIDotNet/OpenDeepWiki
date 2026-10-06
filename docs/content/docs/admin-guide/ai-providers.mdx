@@ -1,0 +1,79 @@
+---
+title: "AI Provider 与模型管理"
+description: 在运行时管理 AI 服务商、模型档案与生成任务的模型绑定，无需重启服务。
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+
+# AI Provider 与模型管理
+
+除了部署时的环境变量（见 [AI 模型接入](/docs/deployment/ai-providers)），OpenDeepWiki 还支持**运行时**通过管理后台配置 AI：
+
+- **AI Provider**：服务商接入点（Endpoint + Key + 类型）
+- **模型管理**：为每个 Provider 登记可用模型与价格档案
+- **模型配置**：把"目录生成/正文生成/翻译/Graphify"绑定到具体 Provider+Model
+
+三层结构的好处：换 Key、换服务商、给不同任务分配不同模型，都在界面上完成，**无需重启**。
+
+## 第一步：添加 AI Provider
+
+路径：**管理后台 → AI Provider 管理**：
+
+![AI Provider 管理](/images/admin-ai-providers.png)
+
+系统内置了一批常见厂商预设（OpenRouter、DeepSeek、Moonshot、通义、百度、Gitee AI 等），点击即可带出默认 Endpoint，只需填入你的 API Key。
+
+| 字段 | 说明 |
+| --- | --- |
+| 名称 | 自定义标识，如 `deepseek-main` |
+| 类型 | `OpenAI` / `AzureOpenAI` / `OpenAIResponses` / `Anthropic` / `DeepSeekOpenAI` |
+| Base URL | 服务端点，如 `https://api.deepseek.com/v1` |
+| ApiKey | 服务商密钥 |
+| Channel / Accounts / Capabilities | 高级字段：渠道配置与能力声明（JSON），一般保持默认 |
+
+## 第二步：登记模型
+
+路径：**管理后台 → 模型管理**：
+
+![模型管理](/images/admin-models.png)
+
+为 Provider 添加模型档案：
+
+- **Model ID**：服务商的模型名（如 `deepseek-chat`、`gpt-4o`）
+- **价格档案**：输入/输出/缓存价格（每百万 Token），用于后台用量与成本统计
+- **Capabilities / Request Overrides**：能力开关与请求参数覆盖（JSON），有特殊需求时使用
+
+## 第三步：绑定生成任务
+
+路径：**管理后台 → 模型配置**：
+
+![模型配置](/images/admin-model-configs.png)
+
+把四类任务分别绑定到 Provider + Model：
+
+| 任务 | 绑定项 |
+| --- | --- |
+| Wiki 目录生成 | `WIKI_CATALOG_PROVIDER_ID` / `WIKI_CATALOG_MODEL_ID` |
+| Wiki 正文生成 | `WIKI_CONTENT_PROVIDER_ID` / `WIKI_CONTENT_MODEL_ID` |
+| 翻译 | `WIKI_TRANSLATION_PROVIDER_ID` / `WIKI_TRANSLATION_MODEL_ID` |
+| Graphify 图谱 | `GRAPHIFY_PROVIDER_ID` / `GRAPHIFY_MODEL_ID` |
+
+<Callout type="info">
+  这里绑定的值会写入[系统设置](/docs/admin-guide/system-settings)，优先级高于部署时的环境变量。后台一旦完成绑定，环境变量的目录/正文模型配置即被覆盖。
+</Callout>
+
+## 验证配置
+
+1. 添加一个小仓库触发生成（见[仓库管理](/docs/admin-guide/repositories)）
+2. 观察处理日志：模型调用成功 → 配置生效
+3. 在仪表盘查看 Token 消耗统计是否出现新记录
+
+## 排障
+
+| 现象 | 排查 |
+| --- | --- |
+| 生成报 401 | Provider Key 错误或过期 |
+| 生成报 404 model | Model ID 拼写与厂商不一致 |
+| 绑定后仍走旧模型 | 检查[系统设置](/docs/admin-guide/system-settings)中是否有旧值覆盖了环境变量 |
+| 内网不通 | Base URL 需容器内可达：本机服务用 `host.docker.internal` |

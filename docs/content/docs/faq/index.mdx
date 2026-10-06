@@ -1,0 +1,94 @@
+---
+title: "常见问题 FAQ"
+description: 部署、生成、对话与使用中的高频问题与排查方法。
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+# 常见问题 FAQ
+
+## 部署相关
+
+### 启动后页面打不开 / 502
+
+1. `docker compose ps` 确认两个容器都在运行
+2. 后端健康检查：`curl http://localhost:8081/health` 应返回 `healthy`
+3. 前端报"连接错误"通常是 `API_PROXY_URL` 配置问题：容器网络内必须用服务名 `http://opendeepwiki:8080`，不能写 `localhost`
+
+### 首次登录账号是什么？
+
+全新数据库首次启动自动创建：
+
+- 邮箱：`admin@routin.ai`
+- 密码：`Admin@123`
+
+**生产环境务必修改**。若密码丢失且无其他管理员，可重置数据库或按社区提供的脚本重置该账号。
+
+### 端口可以改吗？
+
+可以。后端改 `URLS` 与宿主机映射；前端改映射或 `PORT` 环境变量。注意同步前端 `API_PROXY_URL`。详见 [Windows 部署 → 端口被占用](/docs/deployment/windows#端口被占用)。
+
+### 如何升级版本？
+
+`git pull` 后 `docker compose up -d --build`。数据库结构自动迁移；升级前先备份。详见[升级、备份与迁移](/docs/deployment/upgrade-backup)。
+
+## 仓库生成相关
+
+### 提交仓库后一直 Pending
+
+Worker 没跑起来或全局生成配额（`WIKI_MAX_CONCURRENT_GENERATIONS`，默认 1）已被占用。看后端日志确认 Worker 状态；多仓库排队属正常。
+
+### 生成失败，报 AI 调用错误
+
+按顺序检查：
+
+1. API Key 是否有效、有无余额
+2. Endpoint 是否容器内可达（本机服务用 `host.docker.internal`）
+3. 模型名是否与服务商一致
+4. 服务商限流（429）：降低 `WIKI_PARALLEL_COUNT`、增大 `WIKI_RETRY_DELAY_MS`
+
+详细配置见 [AI 模型接入](/docs/deployment/ai-providers)。
+
+### 生成很慢 / Token 消耗大
+
+- 减少语言：`WIKI_LANGUAGES=en,zh`
+- 降低并发不省 Token，只影响速度；真正省 Token 靠**减少语种**和**增量更新**
+- 翻译走便宜模型：`WIKI_TRANSLATION_*` 单独配置
+- 大仓库开启 `WIKI_ENABLE_AI_SCAN_PROFILE` 让 AI 自动裁剪扫描范围
+
+### 私有仓库 Clone 失败
+
+填"用户名 + 访问令牌（Token）"，不是网页登录密码。GitHub Token 需要 `repo` 读权限。
+
+## 文档与对话相关
+
+### 文档内容过时
+
+文档是生成时刻的快照。触发[增量更新](/docs/advanced/incremental-updates)或在后台重新生成。
+
+### 悬浮球（AI 助手）不显示
+
+管理员需在后台启用[聊天助手](/docs/admin-guide/chat-assistant)并勾选模型；配置后刷新页面。仍不显示时清缓存或检查 `/api/v1/chat/config` 返回。
+
+### 思维导图只有一个根节点
+
+导图未生成或生成失败（状态非 Completed）。在后台仓库管理中重新生成；导图数据格式为 Markdown 标题层级，见[思维导图](/docs/usage/mindmap)。
+
+### ZIP 上传被拒（413）
+
+反向代理限制。Nginx 加 `client_max_body_size 512m;`，见[反向代理](/docs/deployment/reverse-proxy#常见问题)。
+
+## MCP 相关
+
+### MCP 客户端连接后没有响应
+
+1. 确认 `owner` / `name` 参数与实例中的仓库匹配
+2. SSE 传输确认代理关闭了缓冲（`proxy_buffering off`）
+3. 确认 `MCP_ENABLED=true`（默认）
+详见 [MCP 集成 → 故障排除](/docs/mcp#故障排除)。
+
+---
+
+<Callout type="info">
+  没找到答案？优先查阅各模块教程末尾的"常见问题"小节；仍未解决可到 [GitHub Issues](https://github.com/AIDotNet/OpenDeepWiki/issues) 搜索或提问，附上后端日志会更快得到回复。
+</Callout>

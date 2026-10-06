@@ -1,0 +1,294 @@
+---
+title: 聊天和嵌入 API
+description: 聊天助手和可嵌入聊天小部件的 API 端点
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# 聊天和嵌入 API
+
+OpenDeepWiki 提供两组聊天 API：
+
+- **聊天助手 API**（`/api/v1/chat`）— 内置文档聊天助手，支持 SSE 流式传输
+- **嵌入 API**（`/api/v1/embed`）— 用于第三方网站的可嵌入聊天小部件
+
+两个 API 都使用服务器发送事件（SSE）进行流式响应。
+
+---
+
+## 聊天助手 API
+
+### 获取配置
+
+检索聊天助手配置，包括功能是否启用和可用模型。
+
+```
+GET /api/v1/chat/config
+```
+
+### 响应
+
+```json
+{
+  "enabled": true,
+  "defaultModelId": "gpt-4o",
+  "systemPrompt": "You are a helpful documentation assistant...",
+  "maxHistoryMessages": 20
+}
+```
+
+---
+
+### 获取可用模型
+
+检索聊天助手可用的 AI 模型列表。
+
+```
+GET /api/v1/chat/models
+```
+
+### 响应
+
+```json
+[
+  {
+    "id": "gpt-4o",
+    "name": "GPT-4o",
+    "provider": "OpenAI"
+  },
+  {
+    "id": "claude-3-5-sonnet",
+    "name": "Claude 3.5 Sonnet",
+    "provider": "Anthropic"
+  }
+]
+```
+
+---
+
+### 流式聊天（SSE）
+
+发送消息并通过服务器发送事件接收流式响应。
+
+```
+POST /api/v1/chat/stream
+```
+
+### 请求体
+
+| 字段 | 类型 | 必需 | 描述 |
+|---|---|---|---|
+| `messages` | array | 是 | 对话消息历史 |
+| `messages[].role` | string | 是 | 消息角色：`user`、`assistant` 或 `system` |
+| `messages[].content` | string | 是 | 消息内容 |
+| `messages[].images` | string[] | 否 | Base64 编码的图像数据 |
+| `messages[].quotedText` | object | 否 | 引用/选中文本参考 |
+| `messages[].quotedText.title` | string | 否 | 源文档标题 |
+| `messages[].quotedText.text` | string | 是 | 选中文本内容 |
+| `modelId` | string | 是 | 要使用的模型 ID |
+| `context` | object | 是 | 文档上下文 |
+| `context.owner` | string | 是 | 仓库所有者 |
+| `context.repo` | string | 是 | 仓库名称 |
+| `context.branch` | string | 是 | 分支名称 |
+| `context.language` | string | 是 | 文档语言代码 |
+| `context.currentDocPath` | string | 是 | 当前文档路径 |
+| `context.catalogMenu` | array | 否 | 用于上下文的目录菜单项 |
+| `context.userLanguage` | string | 否 | 首选响应语言（默认：`en`） |
+| `appId` | string | 否 | 应用 ID（用于应用范围的聊天） |
+
+### 示例请求
+
+```json
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "How do I deploy OpenDeepWiki with Docker?"
+    }
+  ],
+  "modelId": "gpt-4o",
+  "context": {
+    "owner": "AIDotNet",
+    "repo": "OpenDeepWiki",
+    "branch": "main",
+    "language": "en",
+    "currentDocPath": "/getting-started",
+    "userLanguage": "en"
+  }
+}
+```
+
+### SSE 响应格式
+
+响应是 SSE 事件流。每个事件是一个包含 `type` 和 `data` 字段的 JSON 对象：
+
+```
+data: {"type":"content","data":"Docker deployment is straightforward..."}
+
+data: {"type":"content","data":" First, create a docker-compose.yaml..."}
+
+data: {"type":"done","data":null}
+```
+
+### SSE 事件类型
+
+| 类型 | 描述 |
+|---|---|
+| `content` | 文本内容块 |
+| `thinking` | 模型思考/推理内容 |
+| `tool_call` | 模型调用工具 |
+| `tool_result` | 工具调用的结果 |
+| `done` | 流完成 |
+| `error` | 发生错误 |
+
+### 错误事件格式
+
+```json
+{
+  "type": "error",
+  "data": {
+    "code": "REQUEST_TIMEOUT",
+    "message": "请求超时，请重试",
+    "retryAfterMs": 2000,
+    "retryable": true
+  }
+}
+```
+
+### 错误代码
+
+| 代码 | 描述 |
+|---|---|
+| `REQUEST_TIMEOUT` | 请求超时 |
+| `CONNECTION_FAILED` | 连接 AI 提供商失败 |
+| `INTERNAL_ERROR` | 内部服务器错误 |
+
+---
+
+## 嵌入 API
+
+嵌入 API 使在第三方网站上嵌入聊天小部件成为可能。它在允许聊天交互之前验证应用 ID 和域。
+
+### 获取嵌入配置
+
+验证应用 ID 和域，然后返回应用配置。
+
+```
+GET /api/v1/embed/config?appId={appId}
+```
+
+### 查询参数
+
+| 参数 | 类型 | 必需 | 描述 |
+|---|---|---|---|
+| `appId` | string | 是 | 应用 ID |
+
+<Callout type="info">
+域验证使用 `Origin` 或 `Referer` 请求头自动执行。无需显式域参数。
+</Callout>
+
+### 响应（成功）
+
+```json
+{
+  "valid": true,
+  "appName": "My Documentation",
+  "modelId": "gpt-4o",
+  "systemPrompt": "You are a helpful assistant..."
+}
+```
+
+### 响应（错误）
+
+| 状态 | 错误代码 | 描述 |
+|---|---|---|
+| 401 | `INVALID_APP_ID` | 应用 ID 无效或未激活 |
+| 403 | `DOMAIN_NOT_ALLOWED` | 请求域不在应用的允许域列表中 |
+
+---
+
+### 流式嵌入聊天（SSE）
+
+通过嵌入小部件发送消息并接收流式响应。
+
+```
+POST /api/v1/embed/stream
+```
+
+### 请求体
+
+| 字段 | 类型 | 必需 | 描述 |
+|---|---|---|---|
+| `appId` | string | 是 | 应用 ID |
+| `messages` | array | 是 | 对话消息历史 |
+| `messages[].role` | string | 是 | 消息角色：`user` 或 `assistant` |
+| `messages[].content` | string | 是 | 消息内容 |
+| `modelId` | string | 否 | 覆盖模型 ID |
+| `userIdentifier` | string | 否 | 用于会话跟踪的唯一用户标识符 |
+| `owner` | string | 否 | 用于上下文的仓库所有者 |
+| `repo` | string | 否 | 用于上下文的仓库名称 |
+| `branch` | string | 否 | 用于上下文的分支名称 |
+
+### 示例请求
+
+```json
+{
+  "appId": "app-abc123",
+  "messages": [
+    {
+      "role": "user",
+      "content": "What is OpenDeepWiki?"
+    }
+  ],
+  "owner": "AIDotNet",
+  "repo": "OpenDeepWiki",
+  "branch": "main"
+}
+```
+
+### SSE 响应格式
+
+嵌入流使用命名 SSE 事件：
+
+```
+event: content
+data: {"text":"OpenDeepWiki is an AI-driven..."}
+
+event: content
+data: {"text":" code knowledge base..."}
+
+event: done
+data: {}
+```
+
+### 事件类型
+
+| 事件 | 描述 |
+|---|---|
+| `content` | 文本内容块 |
+| `done` | 流完成 |
+| `error` | 发生错误（包括错误代码和重试信息） |
+
+<Callout type="info">
+嵌入 API 包含 CORS 头（`Access-Control-Allow-Origin: *`）以支持来自嵌入小部件的跨源请求。
+</Callout>
+
+---
+
+## 嵌入聊天小部件
+
+要在你的网站上嵌入聊天小部件，包含嵌入脚本：
+
+```html
+<script src="https://your-opendeepwiki-instance/embed.js"></script>
+<script>
+  OpenDeepWiki.init({
+    appId: 'your-app-id',
+    owner: 'AIDotNet',
+    repo: 'OpenDeepWiki',
+    branch: 'main'
+  });
+</script>
+```
+
+你可以通过 OpenDeepWiki 仪表板的 **应用** 部分创建和管理嵌入应用，在那里你可以配置允许的域、模型和系统提示。

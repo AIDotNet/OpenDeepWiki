@@ -1,0 +1,22 @@
+{
+  "title": "文档",
+  "pages": [
+    "index",
+    "---入门教程---",
+    "getting-started",
+    "---部署教程---",
+    "deployment",
+    "---功能使用---",
+    "usage",
+    "---管理后台---",
+    "admin-guide",
+    "---MCP 集成---",
+    "mcp",
+    "---深入教程---",
+    "advanced",
+    "---常见问题---",
+    "faq",
+    "---API 参考---",
+    "api-reference"
+  ]
+}

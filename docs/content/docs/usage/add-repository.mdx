@@ -1,0 +1,98 @@
+---
+title: "添加仓库"
+description: 通过 Git 地址、ZIP 压缩包或服务器本地目录三种方式导入仓库生成知识库。
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+
+# 添加仓库
+
+登录后进入**工作区 → 私有仓库**，点击右上角**添加私人仓库**：
+
+![私有仓库页面](/images/add-repository.png)
+
+表单支持三种来源类型：
+
+![添加仓库表单](/images/add-repository-form.png)
+
+<Tabs groupId="source">
+
+<Tab value="Git 仓库">
+
+最常用方式。填写：
+
+| 字段 | 说明 | 示例 |
+| --- | --- | --- |
+| Git 地址 | HTTPS 地址；SSH 地址需要实例侧配置密钥 | `https://github.com/AIDotNet/OpenDeepWiki` |
+| 组织/命名空间 | 文档路由一级路径，也是 MCP 参数 `owner` | `AIDotNet` |
+| 仓库名称 | 文档路由二级路径，也是 MCP 参数 `name` | `OpenDeepWiki` |
+| 分支名称 | 生成文档的分支 | `main` |
+| 语言 | 文档语言 | 简体中文 |
+| 认证信息 | 私有仓库填 Git 用户名 + 访问令牌 | GitHub Token 需要 `repo` 读权限 |
+
+</Tab>
+
+<Tab value="ZIP 压缩包">
+
+适合无外网 Git 访问、或只想归档某个代码快照的场景。
+
+1. 来源类型选择 **ZIP 压缩包**
+2. 上传 `.zip` 文件（注意反代 `client_max_body_size` 限制）
+3. 其余字段同 Git 方式
+
+系统解压后按普通仓库流程扫描与生成。
+
+</Tab>
+
+<Tab value="服务器目录">
+
+把 OpenDeepWiki 所在服务器上的本地目录导入为知识库，适合超大仓库（免去克隆等待）。
+
+1. 管理员先在部署配置中放行目录白名单：
+
+```yaml
+environment:
+  - RepositoryAnalyzer__AllowedLocalPathRoots__0=/host/home/youruser
+  # 可配置多个：__1、__2 ...
+```
+
+2. 表单来源类型选择**服务器目录**，填写白名单内的绝对路径
+3. `RepositoryAnalyzer__LocalDirectoryImportMode` 决定复制（`Copy`，默认）还是引用（`Reference`，零拷贝但要求目录常驻）
+
+<Callout type="warn">
+  白名单是安全边界：不在白名单内的路径会被拒绝导入。生产环境请按需最小化放行范围。
+</Callout>
+
+</Tab>
+
+</Tabs>
+
+## 公开与私有
+
+| 选项 | 行为 |
+| --- | --- |
+| **公开仓库** 开启 | 任何人可浏览文档，路由 `/{owner}/{repo}` 对搜索引擎开放 |
+| **公开仓库** 关闭 | 仅登录后按权限可见（创建者与管理员） |
+
+**生成 SKILL** 开启时，系统会额外产出一份把本仓库文档打包的 SKILL ZIP，可在文档页"导出 SKILL"下载，用于把知识库挂载为 Agent 技能。
+
+## 提交后的处理过程
+
+提交后仓库进入队列，后台 Worker 依次执行：克隆/解压 → 目录扫描 → AI 生成目录 → 并行生成正文 → 翻译/思维导图。完整机制见[仓库处理流水线](/docs/advanced/pipeline)。
+
+处理进度与日志在管理后台[仓库管理](/docs/admin-guide/repositories)可见：
+
+![后台仓库管理](/images/admin-repositories.png)
+
+## 常见问题
+
+**提交后一直 Pending**
+Worker 未运行或 `WIKI_MAX_CONCURRENT_GENERATIONS` 已满；查看后端日志确认。
+
+**生成失败提示 AI 调用错误**
+Key 无效、余额不足或 Endpoint 不可达。在[仓库管理](/docs/admin-guide/repositories)详情页查看失败原因，修正后可重试生成。
+
+**私有仓库 Clone 失败**
+确认使用"用户名 + Token"而非密码；企业内网 Git 需确认容器网络可达。

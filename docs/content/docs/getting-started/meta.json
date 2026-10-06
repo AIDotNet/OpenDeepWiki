@@ -1,0 +1,12 @@
+{
+  "title": "入门教程",
+  "description": "从零开始认识并跑通 OpenDeepWiki",
+  "icon": "Rocket",
+  "pages": [
+    "index",
+    "quick-start-docker",
+    "first-repository",
+    "interface-tour",
+    "local-development"
+  ]
+}

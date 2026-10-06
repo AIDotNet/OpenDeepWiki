@@ -1,0 +1,353 @@
+---
+title: 管理端 API
+description: OpenDeepWiki 管理端 API 端点，包括仓库管理、用户管理、角色管理和工具配置。
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# 管理端 API
+
+管理端 API 提供系统管理功能，包括仓库管理、用户管理、角色管理、工具配置和统计数据。
+
+基础路径：`/api/admin`
+
+<Callout type="warn">
+所有管理端 API 需要管理员权限。请求必须包含具有管理员角色的有效 JWT 令牌。
+</Callout>
+
+---
+
+## 统计数据
+
+### 获取仪表盘统计
+
+```
+GET /api/admin/statistics/dashboard?days={days}
+```
+
+| 参数 | 类型 | 默认值 | 描述 |
+|---|---|---|---|
+| `days` | int | `7` | 统计天数 |
+
+### 获取 Token 消耗统计
+
+```
+GET /api/admin/statistics/token-usage?days={days}
+```
+
+| 参数 | 类型 | 默认值 | 描述 |
+|---|---|---|---|
+| `days` | int | `7` | 统计天数 |
+
+---
+
+## 仓库管理
+
+### 获取仓库列表
+
+```
+GET /api/admin/repositories?page={page}&pageSize={pageSize}&search={search}&status={status}
+```
+
+| 参数 | 类型 | 默认值 | 描述 |
+|---|---|---|---|
+| `page` | int | `1` | 页码 |
+| `pageSize` | int | `20` | 每页项数 |
+| `search` | string | — | 搜索关键词 |
+| `status` | int | — | 按状态过滤 |
+
+### 获取仓库详情
+
+```
+GET /api/admin/repositories/{id}
+```
+
+### 更新仓库
+
+```
+PUT /api/admin/repositories/{id}
+```
+
+### 删除仓库
+
+```
+DELETE /api/admin/repositories/{id}
+```
+
+### 更新仓库状态
+
+```
+PUT /api/admin/repositories/{id}/status
+```
+
+
+### 请求体
+
+```json
+{
+  "status": 0
+}
+```
+
+### 同步仓库统计信息
+
+```
+POST /api/admin/repositories/{id}/sync-stats
+```
+
+从 Git 平台同步仓库的 star 和 fork 数量。
+
+### 批量同步统计信息
+
+```
+POST /api/admin/repositories/batch/sync-stats
+```
+
+### 请求体
+
+```json
+{
+  "ids": ["repo-id-1", "repo-id-2"]
+}
+```
+
+### 批量删除仓库
+
+```
+POST /api/admin/repositories/batch/delete
+```
+
+### 请求体
+
+```json
+{
+  "ids": ["repo-id-1", "repo-id-2"]
+}
+```
+
+---
+
+## 用户管理
+
+### 获取用户列表
+
+```
+GET /api/admin/users?page={page}&pageSize={pageSize}&search={search}&roleId={roleId}
+```
+
+| 参数 | 类型 | 默认值 | 描述 |
+|---|---|---|---|
+| `page` | int | `1` | 页码 |
+| `pageSize` | int | `20` | 每页项数 |
+| `search` | string | — | 搜索关键词 |
+| `roleId` | string | — | 按角色 ID 过滤 |
+
+### 获取用户详情
+
+```
+GET /api/admin/users/{id}
+```
+
+### 创建用户
+
+```
+POST /api/admin/users
+```
+
+### 更新用户
+
+```
+PUT /api/admin/users/{id}
+```
+
+### 删除用户
+
+```
+DELETE /api/admin/users/{id}
+```
+
+### 更新用户状态
+
+```
+PUT /api/admin/users/{id}/status
+```
+
+### 请求体
+
+```json
+{
+  "status": 1
+}
+```
+
+| 值 | 描述 |
+|---|---|
+| `0` | 禁用 |
+| `1` | 活跃 |
+| `2` | 待验证 |
+
+### 更新用户角色
+
+```
+PUT /api/admin/users/{id}/roles
+```
+
+### 请求体
+
+```json
+{
+  "roleIds": ["role-id-1", "role-id-2"]
+}
+```
+
+### 重置用户密码
+
+```
+POST /api/admin/users/{id}/reset-password
+```
+
+### 请求体
+
+```json
+{
+  "newPassword": "new-secure-password"
+}
+```
+
+---
+
+## 角色管理
+
+### 获取角色列表
+
+```
+GET /api/admin/roles
+```
+
+### 获取角色详情
+
+```
+GET /api/admin/roles/{id}
+```
+
+### 创建角色
+
+```
+POST /api/admin/roles
+```
+
+### 更新角色
+
+```
+PUT /api/admin/roles/{id}
+```
+
+### 删除角色
+
+```
+DELETE /api/admin/roles/{id}
+```
+
+---
+
+## 工具配置
+
+管理端工具配置包含三个子模块：MCP 配置、Skill 配置和模型配置。
+
+### MCP 配置
+
+#### 获取所有 MCP 配置
+
+```
+GET /api/admin/tools/mcps
+```
+
+#### 创建 MCP 配置
+
+```
+POST /api/admin/tools/mcps
+```
+
+#### 更新 MCP 配置
+
+```
+PUT /api/admin/tools/mcps/{id}
+```
+
+#### 删除 MCP 配置
+
+```
+DELETE /api/admin/tools/mcps/{id}
+```
+
+### Skill 配置
+
+#### 获取所有 Skills
+
+```
+GET /api/admin/tools/skills
+```
+
+#### 获取 Skill 详情
+
+```
+GET /api/admin/tools/skills/{id}
+```
+
+#### 上传 Skill（ZIP 压缩包）
+
+```
+POST /api/admin/tools/skills/upload
+```
+
+使用 `multipart/form-data` 格式上传 ZIP 文件。
+
+#### 更新 Skill
+
+```
+PUT /api/admin/tools/skills/{id}
+```
+
+#### 删除 Skill
+
+```
+DELETE /api/admin/tools/skills/{id}
+```
+
+#### 获取 Skill 文件内容
+
+```
+GET /api/admin/tools/skills/{id}/files/{filePath}
+```
+
+#### 从磁盘刷新 Skills
+
+```
+POST /api/admin/tools/skills/refresh
+```
+
+### 模型配置
+
+#### 获取所有模型配置
+
+```
+GET /api/admin/tools/models
+```
+
+#### 创建模型配置
+
+```
+POST /api/admin/tools/models
+```
+
+#### 更新模型配置
+
+```
+PUT /api/admin/tools/models/{id}
+```
+
+#### 删除模型配置
+
+```
+DELETE /api/admin/tools/models/{id}
+```

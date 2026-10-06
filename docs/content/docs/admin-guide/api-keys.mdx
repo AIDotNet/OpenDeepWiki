@@ -1,0 +1,56 @@
+---
+title: "API Key 管理"
+description: 签发、限定范围与吊销用于程序化访问 OpenDeepWiki 的 API 密钥。
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+
+# API Key 管理
+
+路径：**管理后台 → API Key**。
+
+API Key 用于**程序化访问**：脚本、CI、第三方系统通过 OpenAPI 调用仓库与聊天接口时，用 API Key 认证，而不是借用某个人类的登录态。
+
+![API Key 管理](/images/admin-api-keys.png)
+
+## 签发 API Key
+
+<Steps>
+
+<Step>点击**创建 Key**。</Step>
+
+<Step>填写：</Step>
+
+| 字段 | 说明 |
+| --- | --- |
+| 名称 | 用途标识，如 `ci-doc-sync` |
+| 归属用户 | Admin 可为他人签发；普通场景选自己 |
+| 范围（scope） | 该 Key 可调用的接口范围 |
+| 有效期（天数） | 到期自动失效；长期 CI 建议设置轮换周期 |
+
+<Step>创建成功后**立即复制**密钥——出于安全，密钥只在创建时完整显示一次。</Step>
+
+</Steps>
+
+## 使用方式
+
+请求 API 时在 Header 中携带 Key（以仓库列表接口为例）：
+
+```bash
+curl -H "Authorization: Bearer odw_xxxxxxxx" \
+     https://wiki.example.com/api/v1/repositories
+```
+
+各接口的能力与参数见 [API 参考](/docs/api-reference/repositories)。
+
+## 轮换与吊销
+
+| 操作 | 时机 |
+| --- | --- |
+| 轮换 | 达到有效期前：签发新 Key → 更新调用方 → 删除旧 Key |
+| 吊销 | Key 疑似泄露：立即删除，调用方将收到 401 |
+
+<Callout type="warn">
+  API Key 与其归属用户的权限一致。为 CI 签发的 Key 请遵循最小权限与最短有效期原则；不要把 Key 写进代码仓库，使用环境变量或密钥管理服务保存。
+</Callout>

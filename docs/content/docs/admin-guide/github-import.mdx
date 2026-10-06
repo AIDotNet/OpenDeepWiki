@@ -1,0 +1,73 @@
+---
+title: "GitHub App 导入"
+description: 授权 GitHub App 后自动发现并导入组织仓库，免去逐个粘贴地址。
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+
+# GitHub App 导入
+
+逐个粘贴仓库地址适合偶尔导入；如果你要批量接入一个 GitHub 组织下的所有仓库，使用 **GitHub App** 一次性授权更省事。
+
+路径：**管理后台 → GitHub 导入**：
+
+![GitHub 导入](/images/admin-github-import.png)
+
+## 配置流程
+
+<Steps>
+
+<Step>
+
+### 创建 GitHub App
+
+在 GitHub → Settings → Developer settings → GitHub Apps 中新建 App：
+
+- **Callback URL** 填：`https://你的实例域名/admin/github-import/callback`
+- **Webhook**：按需（仅导入文档可不勾选 Active）
+- **仓库权限**：Contents（读）、Metadata（读）
+- 创建后记下 **App ID** 并生成 **Private Key**（.pem）下载保存
+
+</Step>
+
+<Step>
+
+### 在 OpenDeepWiki 中录入凭证
+
+在 GitHub 导入页填入 App ID、Private Key 与 App Slug（App 名称的小写形式），保存。
+
+</Step>
+
+<Step>
+
+### 安装到组织/账号
+
+点击页面上的安装入口，跳转 GitHub 完成 App 安装，选择要授权的组织与仓库范围。
+
+</Step>
+
+<Step>
+
+### 选择导入
+
+安装回调完成后，回到导入页即可看到授权仓库列表，勾选需要生成知识库的仓库批量导入。
+
+</Step>
+
+</Steps>
+
+<Callout type="info">
+  GitHub App 方式导入的私有仓库使用 App 安装令牌访问，无需为每个仓库单独填 Token。公开仓库则直接走普通 Git 导入即可，不必配置 App。
+</Callout>
+
+## 常见问题
+
+**回调后提示校验失败**
+App ID / Private Key 不匹配，或实例域名与 Callback URL 不一致（注意 http/https）。
+
+**列表为空**
+GitHub 侧 App 未安装到任何仓库，或安装时选择的权限不足。
+
+**导入的私有仓库生成失败**
+确认 App 有 Contents 读权限；企业网络环境下确认实例可访问 `github.com`。

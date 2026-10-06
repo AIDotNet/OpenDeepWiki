@@ -1,0 +1,263 @@
+---
+title: 仓库管理 API
+description: OpenDeepWiki 中用于管理仓库的 API 端点
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# 仓库管理 API
+
+OpenDeepWiki 提供一组 RESTful API 端点用于管理仓库，包括提交新仓库、查询仓库列表、更新可见性和重新生成文档。
+
+基础路径：`/api/v1/repositories`
+
+<Callout type="info">
+大多数仓库管理端点需要用户认证。在 `Authorization` 头中包含有效的 JWT 令牌。
+</Callout>
+
+## 提交仓库
+
+提交新仓库用于文档生成。
+
+```
+POST /api/v1/repositories/submit
+```
+
+### 请求体
+
+| 字段 | 类型 | 必需 | 描述 |
+|---|---|---|---|
+| `gitUrl` | string | 是 | Git 仓库 URL（最多 500 字符） |
+| `repoName` | string | 是 | 仓库名称（最多 100 字符） |
+| `orgName` | string | 是 | 组织/所有者名称（最多 100 字符） |
+| `branchName` | string | 是 | 要处理的分支（最多 200 字符） |
+| `languageCode` | string | 是 | 文档生成的语言代码（最多 50 字符），例如 `en`、`zh-CN` |
+| `isPublic` | boolean | 否 | 仓库是否公开（默认：`true`） |
+| `authAccount` | string | 否 | 私有仓库的认证账户（最多 200 字符） |
+| `authPassword` | string | 否 | 私有仓库的认证密码/令牌（最多 500 字符） |
+
+### 示例请求
+
+```json
+{
+  "gitUrl": "https://github.com/AIDotNet/OpenDeepWiki",
+  "repoName": "OpenDeepWiki",
+  "orgName": "AIDotNet",
+  "branchName": "main",
+  "languageCode": "en",
+  "isPublic": true
+}
+```
+
+### 响应
+
+成功时返回创建的 `Repository` 对象。
+
+```json
+{
+  "id": "a1b2c3d4-...",
+  "gitUrl": "https://github.com/AIDotNet/OpenDeepWiki",
+  "repoName": "OpenDeepWiki",
+  "orgName": "AIDotNet",
+  "isPublic": true,
+  "status": "Pending"
+}
+```
+
+### 错误响应
+
+| 状态 | 描述 |
+|---|---|
+| 401 | 用户未认证 |
+| 400 | 当 `isPublic` 为 `false` 时需要凭证 |
+
+---
+
+## 列表仓库
+
+检索带有过滤和排序的分页仓库列表。
+
+```
+GET /api/v1/repositories/list
+```
+
+### 查询参数
+
+| 参数 | 类型 | 默认值 | 描述 |
+|---|---|---|---|
+| `page` | int | `1` | 页码 |
+| `pageSize` | int | `20` | 每页项数 |
+| `isPublic` | bool | — | 按可见性过滤 |
+| `keyword` | string | — | 按组织名或仓库名搜索 |
+| `language` | string | — | 按主要编程语言过滤 |
+| `ownerId` | string | — | 按所有者用户 ID 过滤 |
+| `status` | int | — | 按处理状态过滤 |
+| `sortBy` | string | `createdAt` | 排序字段：`createdAt`、`updatedAt`、`status` |
+| `sortOrder` | string | `desc` | 排序方向：`asc` 或 `desc` |
+
+### 示例请求
+
+```
+GET /api/v1/repositories/list?page=1&pageSize=10&isPublic=true&keyword=opendeep
+```
+
+### 响应
+
+```json
+{
+  "items": [
+    {
+      "id": "a1b2c3d4-...",
+      "orgName": "AIDotNet",
+      "repoName": "OpenDeepWiki",
+      "gitUrl": "https://github.com/AIDotNet/OpenDeepWiki",
+      "status": "Completed",
+      "statusName": "Completed",
+      "isPublic": true,
+      "hasPassword": false,
+      "createdAt": "2025-01-15T10:30:00Z",
+      "updatedAt": "2025-01-15T12:00:00Z",
+      "starCount": 1200,
+      "forkCount": 150,
+      "primaryLanguage": "C#"
+    }
+  ],
+  "total": 42
+}
+```
+
+### 仓库状态值
+
+| 值 | 名称 | 描述 |
+|---|---|---|
+| 0 | Pending | 等待处理 |
+| 1 | Processing | 正在生成文档 |
+| 2 | Completed | 文档生成完成 |
+| 3 | Failed | 文档生成失败 |
+
+---
+
+## 更新可见性
+
+更改仓库的公开/私有可见性。
+
+```
+POST /api/v1/repositories/visibility
+```
+
+### 请求体
+
+| 字段 | 类型 | 必需 | 描述 |
+|---|---|---|---|
+| `repositoryId` | string | 是 | 仓库 ID（最多 36 字符） |
+| `isPublic` | boolean | 是 | 新的可见性设置 |
+
+### 示例请求
+
+```json
+{
+  "repositoryId": "a1b2c3d4-...",
+  "isPublic": false
+}
+```
+
+### 响应
+
+```json
+{
+  "id": "a1b2c3d4-...",
+  "isPublic": false,
+  "success": true,
+  "errorMessage": null
+}
+```
+
+### 错误响应
+
+| 状态 | 描述 |
+|---|---|
+| 401 | 用户未认证 |
+| 403 | 无权修改此仓库 |
+| 404 | 仓库未找到 |
+| 400 | 未配置凭证时无法设置为私有 |
+
+---
+
+## 重新生成文档
+
+重新生成仓库的文档。仅在仓库状态为 `Completed` 或 `Failed` 时可用。
+
+```
+POST /api/v1/repositories/regenerate
+```
+
+### 请求体
+
+| 字段 | 类型 | 必需 | 描述 |
+|---|---|---|---|
+| `owner` | string | 是 | 仓库所有者/组织名称（最多 100 字符） |
+| `repo` | string | 是 | 仓库名称（最多 100 字符） |
+
+### 示例请求
+
+```json
+{
+  "owner": "AIDotNet",
+  "repo": "OpenDeepWiki"
+}
+```
+
+### 响应
+
+```json
+{
+  "success": true,
+  "errorMessage": null
+}
+```
+
+### 错误响应
+
+| 条件 | `errorMessage` |
+|---|---|
+| 用户未认证 | "用户未登录" |
+| 仓库未找到 | "仓库不存在" |
+| 无权限 | "无权限操作此仓库" |
+| 仓库正在处理 | "仓库正在处理中，无法重新生成" |
+
+<Callout type="warn">
+重新生成会清除所有现有文档（目录、文档文件、处理日志）并将仓库状态重置为 `Pending`。后台工作者将自动选择它进行重新处理。
+</Callout>
+
+---
+
+## 获取分支
+
+从远程平台检索 Git 仓库的可用分支列表。
+
+```
+GET /api/v1/repositories/branches?gitUrl={gitUrl}
+```
+
+### 查询参数
+
+| 参数 | 类型 | 必需 | 描述 |
+|---|---|---|---|
+| `gitUrl` | string | 是 | Git 仓库 URL |
+
+### 响应
+
+```json
+{
+  "branches": [
+    { "name": "main", "isDefault": true },
+    { "name": "develop", "isDefault": false }
+  ],
+  "defaultBranch": "main",
+  "isSupported": true
+}
+```
+
+<Callout type="info">
+`isSupported` 表示 Git 平台是否支持通过 API 列出分支。支持的平台包括 GitHub、GitLab、Gitee 等。
+</Callout>

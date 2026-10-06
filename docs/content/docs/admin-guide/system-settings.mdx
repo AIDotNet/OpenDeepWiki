@@ -1,0 +1,47 @@
+---
+title: "系统设置"
+description: 查看、调整 OpenDeepWiki 的运行参数：生成并行度、超时、翻译语言与 Graphify。
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+# 系统设置
+
+路径：**管理后台 → 系统设置**。
+
+系统设置以键值形式存储运行参数（持久化在数据库 `SystemSettings` / `LocalStorage` 中）。这里的配置**优先于部署时的环境变量**，是运行期调参的主入口：
+
+![系统设置](/images/admin-settings.png)
+
+## 主要配置分组
+
+| 分组 | 代表键 | 作用 |
+| --- | --- | --- |
+| 目录生成 | `WIKI_MAX_TREE_NODES`、`WIKI_FILE_LIST_MAX_DEPTH`、`WIKI_DIRECTORY_TREE_MAX_DEPTH` | 控制目录扫描的深度与节点预算 |
+| 内容生成 | `WIKI_PARALLEL_COUNT`、`WIKI_DOCUMENT_GENERATION_TIMEOUT_MINUTES`、`WIKI_MAX_OUTPUT_TOKENS` | 生成速度与单篇超时 |
+| 重试 | `WIKI_MAX_RETRY_ATTEMPTS`、`WIKI_RETRY_DELAY_MS` | AI 调用失败重试策略 |
+| 翻译 | `WIKI_LANGUAGES`、`WIKI_TRANSLATION_TIMEOUT_MINUTES`、`WIKI_TITLE_TRANSLATION_TIMEOUT_MINUTES` | 语种与翻译超时 |
+| 模型绑定 | `WIKI_CATALOG_PROVIDER_ID / MODEL_ID`、`WIKI_CONTENT_*`、`WIKI_TRANSLATION_*`、`GRAPHIFY_*` | 各任务使用的模型（通常在[模型配置](/docs/admin-guide/ai-providers)页修改） |
+| AI 扫描 | `WIKI_ENABLE_AI_SCAN_PROFILE` | 是否让 AI 自动选择扫描深度策略 |
+
+完整变量含义见[环境变量大全](/docs/deployment/environment-variables)——环境变量与本页设置作用于同一批配置项，本页优先。
+
+## 修改与生效
+
+1. 找到目标键，修改值并保存
+2. 后台 Worker 在下个任务周期读取新值；个别项（如语种列表）对**之后新建**的仓库生效
+3. 拿不准的键不要改：保持默认即可满足绝大多数场景
+
+## 推荐调整场景
+
+| 场景 | 建议调整 |
+| --- | --- |
+| 大仓库生成经常超时 | 调大 `WIKI_DOCUMENT_GENERATION_TIMEOUT_MINUTES`；或调低 `WIKI_PARALLEL_COUNT` 减轻限流 |
+| AI 服务商限流 429 | 降低 `WIKI_PARALLEL_COUNT`；增大 `WIKI_RETRY_DELAY_MS` |
+| 只想要中文文档 | `WIKI_LANGUAGES` 设为 `zh` |
+| 翻译太慢 | 换更快的翻译模型（模型配置页），或减少语种 |
+| 小团队省钱 | `WIKI_ENABLE_AI_SCAN_PROFILE=False`（默认）+ 中端模型 |
+
+<Callout type="warn">
+  修改 `WIKI_LANGUAGES` 等键只影响新仓库；已有仓库的语言版本由生成时的配置决定，需要重新生成才会变化。
+</Callout>

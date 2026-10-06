@@ -1,0 +1,80 @@
+---
+title: "聊天助手与聊天渠道"
+description: 启用站内仓库 AI 助手，并接入飞书、QQ、微信、Slack 等外部聊天渠道。
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+
+# 聊天助手与聊天渠道
+
+本页包含两个相关但独立的功能：
+
+1. **聊天助手**：控制仓库文档页的 AI 悬浮球（站内）
+2. **聊天渠道**：把仓库知识库接入外部 IM 平台（飞书/QQ/微信/Slack 等）
+
+## 聊天助手
+
+路径：**管理后台 → 聊天助手**：
+
+![聊天助手配置](/images/admin-chat-assistant.png)
+
+启用并勾选模型后，仓库文档页会出现 AI 悬浮球：
+
+<Steps>
+
+<Step>确认[模型管理](/docs/admin-guide/ai-providers)中已有可用模型。</Step>
+
+<Step>在聊天助手页打开**启用**开关。</Step>
+
+<Step>在模型列表中勾选允许使用的模型，指定默认模型。</Step>
+
+<Step>（可选）按需开启图片上传等能力。</Step>
+
+<Step>保存后刷新仓库页面，右下角出现悬浮球即为生效。</Step>
+
+</Steps>
+
+<Callout type="info">
+  保存后 `/api/v1/chat/config` 会返回启用状态与模型清单，前端据此渲染悬浮球。看不到悬浮球时先刷新页面，再回来核对本页配置。
+</Callout>
+
+## 聊天渠道
+
+路径：**管理后台 → 聊天渠道**：
+
+![聊天渠道](/images/admin-chat-providers.png)
+
+把知识库接入 IM，团队成员在群里 @机器人 即可提问。通用接入流程：
+
+<Steps>
+
+<Step>在 IM 开放平台创建机器人/应用，拿到 App ID / Secret 等凭证。</Step>
+
+<Step>在聊天渠道页选择对应平台，填入凭证与回调配置。</Step>
+
+<Step>在 IM 平台侧配置事件回调地址指向本实例（需要公网可访问，见[反向代理](/docs/deployment/reverse-proxy)）。</Step>
+
+<Step>在群里 @机器人 提问验证。</Step>
+
+</Steps>
+
+| 平台 | 接入要点 |
+| --- | --- |
+| 飞书 | 开放平台创建企业自建应用，开通机器人能力与消息回调 |
+| QQ | 官方机器人平台，配置 Webhook 推送 |
+| 微信 | 按所接入的微信机器人方案提供凭证 |
+| Slack | 创建 Slack App，配置 Socket/Webhook 模式 |
+
+消息处理是异步队列（`ChatMessageQueue`），高峰期消息会排队依次回答。
+
+## 常见问题
+
+**悬浮球不出现**
+[聊天助手]未启用、未勾选模型，或浏览器缓存旧页面。
+
+**IM 机器人不回复**
+回调地址公网不可达、凭证错误、或模型未启用；逐项检查并看后端日志中的渠道错误。
+
+**回答内容不贴合仓库**
+确认提问时目标仓库已完成文档生成；机器人是按仓库文档作答的。

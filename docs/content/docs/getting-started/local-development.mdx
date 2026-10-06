@@ -1,0 +1,129 @@
+---
+title: "本地开发环境"
+description: 从源码启动前后端，配置热更新开发环境，并运行测试。
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+
+# 本地开发环境
+
+想阅读源码、修复 Bug 或做二次开发？本章搭建一个前后端热更新的本地开发环境。
+
+## 前置条件
+
+| 工具 | 版本要求 | 用途 |
+| --- | --- | --- |
+| [.NET SDK](https://dotnet.microsoft.com/download) | 10.0+ | 后端构建与运行 |
+| [Node.js](https://nodejs.org/) | 18+（推荐 20+） | 前端构建与运行 |
+| [Git](https://git-scm.com/) | 最新版 | 克隆代码与仓库分析功能 |
+
+```bash
+dotnet --version   # 应输出 10.x
+node --version     # 应输出 v18+
+```
+
+## 启动后端
+
+<Steps>
+
+<Step>
+
+### 还原并构建
+
+```bash
+git clone https://github.com/AIDotNet/OpenDeepWiki.git
+cd OpenDeepWiki
+dotnet restore OpenDeepWiki.sln
+dotnet build OpenDeepWiki.sln
+```
+
+</Step>
+
+<Step>
+
+### 配置环境变量
+
+本地开发用 SQLite 最省事，无需安装数据库。后端会读取环境变量或 `appsettings.Development.json`，关键是准备一个真实的 AI Key（生成文档时要用）：
+
+```bash
+export CHAT_API_KEY=sk-your-key
+export ENDPOINT=https://api.deepseek.com/v1
+export CHAT_REQUEST_TYPE=DeepSeekOpenAI
+export WIKI_CATALOG_MODEL=deepseek-chat
+export WIKI_CATALOG_ENDPOINT=https://api.deepseek.com/v1
+export WIKI_CATALOG_API_KEY=sk-your-key
+export WIKI_CONTENT_MODEL=deepseek-chat
+export WIKI_CONTENT_ENDPOINT=https://api.deepseek.com/v1
+export WIKI_CONTENT_API_KEY=sk-your-key
+```
+
+Windows PowerShell 用户请改用 `$env:CHAT_API_KEY="sk-your-key"` 语法。
+
+</Step>
+
+<Step>
+
+### 运行
+
+```bash
+dotnet run --project src/OpenDeepWiki/OpenDeepWiki.csproj
+```
+
+常用本地地址（以控制台实际输出为准）：
+
+| 地址 | 说明 |
+| --- | --- |
+| `http://localhost:5265` | 后端 API |
+| `http://localhost:5265/health` | 健康检查 |
+| `http://localhost:5265/v1/scalar` | OpenAPI / Scalar 调试页（仅 Development） |
+
+</Step>
+
+</Steps>
+
+## 启动前端
+
+新开一个终端：
+
+```bash
+cd web
+npm install
+echo API_PROXY_URL=http://localhost:5265 > .env.local
+npm run dev
+```
+
+打开 `http://localhost:3000`。前端把 API 请求代理到 `API_PROXY_URL` 指向的后端，因此后端地址变化时只需修改 `.env.local` 并重启。
+
+使用默认管理员账号登录：
+
+- 邮箱：`admin@routin.ai`
+- 密码：`Admin@123`
+
+## 运行测试
+
+```bash
+# 后端测试（xUnit + FsCheck）
+dotnet test tests/OpenDeepWiki.Tests/OpenDeepWiki.Tests.csproj
+
+# 前端代码检查
+cd web && npm run lint
+```
+
+新增后端功能请把测试放到 `tests/OpenDeepWiki.Tests/` 对应目录（例如服务层逻辑放 `Services/`）。
+
+## 目录速查
+
+| 目录 | 内容 |
+| --- | --- |
+| `src/OpenDeepWiki` | 端点（Endpoints）、后台 Worker、AI/仓库/聊天/MCP 服务、提示词（`prompts/`） |
+| `src/OpenDeepWiki.Entities` | 领域实体 |
+| `src/OpenDeepWiki.EFCore` | 共享 EF Core 上下文契约 |
+| `src/EFCore/OpenDeepWiki.Sqlite` | SQLite Provider |
+| `src/EFCore/OpenDeepWiki.Postgresql` | PostgreSQL Provider |
+| `web` | Next.js 前端（App Router） |
+| `tests/OpenDeepWiki.Tests` | xUnit + FsCheck 测试 |
+
+<Callout type="info">
+  想了解端点注册、Worker 队列和 AI 编排的内部机制，继续阅读[深入教程 → 系统架构](/docs/advanced/architecture)。
+</Callout>

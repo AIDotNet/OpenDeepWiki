@@ -1,0 +1,54 @@
+---
+title: "后台总览"
+description: 管理后台入口、布局与各管理模块的职责地图。
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+import { Cards, Card } from "fumadocs-ui/components/card";
+
+# 后台总览
+
+使用管理员账号（默认 `admin@routin.ai`）登录后，通过左侧边栏进入**管理后台**：
+
+![管理后台仪表盘](/images/admin-dashboard.png)
+
+仪表盘汇总站点核心指标（用户数、仓库数、生成任务、Token 消耗等），是日常巡检的起点。
+
+## 管理模块地图
+
+<Cards>
+  <Card title="用户 / 角色 / 部门" href="/docs/admin-guide/users-roles">
+    账号生命周期、权限角色与组织架构管理。
+  </Card>
+  <Card title="仓库管理" href="/docs/admin-guide/repositories">
+    全站仓库的生成进度、日志、重试与删除。
+  </Card>
+  <Card title="AI Provider 与模型" href="/docs/admin-guide/ai-providers">
+    运行时管理 AI 服务商、模型与任务绑定。
+  </Card>
+  <Card title="API Key" href="/docs/admin-guide/api-keys">
+    签发与管理程序化访问密钥。
+  </Card>
+  <Card title="聊天助手与聊天渠道" href="/docs/admin-guide/chat-assistant">
+    启用站内 AI 助手，接入飞书/QQ/微信/Slack。
+  </Card>
+  <Card title="技能包 / MCP 工具 / MCP Provider" href="/docs/admin-guide/skills-mcps">
+    扩展 AI 能力：Skill 包与外部 MCP 服务。
+  </Card>
+  <Card title="GitHub App 导入" href="/docs/admin-guide/github-import">
+    授权 GitHub App，自动导入组织仓库。
+  </Card>
+  <Card title="系统设置" href="/docs/admin-guide/system-settings">
+    生成并行度、超时、翻译与 Graphify 等运行参数。
+  </Card>
+</Cards>
+
+## 权限说明
+
+- 内置角色：**Admin**（全部权限）与 **User**（前台功能）
+- 只有 Admin 角色的用户可以访问 `/admin` 下的所有页面
+- 部门（Department）用于组织架构归属，可配合"机构目录"与部门仓库使用
+
+<Callout type="info">
+  第一次进入后台建议先完成三件事：修改管理员密码（[用户管理](/docs/admin-guide/users-roles)）、核对模型配置（[AI Provider 与模型](/docs/admin-guide/ai-providers)）、浏览[系统设置](/docs/admin-guide/system-settings)。
+</Callout>
