@@ -21,6 +21,11 @@ COPY ["src/OpenDeepWiki.EFCore/OpenDeepWiki.EFCore.csproj", "src/OpenDeepWiki.EF
 COPY ["src/OpenDeepWiki.Entities/OpenDeepWiki.Entities.csproj", "src/OpenDeepWiki.Entities/"]
 COPY ["src/EFCore/OpenDeepWiki.Sqlite/OpenDeepWiki.Sqlite.csproj", "src/EFCore/OpenDeepWiki.Sqlite/"]
 COPY ["src/EFCore/OpenDeepWiki.Postgresql/OpenDeepWiki.Postgresql.csproj", "src/EFCore/OpenDeepWiki.Postgresql/"]
+# framework 项目在 ProjectReference 链上；缺失时 restore 只警告不生成其
+# project.assets.json，后续 publish --no-restore 会报 NETSDK1004
+COPY ["framework/OpenDeepWiki.Cache.Abstractions/OpenDeepWiki.Cache.Abstractions.csproj", "framework/OpenDeepWiki.Cache.Abstractions/"]
+COPY ["framework/OpenDeepWiki.Cache.DependencyInjection/OpenDeepWiki.Cache.DependencyInjection.csproj", "framework/OpenDeepWiki.Cache.DependencyInjection/"]
+COPY ["framework/OpenDeepWiki.Cache.Memory/OpenDeepWiki.Cache.Memory.csproj", "framework/OpenDeepWiki.Cache.Memory/"]
 RUN dotnet restore "src/OpenDeepWiki/OpenDeepWiki.csproj"
 COPY . .
 WORKDIR "/src/src/OpenDeepWiki"
