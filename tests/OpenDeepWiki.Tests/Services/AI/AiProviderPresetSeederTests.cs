@@ -16,8 +16,8 @@ public class AiProviderPresetSeederTests
     {
         var catalog = new AiProviderPresetCatalog();
 
-        Assert.Equal(29, catalog.Presets.Count);
-        Assert.Equal(611, catalog.Presets.Sum(p => p.DefaultModels.Count));
+        Assert.Equal(30, catalog.Presets.Count);
+        Assert.Equal(613, catalog.Presets.Sum(p => p.DefaultModels.Count));
         Assert.Contains(catalog.Presets, p => p.BuiltinId == "routin-ai" && p.DefaultEnabled == true);
         Assert.Contains(catalog.Presets, p => p.BuiltinId == "codex-oauth" && p.AuthMode == "oauth");
         Assert.Contains(catalog.Presets.Single(p => p.BuiltinId == "openai").DefaultModels,
@@ -38,6 +38,10 @@ public class AiProviderPresetSeederTests
             p => p.BuiltinId == "requesty" &&
                  p.DefaultBaseUrl == "https://router.requesty.ai/v1" &&
                  p.DefaultModels.Any(m => m.Id == "claude-sonnet-4-6"));
+        Assert.Contains(catalog.Presets,
+            p => p.BuiltinId == "y-api" &&
+                 p.DefaultBaseUrl == "https://api.y-api.bestvirtualgoods.com/v1" &&
+                 p.DefaultModels.Any(m => m.Id == "deepseek/deepseek-v4-flash"));
     }
 
     [Fact]
@@ -49,8 +53,8 @@ public class AiProviderPresetSeederTests
         await seeder.EnsureBuiltInProvidersAsync();
         await seeder.EnsureBuiltInProvidersAsync();
 
-        Assert.Equal(29, await context.AiProviderConfigs.CountAsync(p => !p.IsDeleted));
-        Assert.Equal(611, await context.AiModelConfigs.CountAsync(m => !m.IsDeleted));
+        Assert.Equal(30, await context.AiProviderConfigs.CountAsync(p => !p.IsDeleted));
+        Assert.Equal(613, await context.AiModelConfigs.CountAsync(m => !m.IsDeleted));
 
         var apiRoute = await context.AiProviderConfigs.SingleAsync(p => p.Name == "api-route");
         Assert.True(apiRoute.IsBuiltIn);
@@ -63,6 +67,18 @@ public class AiProviderPresetSeederTests
             m.ProviderId == apiRoute.Id && m.ModelId == "deepseek-v4-flash");
         Assert.Null(apiRouteModel.InputTokenPrice);
         Assert.Null(apiRouteModel.OutputTokenPrice);
+
+        var yApi = await context.AiProviderConfigs.SingleAsync(p => p.Name == "y-api");
+        Assert.True(yApi.IsBuiltIn);
+        Assert.False(yApi.IsActive);
+        Assert.Equal("OpenAI", yApi.ProviderType);
+        Assert.Equal("https://api.y-api.bestvirtualgoods.com/v1", yApi.BaseUrl);
+        Assert.Equal("deepseek/deepseek-v4-flash", yApi.DefaultModelId);
+        Assert.Equal("https://y-api.bestvirtualgoods.com/favicon.svg", yApi.IconUrl);
+        var yApiModel = await context.AiModelConfigs.SingleAsync(m =>
+            m.ProviderId == yApi.Id && m.ModelId == "deepseek/deepseek-v4-flash");
+        Assert.Null(yApiModel.InputTokenPrice);
+        Assert.Null(yApiModel.OutputTokenPrice);
 
         var codex = await context.AiProviderConfigs.SingleAsync(p => p.Name == "codex-oauth");
         Assert.True(codex.IsBuiltIn);
