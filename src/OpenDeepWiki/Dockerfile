@@ -24,13 +24,10 @@ COPY ["src/EFCore/OpenDeepWiki.Postgresql/OpenDeepWiki.Postgresql.csproj", "src/
 RUN dotnet restore "src/OpenDeepWiki/OpenDeepWiki.csproj"
 COPY . .
 WORKDIR "/src/src/OpenDeepWiki"
-RUN dotnet build "./OpenDeepWiki.csproj" -c $BUILD_CONFIGURATION -o /app/build
-
-FROM build AS publish
-ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./OpenDeepWiki.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+# publish 自带编译；--no-restore 复用上方 restore 层，整个流程只编译一次
+RUN dotnet publish "./OpenDeepWiki.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false --no-restore
 
 FROM base AS final
 WORKDIR /app
-COPY --from=publish /app/publish .
+COPY --from=build /app/publish .
 ENTRYPOINT ["dotnet", "OpenDeepWiki.dll"]

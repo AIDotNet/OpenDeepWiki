@@ -3,8 +3,10 @@ on:
   workflow_dispatch:
   push:
     branches: [ main ]
+
 jobs:
-  build:
+  # 后端与前端镜像并行构建，互不阻塞
+  backend:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,31 +23,21 @@ jobs:
 
       - name: Extract version from Directory.Packages.props
         id: get_version
-        shell: pwsh
+        shell: bash
         run: |
-          $ErrorActionPreference = 'Stop'
-          [xml]$xml = Get-Content -Raw 'Directory.Packages.props'
-          $pg = $xml.Project.PropertyGroup
-          $versionTemplate = [string]$pg.Version
-          if ([string]::IsNullOrWhiteSpace($versionTemplate)) { throw 'Version not found in Directory.Packages.props' }
-          $props = @{}
-          foreach ($n in $pg.ChildNodes) {
-            if ($n.NodeType -eq [System.Xml.XmlNodeType]::Element) {
-              $props[$n.Name] = [string]$n.InnerText
-            }
-          }
-          $props['TimeStamp'] = (Get-Date -AsUTC).ToString('yyyyMMdd')
-          $unresolved = New-Object System.Collections.Generic.List[string]
-          $finalVersion = [regex]::Replace($versionTemplate, '\$\(([A-Za-z0-9_.-]+)\)', {
-            param($m)
-            $name = $m.Groups[1].Value
-            if ($props.ContainsKey($name) -and -not [string]::IsNullOrWhiteSpace($props[$name])) { $props[$name] } else { $unresolved.Add($name) | Out-Null; '' }
-          })
-          if ($unresolved.Count -gt 0) { Write-Host "[warn] Unresolved version tokens -> $($unresolved -join ', ')" }
-          if ([string]::IsNullOrWhiteSpace($finalVersion)) { throw 'Resolved version is empty' }
-          "version=$finalVersion" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-          Write-Host "Version template: $versionTemplate"
-          Write-Host "Final version: $finalVersion"
+          version="$(sed -n 's/.*<Version>\(.*\)<\/Version>.*/\1/p' Directory.Packages.props | head -1 | tr -d '[:space:]')"
+          if [ -z "$version" ]; then
+            echo "Version not found in Directory.Packages.props" >&2
+            exit 1
+          fi
+          case "$version" in
+            *'$('*)
+              echo "Unresolved version token in template: $version" >&2
+              exit 1
+              ;;
+          esac
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Final version: $version"
 
       - name: Build and push opendeepwiki
         uses: docker/build-push-action@v5
@@ -56,9 +48,46 @@ jobs:
           push: true
           provenance: false
           sbom: false
+          # GHA 层缓存：apt/pip、restore、编译层在多次构建间复用
+          # scope 与 release.yml 保持一致，可跨 workflow 共享缓存
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
           tags: |
             crpi-j9ha7sxwhatgtvj4.cn-shenzhen.personal.cr.aliyuncs.com/open-deepwiki/opendeepwiki:latest
             crpi-j9ha7sxwhatgtvj4.cn-shenzhen.personal.cr.aliyuncs.com/open-deepwiki/opendeepwiki:${{ steps.get_version.outputs.version }}
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Registry
+        uses: docker/login-action@v3
+        with:
+          registry: crpi-j9ha7sxwhatgtvj4.cn-shenzhen.personal.cr.aliyuncs.com
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Extract version from Directory.Packages.props
+        id: get_version
+        shell: bash
+        run: |
+          version="$(sed -n 's/.*<Version>\(.*\)<\/Version>.*/\1/p' Directory.Packages.props | head -1 | tr -d '[:space:]')"
+          if [ -z "$version" ]; then
+            echo "Version not found in Directory.Packages.props" >&2
+            exit 1
+          fi
+          case "$version" in
+            *'$('*)
+              echo "Unresolved version token in template: $version" >&2
+              exit 1
+              ;;
+          esac
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Final version: $version"
 
       - name: Build and push opendeepwiki-web
         uses: docker/build-push-action@v5
@@ -69,6 +98,8 @@ jobs:
           push: true
           provenance: false
           sbom: false
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
           tags: |
             crpi-j9ha7sxwhatgtvj4.cn-shenzhen.personal.cr.aliyuncs.com/open-deepwiki/opendeepwiki-web:latest
             crpi-j9ha7sxwhatgtvj4.cn-shenzhen.personal.cr.aliyuncs.com/open-deepwiki/opendeepwiki-web:${{ steps.get_version.outputs.version }}

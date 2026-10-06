@@ -78,6 +78,8 @@ jobs:
           push: true
           provenance: false
           sbom: false
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
           tags: |
             crpi-j9ha7sxwhatgtvj4.cn-shenzhen.personal.cr.aliyuncs.com/open-deepwiki/opendeepwiki:latest
             crpi-j9ha7sxwhatgtvj4.cn-shenzhen.personal.cr.aliyuncs.com/open-deepwiki/opendeepwiki:${{ steps.get_version.outputs.version }}
@@ -91,6 +93,8 @@ jobs:
           push: true
           provenance: false
           sbom: false
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
           tags: |
             crpi-j9ha7sxwhatgtvj4.cn-shenzhen.personal.cr.aliyuncs.com/open-deepwiki/opendeepwiki-web:latest
             crpi-j9ha7sxwhatgtvj4.cn-shenzhen.personal.cr.aliyuncs.com/open-deepwiki/opendeepwiki-web:${{ steps.get_version.outputs.version }}
@@ -134,6 +138,8 @@ jobs:
           push: true
           provenance: false
           sbom: false
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
           tags: |
             crpi-j9ha7sxwhatgtvj4.cn-shenzhen.personal.cr.aliyuncs.com/open-deepwiki/opendeepwiki:latest
             crpi-j9ha7sxwhatgtvj4.cn-shenzhen.personal.cr.aliyuncs.com/open-deepwiki/opendeepwiki:${{ steps.get_version.outputs.version }}
@@ -147,6 +153,8 @@ jobs:
           push: true
           provenance: false
           sbom: false
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
           tags: |
             crpi-j9ha7sxwhatgtvj4.cn-shenzhen.personal.cr.aliyuncs.com/open-deepwiki/opendeepwiki-web:latest
             crpi-j9ha7sxwhatgtvj4.cn-shenzhen.personal.cr.aliyuncs.com/open-deepwiki/opendeepwiki-web:${{ steps.get_version.outputs.version }}

@@ -24,3 +24,18 @@ data/
 **/values.dev.yaml
 LICENSE
 README.md
+# 以下目录不参与镜像构建；排除后其变动不会打碎 COPY . . 的缓存层
+docs/
+img/
+tests/
+scripts/
+DatabaseQuery/
+.github/
+.plan/
+.claude/
+.serena/
+.spec-workflow/
+.next-cowork/
+compose.yaml
+compose.pgsql.yaml
+Makefile
