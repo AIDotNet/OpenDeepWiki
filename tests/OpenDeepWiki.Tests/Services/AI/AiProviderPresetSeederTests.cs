@@ -17,7 +17,7 @@ public class AiProviderPresetSeederTests
         var catalog = new AiProviderPresetCatalog();
 
         Assert.Equal(29, catalog.Presets.Count);
-        Assert.Equal(611, catalog.Presets.Sum(p => p.DefaultModels.Count));
+        Assert.Equal(450, catalog.Presets.Sum(p => p.DefaultModels.Count));
         Assert.Contains(catalog.Presets, p => p.BuiltinId == "routin-ai" && p.DefaultEnabled == true);
         Assert.Contains(catalog.Presets, p => p.BuiltinId == "codex-oauth" && p.AuthMode == "oauth");
         Assert.Contains(catalog.Presets.Single(p => p.BuiltinId == "openai").DefaultModels,
@@ -38,6 +38,10 @@ public class AiProviderPresetSeederTests
             p => p.BuiltinId == "requesty" &&
                  p.DefaultBaseUrl == "https://router.requesty.ai/v1" &&
                  p.DefaultModels.Any(m => m.Id == "claude-sonnet-4-6"));
+        Assert.Contains(catalog.Presets,
+            p => p.BuiltinId == "cheaperinference" &&
+                 p.DefaultBaseUrl == "https://api.cheaperinference.com/v1" &&
+                 p.DefaultModels.Any(m => m.Id == "gpt-5.4-mini"));
     }
 
     [Fact]
