@@ -99,6 +99,21 @@ jobs:
             crpi-j9ha7sxwhatgtvj4.cn-shenzhen.personal.cr.aliyuncs.com/open-deepwiki/opendeepwiki-web:latest
             crpi-j9ha7sxwhatgtvj4.cn-shenzhen.personal.cr.aliyuncs.com/open-deepwiki/opendeepwiki-web:${{ steps.get_version.outputs.version }}
 
+      - name: Build and push opendeepwiki-docs (v${{ steps.get_version.outputs.version }})
+        uses: docker/build-push-action@v5
+        with:
+          context: ./docs
+          file: ./docs/Dockerfile
+          platforms: linux/amd64
+          push: true
+          provenance: false
+          sbom: false
+          cache-from: type=gha,scope=docs
+          cache-to: type=gha,mode=max,scope=docs
+          tags: |
+            crpi-j9ha7sxwhatgtvj4.cn-shenzhen.personal.cr.aliyuncs.com/open-deepwiki/opendeepwiki-docs:latest
+            crpi-j9ha7sxwhatgtvj4.cn-shenzhen.personal.cr.aliyuncs.com/open-deepwiki/opendeepwiki-docs:${{ steps.get_version.outputs.version }}
+
   release-build:
     if: github.event_name == 'release' && github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
@@ -158,3 +173,18 @@ jobs:
           tags: |
             crpi-j9ha7sxwhatgtvj4.cn-shenzhen.personal.cr.aliyuncs.com/open-deepwiki/opendeepwiki-web:latest
             crpi-j9ha7sxwhatgtvj4.cn-shenzhen.personal.cr.aliyuncs.com/open-deepwiki/opendeepwiki-web:${{ steps.get_version.outputs.version }}
+
+      - name: Build and push opendeepwiki-docs
+        uses: docker/build-push-action@v5
+        with:
+          context: ./docs
+          file: ./docs/Dockerfile
+          platforms: linux/amd64
+          push: true
+          provenance: false
+          sbom: false
+          cache-from: type=gha,scope=docs
+          cache-to: type=gha,mode=max,scope=docs
+          tags: |
+            crpi-j9ha7sxwhatgtvj4.cn-shenzhen.personal.cr.aliyuncs.com/open-deepwiki/opendeepwiki-docs:latest
+            crpi-j9ha7sxwhatgtvj4.cn-shenzhen.personal.cr.aliyuncs.com/open-deepwiki/opendeepwiki-docs:${{ steps.get_version.outputs.version }}

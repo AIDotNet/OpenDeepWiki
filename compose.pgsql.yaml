@@ -83,6 +83,17 @@ services:
       - SITE_URL=${SITE_URL:-http://localhost:3000}
       - API_PROXY_URL=http://opendeepwiki:8080
 
+  docs:
+    image: crpi-j9ha7sxwhatgtvj4.cn-shenzhen.personal.cr.aliyuncs.com/open-deepwiki/opendeepwiki-docs
+    build:
+      context: ./docs
+      dockerfile: Dockerfile
+    ports:
+      - "8091:3000"
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
