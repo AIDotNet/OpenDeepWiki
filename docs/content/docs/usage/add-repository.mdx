@@ -1,6 +1,6 @@
 ---
 title: "添加仓库"
-description: 通过 Git 地址、ZIP 压缩包或服务器本地目录三种方式导入仓库生成知识库。
+description: 通过 Git 地址、ZIP 压缩包或服务器本地目录三种方式导入仓库：完整表单字段说明与自动化行为。
 ---
 
 import { Steps, Step } from "fumadocs-ui/components/steps";
@@ -13,7 +13,13 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
 ![私有仓库页面](/images/add-repository.png)
 
-表单支持三种来源类型：
+表单标题为"提交仓库"，顶部是三张**来源类型**卡片（单选）：
+
+| 来源 | 界面说明 |
+| --- | --- |
+| Git 仓库 | 通过 Git 地址抓取仓库，支持分支探测和私有仓库认证 |
+| ZIP 压缩包 | 上传 ZIP 压缩包并直接生成 Wiki 文档 |
+| 服务器目录 | 导入服务器本地目录，由服务端复制或链接到受控工作区 |
 
 ![添加仓库表单](/images/add-repository-form.png)
 
@@ -21,45 +27,55 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
 <Tab value="Git 仓库">
 
-最常用方式。填写：
+### 来源字段
 
-| 字段 | 说明 | 示例 |
+| 字段 | 必填 | 说明 |
 | --- | --- | --- |
-| Git 地址 | HTTPS 地址；SSH 地址需要实例侧配置密钥 | `https://github.com/AIDotNet/OpenDeepWiki` |
-| 组织/命名空间 | 文档路由一级路径，也是 MCP 参数 `owner` | `AIDotNet` |
-| 仓库名称 | 文档路由二级路径，也是 MCP 参数 `name` | `OpenDeepWiki` |
-| 分支名称 | 生成文档的分支 | `main` |
-| 语言 | 文档语言 | 简体中文 |
-| 认证信息 | 私有仓库填 Git 用户名 + 访问令牌 | GitHub Token 需要 `repo` 读权限 |
+| Git 地址 | 是 | 形如 `https://github.com/owner/repo.git`；支持 `https://` 与 `git@` 格式，正则校验 |
+
+Git 地址有多个**自动化行为**，填完基本不用手填其余字段：
+
+1. **自动解析组织与仓库名**：从地址解析出 `owner/repo` 自动填入"组织/命名空间"和"仓库名称"
+2. **自动拉取分支列表**：地址合法后约半秒自动请求远端分支；"分支名称"变为下拉框，默认选中远端默认分支
+   - 分支超过 10 个时下拉自带"搜索分支"框
+   - 下拉底部有"使用自定义分支"项，或切换"手动输入"模式
+   - 不支持自动获取的平台会提示"此平台暂不支持自动获取分支，请手动输入"
+3. **私有仓库自动识别**：检测为私有仓库时自动把"公开仓库"开关关闭
+
+### 私有仓库认证
+
+关闭"公开仓库"开关后展开认证区块（提示"私有仓库需要身份验证"）：
+
+| 字段 | 说明 |
+| --- | --- |
+| 用户名（可选） | Git 用户名 |
+| 密码/令牌（可选） | **访问令牌（Token）或密码**；GitHub Token 需要 `repo` 读权限 |
 
 </Tab>
 
 <Tab value="ZIP 压缩包">
 
-适合无外网 Git 访问、或只想归档某个代码快照的场景。
+| 字段 | 说明 |
+| --- | --- |
+| ZIP 压缩包 | 文件选择，仅接受 `.zip`；提示"只支持上传 .zip 文件，解压后将以当前目录结构生成 Wiki"，选其他格式报"当前仅支持 .zip 压缩包" |
 
-1. 来源类型选择 **ZIP 压缩包**
-2. 上传 `.zip` 文件（注意反代 `client_max_body_size` 限制）
-3. 其余字段同 Git 方式
-
-系统解压后按普通仓库流程扫描与生成。
+> 大文件注意反向代理的上传体积限制（Nginx 默认 1m，需调 `client_max_body_size`，见[反向代理](/docs/deployment/reverse-proxy)）。
 
 </Tab>
 
 <Tab value="服务器目录">
 
-把 OpenDeepWiki 所在服务器上的本地目录导入为知识库，适合超大仓库（免去克隆等待）。
+| 字段 | 说明 |
+| --- | --- |
+| 服务器本地目录 | 服务端绝对路径，placeholder 示例 `D:\repos\OpenDeepWiki`；提示"仅允许导入服务端配置白名单内的目录" |
 
-1. 管理员先在部署配置中放行目录白名单：
+白名单在部署配置中放行：
 
 ```yaml
 environment:
   - RepositoryAnalyzer__AllowedLocalPathRoots__0=/host/home/youruser
   # 可配置多个：__1、__2 ...
 ```
-
-2. 表单来源类型选择**服务器目录**，填写白名单内的绝对路径
-3. `RepositoryAnalyzer__LocalDirectoryImportMode` 决定复制（`Copy`，默认）还是引用（`Reference`，零拷贝但要求目录常驻）
 
 <Callout type="warn">
   白名单是安全边界：不在白名单内的路径会被拒绝导入。生产环境请按需最小化放行范围。
@@ -69,20 +85,24 @@ environment:
 
 </Tabs>
 
-## 公开与私有
+## 公共字段（三种来源共有）
 
-| 选项 | 行为 |
-| --- | --- |
-| **公开仓库** 开启 | 任何人可浏览文档，路由 `/{owner}/{repo}` 对搜索引擎开放 |
-| **公开仓库** 关闭 | 仅登录后按权限可见（创建者与管理员） |
+| 字段 | 必填 | 默认/说明 |
+| --- | --- | --- |
+| 组织/命名空间 | 是 | 文档路由一级路径，也是 MCP 参数 `owner`；如 `openai` 或 `team/backend` |
+| 仓库名称 | 是 | 文档路由二级路径，也是 MCP 参数 `name` |
+| 分支名称 | 是 | 默认 `main`；Git 来源见上文的自动分支下拉，ZIP/目录来源为文本输入 |
+| 语言 | 是 | 文档生成语言，默认 `en`，12 种可选（简体中文/English/日本語…） |
+| 生成 SKILL | 否 | 默认**开**；"导出时将生成的文档打包为 SKILL ZIP" |
+| 公开仓库 | 否 | 默认**开**："任何人都可以查看此仓库"；关闭则"仅您可以访问此仓库"。ZIP/目录来源**强制私有**（开关禁用） |
 
-**生成 SKILL** 开启时，系统会额外产出一份把本仓库文档打包的 SKILL ZIP，可在文档页"导出 SKILL"下载，用于把知识库挂载为 Agent 技能。
+点击**提交**（提交中按钮变"提交中..."）。
 
 ## 提交后的处理过程
 
 提交后仓库进入队列，后台 Worker 依次执行：克隆/解压 → 目录扫描 → AI 生成目录 → 并行生成正文 → 翻译/思维导图。完整机制见[仓库处理流水线](/docs/advanced/pipeline)。
 
-处理进度与日志在管理后台[仓库管理](/docs/admin-guide/repositories)可见：
+处理进度、扫描策略与在线编辑都在管理后台[仓库管理](/docs/admin-guide/repositories)：
 
 ![后台仓库管理](/images/admin-repositories.png)
 
@@ -92,7 +112,10 @@ environment:
 Worker 未运行或 `WIKI_MAX_CONCURRENT_GENERATIONS` 已满；查看后端日志确认。
 
 **生成失败提示 AI 调用错误**
-Key 无效、余额不足或 Endpoint 不可达。在[仓库管理](/docs/admin-guide/repositories)详情页查看失败原因，修正后可重试生成。
+Key 无效、余额不足或 Endpoint 不可达。在[仓库管理](/docs/admin-guide/repositories)详情页的日志 Tab 查看失败原因，修复后可重新生成。
 
 **私有仓库 Clone 失败**
-确认使用"用户名 + Token"而非密码；企业内网 Git 需确认容器网络可达。
+确认使用"用户名 + 访问令牌"而非网页登录密码；企业内网 Git 需确认容器网络可达。
+
+**分支下拉一直显示"正在加载分支"**
+该平台不支持自动分支探测，切换为"手动输入"直接填。

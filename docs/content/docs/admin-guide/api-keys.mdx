@@ -1,6 +1,6 @@
 ---
 title: "API Key 管理"
-description: 签发、限定范围与吊销用于程序化访问 OpenDeepWiki 的 API 密钥。
+description: 创建与管理无头 MCP 访问密钥：字段说明、一次性展示机制、撤销流程。
 ---
 
 import { Steps, Step } from "fumadocs-ui/components/steps";
@@ -8,49 +8,48 @@ import { Callout } from "fumadocs-ui/components/callout";
 
 # API Key 管理
 
-路径：**管理后台 → API Key**。
+路径：**管理后台 → API 密钥**。
 
-API Key 用于**程序化访问**：脚本、CI、第三方系统通过 OpenAPI 调用仓库与聊天接口时，用 API Key 认证，而不是借用某个人类的登录态。
+API Key 的定位是**无头（Headless）MCP 访问密钥**：脚本、CI、Agent 等程序化调用方通过它访问 MCP 与相关接口，而不借用某个用户的登录态。
 
 ![API Key 管理](/images/admin-api-keys.png)
 
-## 签发 API Key
+## 创建 API 密钥
 
 <Steps>
 
-<Step>点击**创建 Key**。</Step>
+<Step>点击右上角**创建 API 密钥**。</Step>
 
-<Step>填写：</Step>
+<Step>填写表单：</Step>
 
-| 字段 | 说明 |
-| --- | --- |
-| 名称 | 用途标识，如 `ci-doc-sync` |
-| 归属用户 | Admin 可为他人签发；普通场景选自己 |
-| 范围（scope） | 该 Key 可调用的接口范围 |
-| 有效期（天数） | 到期自动失效；长期 CI 建议设置轮换周期 |
+| 字段 | 必填 | 说明 |
+| --- | --- | --- |
+| 名称 | 是 | 用途标识，placeholder 示例"Marvin 服务账户" |
+| 用户 | 是 | 下拉选择归属用户（邮箱或名称，管理员带 `(Admin)` 后缀）；密钥权限与该用户一致 |
+| 权限范围 | 否 | 当前提供 `mcp:read`（只读 MCP 访问） |
+| 过期天数 | 否 | 数字，**留空表示永不过期** |
 
-<Step>创建成功后**立即复制**密钥——出于安全，密钥只在创建时完整显示一次。</Step>
+<Step>点**创建**，弹出"API 密钥已创建"对话框。</Step>
+
+<Step>**立即复制密钥**——对话框有黄色警告："请立即复制此密钥。关闭此对话框后将无法再次查看。"下方回显名称、权限范围与过期时间，点**已复制密钥**关闭。</Step>
 
 </Steps>
 
-## 使用方式
+## 列表信息
 
-请求 API 时在 Header 中携带 Key（以仓库列表接口为例）：
-
-```bash
-curl -H "Authorization: Bearer odw_xxxxxxxx" \
-     https://wiki.example.com/api/v1/repositories
-```
-
-各接口的能力与参数见 [API 参考](/docs/api-reference/repositories)。
-
-## 轮换与吊销
-
-| 操作 | 时机 |
+| 列 | 说明 |
 | --- | --- |
-| 轮换 | 达到有效期前：签发新 Key → 更新调用方 → 删除旧 Key |
-| 吊销 | Key 疑似泄露：立即删除，调用方将收到 401 |
+| 名称 / 密钥前缀 | 前缀形如 `dwk_xxxx...`，用于辨认，不含完整密钥 |
+| 用户 | 归属用户 |
+| 权限范围 | Badge 展示（如 `mcp:read`） |
+| 过期时间 | 永不过期显示"永不" |
+| 最后使用 | 从未使用 / 最近一次调用时间，可用于清理僵尸密钥 |
+| 操作 | 撤销 |
+
+## 撤销密钥
+
+点击行内垃圾桶图标，确认弹窗警告："此操作将立即撤销此 API 密钥。使用此密钥的所有服务将失去访问权限。此操作无法撤销。"点**撤销密钥**立即生效。
 
 <Callout type="warn">
-  API Key 与其归属用户的权限一致。为 CI 签发的 Key 请遵循最小权限与最短有效期原则；不要把 Key 写进代码仓库，使用环境变量或密钥管理服务保存。
+  轮换姿势：先创建新 Key → 更新调用方 → 再撤销旧 Key，避免服务中断。不要把完整密钥写进代码仓库，用环境变量或密钥管理服务保存。
 </Callout>

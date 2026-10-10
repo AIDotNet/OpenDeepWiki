@@ -1,80 +1,137 @@
 ---
-title: "聊天助手与聊天渠道"
-description: 启用站内仓库 AI 助手，并接入飞书、QQ、微信、Slack 等外部聊天渠道。
+title: "聊天助手与聊天平台"
+description: 配置站内对话助手（模型/MCP/技能绑定）并接入飞书、QQ 机器人、微信客服、Slack 等聊天平台。
 ---
 
 import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 import { Callout } from "fumadocs-ui/components/callout";
 
-# 聊天助手与聊天渠道
+# 聊天助手与聊天平台
 
 本页包含两个相关但独立的功能：
 
-1. **聊天助手**：控制仓库文档页的 AI 悬浮球（站内）
-2. **聊天渠道**：把仓库知识库接入外部 IM 平台（飞书/QQ/微信/Slack 等）
+1. **对话助手配置**：控制仓库文档页的 AI 悬浮球（站内）
+2. **聊天平台配置**：把仓库知识库接入外部 IM（飞书 / QQ 机器人 / 微信客服 / Slack / 自定义）
 
-## 聊天助手
+## 对话助手配置
 
-路径：**管理后台 → 聊天助手**：
+路径：**管理后台 → 对话助手配置**：
 
 ![聊天助手配置](/images/admin-chat-assistant.png)
 
-启用并勾选模型后，仓库文档页会出现 AI 悬浮球：
-
-<Steps>
-
-<Step>确认[模型管理](/docs/admin-guide/ai-providers)中已有可用模型。</Step>
-
-<Step>在聊天助手页打开**启用**开关。</Step>
-
-<Step>在模型列表中勾选允许使用的模型，指定默认模型。</Step>
-
-<Step>（可选）按需开启图片上传等能力。</Step>
-
-<Step>保存后刷新仓库页面，右下角出现悬浮球即为生效。</Step>
-
-</Steps>
-
-<Callout type="info">
-  保存后 `/api/v1/chat/config` 会返回启用状态与模型清单，前端据此渲染悬浮球。看不到悬浮球时先刷新页面，再回来核对本页配置。
-</Callout>
-
-## 聊天渠道
-
-路径：**管理后台 → 聊天渠道**：
-
-![聊天渠道](/images/admin-chat-providers.png)
-
-把知识库接入 IM，团队成员在群里 @机器人 即可提问。通用接入流程：
-
-<Steps>
-
-<Step>在 IM 开放平台创建机器人/应用，拿到 App ID / Secret 等凭证。</Step>
-
-<Step>在聊天渠道页选择对应平台，填入凭证与回调配置。</Step>
-
-<Step>在 IM 平台侧配置事件回调地址指向本实例（需要公网可访问，见[反向代理](/docs/deployment/reverse-proxy)）。</Step>
-
-<Step>在群里 @机器人 提问验证。</Step>
-
-</Steps>
-
-| 平台 | 接入要点 |
+| 配置项 | 说明 |
 | --- | --- |
-| 飞书 | 开放平台创建企业自建应用，开通机器人能力与消息回调 |
-| QQ | 官方机器人平台，配置 Webhook 推送 |
-| 微信 | 按所接入的微信机器人方案提供凭证 |
-| Slack | 创建 Slack App，配置 Socket/Webhook 模式 |
+| 启用对话助手 | 开关；开启后文档页面显示对话助手悬浮球 |
+| 可用模型 | 多选：选择助手可以使用的 AI 模型（来自[模型管理](/docs/admin-guide/ai-providers)中已启用的模型，显示上下文/能力标记） |
+| 默认模型 | 用户打开对话面板时默认选中的模型 |
+| 可用 MCPs | 多选：允许助手调用的 MCP 工具（来自 MCPs 管理） |
+| 可用 Skills | 多选：允许助手使用的技能（来自 Skills 管理） |
 
-消息处理是异步队列（`ChatMessageQueue`），高峰期消息会排队依次回答。
+配置后点**保存配置**，前端通过 `/api/v1/chat/config` 读取状态渲染悬浮球。
+
+<Steps>
+
+<Step>确认[AI 服务商](/docs/admin-guide/ai-providers)中已有已启用的服务商与模型（没有时页面会提示"暂无 AI 服务商"）。</Step>
+
+<Step>打开**启用对话助手**开关。</Step>
+
+<Step>勾选可用模型、指定默认模型；按需勾选 MCP 工具与技能。</Step>
+
+<Step>保存后刷新仓库文档页，右下角出现悬浮球即为生效。</Step>
+
+</Steps>
+
+## 聊天平台配置
+
+路径：**管理后台 → 聊天平台配置**。卡片列表显示各平台的显示名称、启用状态、注册状态、Webhook 地址、消息间隔与最大重试次数；每张卡片可重新加载、编辑、删除、启停。
+
+![聊天平台配置](/images/admin-chat-providers.png)
+
+### 新增平台
+
+点击**新增平台**，表单分两部分：**通用字段** + 随平台动态渲染的**平台配置**。
+
+通用字段：
+
+| 字段 | 必填 | 默认 | 说明 |
+| --- | --- | --- | --- |
+| 平台 | 是 | 飞书 | 飞书 / QQ机器人 / 微信客服 / Slack / 自定义（编辑时锁定） |
+| 显示名称 | 是 | | 界面展示名 |
+| Webhook 地址 | 否 | | 平台回调入口 |
+| 消息间隔 | 否 | 500（ms） | 两条回复之间的间隔，防止刷屏限流 |
+| 最大重试次数 | 否 | 3 | 回复失败重试上限 |
+| 启用 | 否 | 开 | |
+
+### 各平台配置字段
+
+<Tabs groupId="platform">
+
+<Tab value="飞书">
+
+| 字段 | 必填 | 类型 |
+| --- | --- | --- |
+| AppId | 是 | 文本 |
+| AppSecret | 是 | 密码 |
+| Verification Token | 否 | 密码 |
+| Encrypt Key | 否 | 密码 |
+| API 基础地址 | 否 | 文本（自建/私有化时覆盖） |
+| Token 缓存秒数 | 否 | 数字 |
+
+</Tab>
+
+<Tab value="QQ机器人">
+
+| 字段 | 必填 | 类型 |
+| --- | --- | --- |
+| AppId | 是 | 文本 |
+| AppSecret | 否 | 密码 |
+| Token | 是 | 密码 |
+| API 基础地址 / 沙箱 API 地址 | 否 | 文本 |
+| 启用沙箱 | 否 | 开关 |
+| Token 缓存秒数 / 心跳间隔 (ms) / 重连间隔 (ms) / 最大重连次数 | 否 | 数字 |
+
+</Tab>
+
+<Tab value="微信客服">
+
+| 字段 | 必填 | 类型 |
+| --- | --- | --- |
+| AppId / AppSecret / Token / EncodingAESKey | 均是 | 密码 |
+| API 基础地址 | 否 | 文本 |
+| Token 缓存秒数 | 否 | 数字 |
+| 加密模式 | 否 | 文本 |
+
+</Tab>
+
+<Tab value="Slack">
+
+| 字段 | 必填 | 说明 |
+| --- | --- | --- |
+| Bot Token | 是 | `xoxb-...`，来自 Slack App → OAuth & Permissions → Bot User OAuth Token |
+| Signing Secret | 是 | 来自 Basic Information → App Credentials，用于校验 Webhook 请求 |
+| API 基础地址 | 否 | 留空默认 `https://slack.com/api` |
+| 在线程中回复 | 否 | 开启后回复以线程消息（thread reply）形式发送 |
+
+</Tab>
+
+<Tab value="自定义">
+
+平台配置退化为一个 **配置 JSON** 文本域，按目标平台的要求自行填写凭证与参数。
+
+</Tab>
+
+</Tabs>
+
+保存后，在 IM 平台侧把事件回调指向本实例（需公网可达，见[反向代理](/docs/deployment/reverse-proxy)），在群里 @机器人 提问即可验证。消息走异步队列（高峰期排队依次回答）。
 
 ## 常见问题
 
 **悬浮球不出现**
-[聊天助手]未启用、未勾选模型，或浏览器缓存旧页面。
+助手未启用、未勾选模型，或浏览器缓存旧页面；用 `curl /api/v1/chat/config` 确认返回 `isEnabled: true`。
+
+**平台卡片显示"未注册"**
+平台侧回调未打通：检查 Webhook 地址、凭证是否填写完整、实例是否公网可达。
 
 **IM 机器人不回复**
-回调地址公网不可达、凭证错误、或模型未启用；逐项检查并看后端日志中的渠道错误。
-
-**回答内容不贴合仓库**
-确认提问时目标仓库已完成文档生成；机器人是按仓库文档作答的。
+依次检查：回调地址 → 平台凭证 → 助手是否勾选模型；后端日志中有渠道错误详情。

@@ -78,6 +78,16 @@ Worker 没跑起来或全局生成配额（`WIKI_MAX_CONCURRENT_GENERATIONS`，�
 
 反向代理限制。Nginx 加 `client_max_body_size 512m;`，见[反向代理](/docs/deployment/reverse-proxy#常见问题)。
 
+## 模型配置相关
+
+### 后台改了模型但生成还在用旧模型
+
+优先级顺序是：**模型配置页绑定 > 系统设置 > 环境变量**。确认[模型配置](/docs/admin-guide/ai-providers)页的绑定已点"保存"；系统设置中如有旧值也会覆盖环境变量。
+
+### 怎么快速验证 AI 配置是否正确
+
+两个官方入口：AI 服务商面板的**连通性检查**（选模型点"检查"），以及[系统设置](/docs/admin-guide/system-settings)顶部的**供应商快速设置**向导（加载模型即验证 Key）。
+
 ## MCP 相关
 
 ### MCP 客户端连接后没有响应

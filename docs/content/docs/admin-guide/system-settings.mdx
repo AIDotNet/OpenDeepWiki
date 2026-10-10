@@ -1,47 +1,95 @@
 ---
 title: "系统设置"
-description: 查看、调整 OpenDeepWiki 的运行参数：生成并行度、超时、翻译语言与 Graphify。
+description: 运行参数设置页的完整指南：快速设置向导、设置分类、编辑控件规则与保存机制。
 ---
 
+import { Steps, Step } from "fumadocs-ui/components/steps";
 import { Callout } from "fumadocs-ui/components/callout";
 
 # 系统设置
 
-路径：**管理后台 → 系统设置**。
-
-系统设置以键值形式存储运行参数（持久化在数据库 `SystemSettings` / `LocalStorage` 中）。这里的配置**优先于部署时的环境变量**，是运行期调参的主入口：
+路径：**管理后台 → 系统设置**。运行参数以键值形式存储（持久化在数据库），这里的配置**优先于环境变量**，是运行期调参的主入口。
 
 ![系统设置](/images/admin-settings.png)
 
-## 主要配置分组
+## 供应商快速设置向导
 
-| 分组 | 代表键 | 作用 |
+页面顶部是**供应商快速设置**向导——新实例跑通 AI 链路的最快方式：
+
+<Steps>
+
+<Step>**供应商**：下拉选择一个服务商预设。</Step>
+
+<Step>**API 密钥**：粘贴该服务商的 Key，点**加载模型**（失败会提示检查密钥；成功提示"已加载 N 个模型"）。</Step>
+
+<Step>**模型分配**：分别为目录模型、内容模型、翻译模型选择模型，页面附选型建议（目录/翻译用低成本模型，内容用最强模型）。</Step>
+
+<Step>点**应用配置**，一键完成服务商录入 + 模型同步 + 三任务绑定（提示"供应商设置已保存"）。</Step>
+
+</Steps>
+
+## 设置页布局
+
+- 左侧：搜索框（按键名、说明或当前值搜索）+ 分类导航（含每类字段数 Badge 与待提交数）
+- 顶部：统计卡（分类总数 / 字段总数 / 已修改字段）
+- 右侧：设置项编辑区
+
+## 设置分类
+
+设置键按四个分类 Tab 展示：
+
+| 分类 | 典型键 |
+| --- | --- |
+| 通用设置 | `SITE_URL` 等 |
+| AI 设置 | 全部 `WIKI_*` 运行参数（内部再分 5 组：内容模型与接口 / 目录与文档策略 / 翻译配置 / 运行与重试策略 / 其他配置） |
+| GitHub | `GITHUB_APP_ID` / `GITHUB_APP_PRIVATE_KEY`（Base64 PEM，敏感值） / `GITHUB_APP_NAME` |
+| 安全设置 | 密钥类配置 |
+
+## 常用设置项（界面名称与说明）
+
+| 界面名称 | 键 | 说明 |
 | --- | --- | --- |
-| 目录生成 | `WIKI_MAX_TREE_NODES`、`WIKI_FILE_LIST_MAX_DEPTH`、`WIKI_DIRECTORY_TREE_MAX_DEPTH` | 控制目录扫描的深度与节点预算 |
-| 内容生成 | `WIKI_PARALLEL_COUNT`、`WIKI_DOCUMENT_GENERATION_TIMEOUT_MINUTES`、`WIKI_MAX_OUTPUT_TOKENS` | 生成速度与单篇超时 |
-| 重试 | `WIKI_MAX_RETRY_ATTEMPTS`、`WIKI_RETRY_DELAY_MS` | AI 调用失败重试策略 |
-| 翻译 | `WIKI_LANGUAGES`、`WIKI_TRANSLATION_TIMEOUT_MINUTES`、`WIKI_TITLE_TRANSLATION_TIMEOUT_MINUTES` | 语种与翻译超时 |
-| 模型绑定 | `WIKI_CATALOG_PROVIDER_ID / MODEL_ID`、`WIKI_CONTENT_*`、`WIKI_TRANSLATION_*`、`GRAPHIFY_*` | 各任务使用的模型（通常在[模型配置](/docs/admin-guide/ai-providers)页修改） |
-| AI 扫描 | `WIKI_ENABLE_AI_SCAN_PROFILE` | 是否让 AI 自动选择扫描深度策略 |
+| Wiki 语言 | `WIKI_LANGUAGES` | 生成和翻译使用的语言代码，逗号分隔 |
+| 并行生成任务数 | `WIKI_PARALLEL_COUNT` | 同时运行的文档生成任务上限 |
+| 同时生成的仓库数 | `WIKI_MAX_CONCURRENT_GENERATIONS` | 集群级上限，多实例共享，默认 1 |
+| 单次输出 Token 上限 | `WIKI_MAX_OUTPUT_TOKENS` | 单次生成请求的最大返回 Token |
+| 文档生成超时（分钟） | `WIKI_DOCUMENT_GENERATION_TIMEOUT_MINUTES` | 单篇生成最长执行时间 |
+| 翻译超时（分钟） | `WIKI_TRANSLATION_TIMEOUT_MINUTES` | 单篇翻译最长执行时间 |
+| 标题翻译超时（分钟） | `WIKI_TITLE_TRANSLATION_TIMEOUT_MINUTES` | 标题翻译超时 |
+| README 最大长度 | `WIKI_README_MAX_LENGTH` | 纳入生成上下文的 README 截断长度 |
+| 目录树最大深度 | `WIKI_DIRECTORY_TREE_MAX_DEPTH` | 目录结构分析的最大层级 |
+| 最大重试次数 / 重试延迟（毫秒） | `WIKI_MAX_RETRY_ATTEMPTS` / `WIKI_RETRY_DELAY_MS` | AI 调用重试策略 |
+| 提示词模板目录 | `WIKI_PROMPTS_DIRECTORY` | 提示词模板相对目录，见[提示词定制](/docs/advanced/prompts) |
 
-完整变量含义见[环境变量大全](/docs/deployment/environment-variables)——环境变量与本页设置作用于同一批配置项，本页优先。
+## 编辑控件规则
 
-## 修改与生效
+设置页按值类型自动选择控件：
 
-1. 找到目标键，修改值并保存
-2. 后台 Worker 在下个任务周期读取新值；个别项（如语种列表）对**之后新建**的仓库生效
-3. 拿不准的键不要改：保持默认即可满足绝大多数场景
+- 布尔值 → 开关（已启用 / 已停用）
+- 键含 `template`/`prompt` 或值超过 100 字符 → 多行文本框
+- 键名含 `API_KEY` / `SECRET` / `PASSWORD` / `TOKEN` / `PRIVATE_KEY` → 密码框 + 显示/隐藏眼睛按钮 + "敏感值" Badge
+- 键名含 `COUNT` / `LIMIT` / `TIMEOUT` 等 → 数字输入框
+
+每个被修改的字段会出现**"待提交"** Badge 与**"还原字段"**按钮（一键恢复原值）。
+
+## 保存机制
+
+- 页头按钮：刷新 / 放弃更改 / **保存更改**
+- **只保存发生变化的字段**；有修改时底部出现粘性确认条"N 个已修改字段待确认"
+
+<Callout type="info">
+  模型绑定类键（`WIKI_CATALOG_*`、`WIKI_CONTENT_*`、`WIKI_TRANSLATION_*`、`GRAPHIFY_*`）已迁移到[模型配置](/docs/admin-guide/ai-providers)页维护，此页不再显示，页面顶部有跳转提示。
+</Callout>
 
 ## 推荐调整场景
 
 | 场景 | 建议调整 |
 | --- | --- |
-| 大仓库生成经常超时 | 调大 `WIKI_DOCUMENT_GENERATION_TIMEOUT_MINUTES`；或调低 `WIKI_PARALLEL_COUNT` 减轻限流 |
-| AI 服务商限流 429 | 降低 `WIKI_PARALLEL_COUNT`；增大 `WIKI_RETRY_DELAY_MS` |
+| 大仓库生成经常超时 | 调大"文档生成超时"；或调低"并行生成任务数"减轻限流 |
+| AI 服务商限流 429 | 降低"并行生成任务数"；增大"重试延迟" |
 | 只想要中文文档 | `WIKI_LANGUAGES` 设为 `zh` |
-| 翻译太慢 | 换更快的翻译模型（模型配置页），或减少语种 |
-| 小团队省钱 | `WIKI_ENABLE_AI_SCAN_PROFILE=False`（默认）+ 中端模型 |
+| 翻译太慢 | 到模型配置页换更快的翻译模型，或减少语种 |
 
 <Callout type="warn">
-  修改 `WIKI_LANGUAGES` 等键只影响新仓库；已有仓库的语言版本由生成时的配置决定，需要重新生成才会变化。
+  修改 `WIKI_LANGUAGES` 等键只影响之后新建的仓库；已有仓库需重新生成才会变化。
 </Callout>

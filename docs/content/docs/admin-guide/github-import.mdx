@@ -37,6 +37,14 @@ import { Callout } from "fumadocs-ui/components/callout";
 
 在 GitHub 导入页填入 App ID、Private Key 与 App Slug（App 名称的小写形式），保存。
 
+凭证也可以在**系统设置 → GitHub 分类**中维护（[系统设置](/docs/admin-guide/system-settings)）：
+
+| 设置键 | 界面名称 | 说明 |
+| --- | --- | --- |
+| `GITHUB_APP_ID` | GitHub App ID | 用于签发安装访问令牌的数值 ID |
+| `GITHUB_APP_PRIVATE_KEY` | GitHub App 私钥 | Base64 编码的 PEM 私钥，页面按敏感值处理（密码框） |
+| `GITHUB_APP_NAME` | GitHub App 名称 | 构建 App 安装链接与回调地址时使用的 slug |
+
 </Step>
 
 <Step>

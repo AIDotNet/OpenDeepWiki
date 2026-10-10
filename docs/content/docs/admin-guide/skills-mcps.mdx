@@ -1,61 +1,79 @@
 ---
-title: "技能包、MCP 工具与 MCP Provider"
-description: 通过 Skill 包与外部 MCP 服务扩展 AI 的能力边界。
+title: "技能包与 MCP 管理"
+description: 管理 Agent Skills 技能包、外部 MCPs 工具，以及对外提供服务的 MCP Provider。
 ---
 
+import { Steps, Step } from "fumadocs-ui/components/steps";
 import { Callout } from "fumadocs-ui/components/callout";
 
-# 技能包、MCP 工具与 MCP Provider
+# 技能包与 MCP 管理
 
-OpenDeepWiki 的 AI 不只靠提示词工作，还可以挂载**外部能力**：Skill 技能包与 MCP 工具服务。这三类配置都在**管理后台 → 工具**菜单下。
+相关配置分布在管理后台三处，方向各不相同：
 
-## 技能包（Skills）
+| 页面 | 路径 | 方向 |
+| --- | --- | --- |
+| Skills 管理 | 管理后台 → 工具配置 → Skills 管理 | 注入技能给 AI |
+| MCPs 管理 | 管理后台 → 工具配置 → MCPs 管理 | 引入外部 MCP 工具给 AI 调用 |
+| MCP 管理 | 管理后台 → MCP 管理 | 对外提供 MCP 服务（含调用日志与限流） |
 
-路径：**管理后台 → 工具 → 技能包**：
+## Skills 管理（Agent Skills）
 
-![技能包管理](/images/admin-skills.png)
+遵循 **Agent Skills 开放标准**：每个 Skill 是一个包含 `SKILL.md` 的 ZIP 包，`SKILL.md` 必须含 `name` 与 `description` 字段。
 
-Skill 是一个 ZIP 包（含 `SKILL.md` 与资源文件），描述一项可复用的能力或知识。上传后可在聊天助手等场景启用，使 AI 掌握额外技能——比如"按公司规范写周报""用内部术语表翻译"。
+![Skills 管理](/images/admin-skills.png)
 
-上传要求：
+- **上传 Skill**：点击右上角上传按钮，选择 ZIP（只支持 .zip，否则提示"只支持 ZIP 格式的压缩包"）
+- **从磁盘刷新**：重新扫描服务器上的 Skills 目录
+- 卡片信息：名称、版本、作者、许可证、兼容性、允许的工具、描述、启用状态
+- 删除警示："将同时删除磁盘上的文件夹，此操作无法撤销"
 
-- ZIP 内包含 `SKILL.md`（元数据与指令说明）
-- 名称唯一，便于在启用列表中辨识
+上传的 Skill 可在[对话助手配置](/docs/admin-guide/chat-assistant)中勾选启用，让站内 AI 掌握该技能。
 
-## MCP 工具
+## MCPs 管理（外部 MCP 工具）
 
-路径：**管理后台 → 工具 → MCP 工具**：
+登记**外部** MCP 服务器，让 OpenDeepWiki 的 AI 在对话中调用这些工具：
 
-![MCP 工具](/images/admin-mcps.png)
+点击**新增 MCP**，表单字段：
 
-登记**外部** MCP 服务器（工具服务），让 OpenDeepWiki 的 AI 在对话中调用这些工具（搜索、数据库查询、工单系统等）：
+| 字段 | 必填 | 说明 |
+| --- | --- | --- |
+| 名称 | 是 | MCP 标识 |
+| 服务器地址 | 是 | MCP 端点 URL |
+| API Key | 可选 | 目标服务要求的凭证 |
+| 描述 | 可选 | |
+| 启用 | 否 | 默认开 |
+| 排序 | 否 | 控制在助手选择列表中的顺序 |
+
+启用的 MCP 会出现在[对话助手配置](/docs/admin-guide/chat-assistant)的"可用 MCPs"多选列表中。
+
+## MCP 管理（对外提供服务）
+
+路径：**管理后台 → MCP 管理**。管理 OpenDeepWiki **对外暴露**的 MCP 提供商（OpenDeepWiki 自身的仓库知识服务就是一个内置提供商），页面分**提供商**与**调用日志**两个 Tab。
+
+新增/编辑提供商的字段：
 
 | 字段 | 说明 |
 | --- | --- |
-| 名称 | 工具服务标识 |
-| 类型 / 端点 | 传输方式与服务地址（Streamable HTTP / SSE） |
-| 认证 | 服务要求的凭证 |
+| 名称 / 描述 | 标识与说明 |
+| 服务地址 | MCP 端点；有"固定全局 MCP 地址"提示——后端会根据问题自动路由仓库 |
+| 传输方式 | Streamable HTTP / SSE |
+| 绑定模型 | 可选；"不绑定模型"表示使用系统默认 |
+| 需要用户 API Key | 开启后终端用户调用前需自行提供密钥；配套"API Key 获取地址"（指导用户去哪获取）与"系统 API Key"字段 |
+| 每日请求上限 | 数字，可"不限"；用于限流 |
+| 排序号 / 图标地址 / 启用此提供商 | 展示与启停 |
 
-在[聊天助手](/docs/admin-guide/chat-assistant)中勾选启用的 MCP 工具后，站内对话即可使用。
-
-## MCP Provider
-
-路径：**管理后台 → MCP Provider**：
-
-![MCP Provider](/images/admin-mcp-providers.png)
-
-与"MCP 工具"方向相反：MCP Provider 管理的是**对外提供** MCP 能力的元数据与用量统计。OpenDeepWiki 自身就是最重要的 MCP Provider——它把仓库知识通过 `/api/mcp` 暴露出去（接入方法见 [MCP 集成](/docs/mcp)），本页可查看调用统计与日常用量。
+**调用日志 Tab**：时间 / 用户 / 工具 / 状态 / 耗时，合计"共 N 条"，配合仪表盘的 MCP 使用趋势排查调用量与错误率。
 
 ## 三者的关系
 
 ```
-外部 MCP 服务（工具） ──调用──►  OpenDeepWiki AI
-OpenDeepWiki AI   ──暴露──►  MCP 端点（/api/mcp）
-Skill 包          ──注入──►  AI 能力/知识
+外部 MCP 服务（MCPs 管理）──调用──►  OpenDeepWiki AI
+OpenDeepWiki AI          ──暴露──►  MCP 端点 /api/mcp（MCP 管理配置与审计）
+Skill 包（Skills 管理）    ──注入──►  AI 能力/知识
 ```
 
-| 配置 | 方向 | 典型用途 |
-| --- | --- | --- |
-| 技能包 | 注入能力 | 定制 AI 的领域知识与技能 |
-| MCP 工具 | 引入外部工具 | 对话中查外部系统 |
-| MCP Provider | 对外提供服务 | 把仓库知识供给全公司 Agent |
+| 需求 | 去哪配 |
+| --- | --- |
+| 让 AI 学会公司内部规范 | 上传 Skill 并在对话助手勾选 |
+| 让 AI 对话中查外部系统（工单/数据库） | MCPs 管理登记外部 MCP |
+| 给全公司 Agent 提供仓库知识、控制限流 | MCP 管理 |

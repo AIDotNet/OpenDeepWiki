@@ -1,79 +1,143 @@
 ---
-title: "AI Provider 与模型管理"
-description: 在运行时管理 AI 服务商、模型档案与生成任务的模型绑定，无需重启服务。
+title: "AI 服务商与模型管理"
+description: 在运行时管理 AI 服务商、模型档案与任务绑定：新增服务商、模型发现、连通性检查与快速设置向导。
 ---
 
 import { Steps, Step } from "fumadocs-ui/components/steps";
 import { Callout } from "fumadocs-ui/components/callout";
 
-# AI Provider 与模型管理
+# AI 服务商与模型管理
 
-除了部署时的环境变量（见 [AI 模型接入](/docs/deployment/ai-providers)），OpenDeepWiki 还支持**运行时**通过管理后台配置 AI：
+除部署时的环境变量（见 [AI 模型接入](/docs/deployment/ai-providers)）外，OpenDeepWiki 提供完整的运行时配置体系，全部在管理后台完成、**无需重启**：
 
-- **AI Provider**：服务商接入点（Endpoint + Key + 类型）
-- **模型管理**：为每个 Provider 登记可用模型与价格档案
-- **模型配置**：把"目录生成/正文生成/翻译/Graphify"绑定到具体 Provider+Model
+| 页面 | 路径 | 职责 |
+| --- | --- | --- |
+| AI 服务商 | 管理后台 → 工具配置 → AI 服务商 | 服务商接入：认证、端点、模型发现 |
+| 模型管理 | 管理后台 → 工具配置 → 模型管理 | 模型档案：上下文、价格、能力 |
+| 模型配置 | 管理后台 → 模型配置 | 任务路由：把系统任务绑定到 服务商+模型 |
 
-三层结构的好处：换 Key、换服务商、给不同任务分配不同模型，都在界面上完成，**无需重启**。
+## AI 服务商页
 
-## 第一步：添加 AI Provider
+页面为**左右双栏工作台**：左侧是服务商卡片列表（按"已启用/已禁用"分组，支持搜索），右侧是选中服务商的配置面板。系统已内置一批常见厂商预设（OpenRouter、DeepSeek、Moonshot、通义、百度等），预设描述中带有官网与获取 Key 的链接。
 
-路径：**管理后台 → AI Provider 管理**：
+![AI 服务商管理](/images/admin-ai-providers.png)
 
-![AI Provider 管理](/images/admin-ai-providers.png)
+### 新增服务商
 
-系统内置了一批常见厂商预设（OpenRouter、DeepSeek、Moonshot、通义、百度、Gitee AI 等），点击即可带出默认 Endpoint，只需填入你的 API Key。
+<Steps>
 
-| 字段 | 说明 |
+<Step>点击左栏顶部 **➕（新增服务商）**，弹出"新增自定义服务商"对话框。</Step>
+
+<Step>填写三个字段：</Step>
+
+| 字段 | 必填 | 说明 |
+| --- | --- | --- |
+| 服务商名称 | 是 | 全局唯一，如 `My OpenAI Proxy` |
+| 协议类型 | 否 | 默认 OpenAI，见下表 |
+| Base URL | 否 | 如 `https://api.example.com/v1`；创建后也可在右侧面板继续维护 |
+
+<Step>点击**新增**。系统创建服务商壳（默认：认证方式 API Key、未启用、支持模型发现），随后在右侧面板继续配置。</Step>
+
+</Steps>
+
+**协议类型**共 5 种：
+
+| 协议 | 界面说明 |
 | --- | --- |
-| 名称 | 自定义标识，如 `deepseek-main` |
-| 类型 | `OpenAI` / `AzureOpenAI` / `OpenAIResponses` / `Anthropic` / `DeepSeekOpenAI` |
-| Base URL | 服务端点，如 `https://api.deepseek.com/v1` |
-| ApiKey | 服务商密钥 |
-| Channel / Accounts / Capabilities | 高级字段：渠道配置与能力声明（JSON），一般保持默认 |
+| OpenAI | OpenAI Chat 兼容，兼容 `/v1/chat/completions` |
+| DeepSeekOpenAI | DeepSeek / MiMo OpenAI 兼容 Chat Completions |
+| OpenAIResponses | OpenAI Responses API / 推理模型 |
+| Anthropic | Claude / Messages API |
+| AzureOpenAI | Azure 部署端点 |
 
-## 第二步：登记模型
+### 配置服务商（右侧面板）
 
-路径：**管理后台 → 模型管理**：
+| 区域 | 字段/操作 | 说明 |
+| --- | --- | --- |
+| 基础 | API Key | 密码框，可切换明文；已有密钥时提示"留空表示保持原密钥，输入新值则覆盖" |
+| 基础 | API 代理地址 | 自定义端点，用于代理或第三方兼容服务 |
+| 基础 | 连通性检查 | 选择一个模型 → 点**检查**，立即验证 Key 与端点是否可用 |
+| 高级 | 唯一名称 / 显示名称 | 内置服务商的唯一名称与协议不可改 |
+| 高级 | 认证方式 | `API Key` / `OAuth` / `Channel` / `无需认证` |
+| 高级 | 模型发现 Endpoint | 留空则使用 `Base URL + /models` |
+| 高级 | 系统代理 URL / 图标 URL / 排序 / 描述 | 均可选 |
+| 高级 | 启用模型发现 | 开启后可调用服务商模型列表接口，同步到模型管理 |
+| 高级 | OAuth Config / Channel Config / Accounts / Request Overrides JSON | 高级账号令牌与请求覆盖（如 `{"headers":{"User-Agent":"..."}}`），普通场景留空 |
+
+修改后点 **保存**；顶部开关控制该服务商**启用/禁用**。内置服务商不能删除，不使用时停用即可。
+
+### 模型列表（服务商面板内）
+
+- **获取模型列表**：调用服务商 `/models` 接口自动同步模型（提示"发现 N 个模型，新增 M 个"）
+- **全部启用 / 全部禁用**：批量切换
+- **➕ 新增模型**：手动登记（弹窗字段见下）
+- 每行可单独启用/禁用、编辑
+
+### 新增/编辑模型弹窗
+
+| 字段 | 必填 | 说明 |
+| --- | --- | --- |
+| 模型 ID | 是 | 服务商的模型名，如 `gpt-4.1`、`deepseek-chat`（输入 `gpt-5+` 会自动切换协议为 OpenAI Responses） |
+| 显示名称 | 否 | 留空取模型 ID |
+| 模型类型 | 否 | 聊天 / 图像 / 语音 / 嵌入，默认聊天 |
+| 协议类型 | 否 | 默认"继承服务商"，可单独指定 |
+| 上下文窗口 / 最大输出 | 否 | Token 数 |
+| 输入价格 / 输出价格 / 缓存命中价 / 缓存创建价 | 否 | 美元 / 1M tokens，用于成本统计 |
+| 能力开关 | 否 | Tools（默认开）/ Vision / Thinking / JSON |
+| 默认模型 / 启用 | 否 | 开关 |
+
+## 模型管理页
+
+路径：**管理后台 → 工具配置 → 模型管理**。跨服务商的模型档案中心：顶部 5 张统计卡（模型总数/启用/Thinking/Vision/已配置价格），支持按服务商、类型、关键词筛选。
 
 ![模型管理](/images/admin-models.png)
 
-为 Provider 添加模型档案：
+点击**新增模型**弹出与上文相同的模型表单；卡片上可直接编辑、删除（需确认）。
 
-- **Model ID**：服务商的模型名（如 `deepseek-chat`、`gpt-4o`）
-- **价格档案**：输入/输出/缓存价格（每百万 Token），用于后台用量与成本统计
-- **Capabilities / Request Overrides**：能力开关与请求参数覆盖（JSON），有特殊需求时使用
+## 模型配置页（任务路由）
 
-## 第三步：绑定生成任务
-
-路径：**管理后台 → 模型配置**：
+路径：**管理后台 → 模型配置**。把系统流程绑定到"服务商 + 模型"组合：
 
 ![模型配置](/images/admin-model-configs.png)
 
-把四类任务分别绑定到 Provider + Model：
+**系统任务绑定**（核心流程，各绑定一行，可独立保存或"保存全部"）：
 
-| 任务 | 绑定项 |
+| 任务 | 说明 |
 | --- | --- |
-| Wiki 目录生成 | `WIKI_CATALOG_PROVIDER_ID` / `WIKI_CATALOG_MODEL_ID` |
-| Wiki 正文生成 | `WIKI_CONTENT_PROVIDER_ID` / `WIKI_CONTENT_MODEL_ID` |
-| 翻译 | `WIKI_TRANSLATION_PROVIDER_ID` / `WIKI_TRANSLATION_MODEL_ID` |
-| Graphify 图谱 | `GRAPHIFY_PROVIDER_ID` / `GRAPHIFY_MODEL_ID` |
+| 目录模型（WIKI_CATALOG） | 生成文档结构和导航树，快速低成本模型即可胜任 |
+| 内容模型（WIKI_CONTENT） | 生成包含代码分析的实际文档内容，建议用最强模型 |
+| 翻译模型（WIKI_TRANSLATION） | 翻译已生成文档，快速低成本模型即可 |
+| Graphify 模型 | 知识图谱产物生成 |
+
+每个绑定显示服务商的 API Key 配置状态（已配置/未配置）与模型元数据（上下文、最大输出、价格、能力标记）。未完成的绑定标记"等待绑定"。
+
+**通用业务模型配置**：面向 Chat Assistant、MCP、嵌入应用等场景的可复用绑定，字段为配置名称 / 服务商 / 模型 / 状态 / 默认 / 描述。
 
 <Callout type="info">
-  这里绑定的值会写入[系统设置](/docs/admin-guide/system-settings)，优先级高于部署时的环境变量。后台一旦完成绑定，环境变量的目录/正文模型配置即被覆盖。
+  模型配置页的绑定优先级**高于**环境变量。绑定后，环境变量中的 `WIKI_CATALOG_*`、`WIKI_CONTENT_*` 等模型配置不再生效；系统设置页中这些键也已隐藏并提示"请在模型配置中修改"。
 </Callout>
 
-## 验证配置
+## 系统设置里的"快速设置"向导
 
-1. 添加一个小仓库触发生成（见[仓库管理](/docs/admin-guide/repositories)）
-2. 观察处理日志：模型调用成功 → 配置生效
-3. 在仪表盘查看 Token 消耗统计是否出现新记录
+路径：**管理后台 → 系统设置**，页面顶部提供**供应商快速设置**向导，最快的三步配置：
 
-## 排障
+<Steps>
 
-| 现象 | 排查 |
+<Step>选择供应商 → 输入 API 密钥 → 点**加载模型**（自动发现可用模型）。</Step>
+
+<Step>分别为目录模型、内容模型、翻译模型选择模型（页面给出了各任务的选型建议）。</Step>
+
+<Step>点**应用配置**，一键完成服务商录入 + 模型同步 + 三任务绑定。</Step>
+
+</Steps>
+
+新实例推荐先用这个向导跑通，再到各管理页细调。
+
+## 验证与排障
+
+| 现象 | 处理 |
 | --- | --- |
-| 生成报 401 | Provider Key 错误或过期 |
-| 生成报 404 model | Model ID 拼写与厂商不一致 |
-| 绑定后仍走旧模型 | 检查[系统设置](/docs/admin-guide/system-settings)中是否有旧值覆盖了环境变量 |
-| 内网不通 | Base URL 需容器内可达：本机服务用 `host.docker.internal` |
+| 连通性检查失败 | 核对 Key、Base URL；内网服务确认容器可达（本机用 `host.docker.internal`） |
+| 获取模型列表失败 | 检查"模型发现 Endpoint"与"启用模型发现"开关 |
+| 绑定后生成仍走旧模型 | 模型配置页绑定未保存，或存在多个"默认"标记 |
+| 服务商名称重复提示 | 换一个唯一名称 |
