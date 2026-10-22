@@ -76,27 +76,15 @@ try
     // 根据配置添加数据库服务
     builder.Services.AddDatabase(builder.Configuration);
 
-    // 配置JWT
+    // 配置JWT：密钥必须由部署方提供，禁止使用内置/公开的默认值
+    var jwtOptions = builder.Configuration.GetSection("Jwt").Get<JwtOptions>() ?? new JwtOptions();
+    var secretKey = ResolveJwtSecret(jwtOptions.SecretKey, builder.Configuration["JWT_SECRET_KEY"], builder.Environment);
+    jwtOptions.SecretKey = secretKey;
     builder.Services.AddOptions<JwtOptions>()
         .Bind(builder.Configuration.GetSection("Jwt"))
-        .PostConfigure(options =>
-        {
-            if (string.IsNullOrWhiteSpace(options.SecretKey))
-            {
-                options.SecretKey = builder.Configuration["JWT_SECRET_KEY"]
-                    ?? throw new InvalidOperationException("JWT密钥未配置");
-            }
-        });
+        .PostConfigure(options => options.SecretKey = secretKey);
 
     // 添加JWT认证
-    var jwtOptions = builder.Configuration.GetSection("Jwt").Get<JwtOptions>() ?? new JwtOptions();
-    var secretKey = jwtOptions.SecretKey;
-    if (string.IsNullOrWhiteSpace(secretKey))
-    {
-        secretKey = builder.Configuration["JWT_SECRET_KEY"]
-            ?? "OpenDeepWiki-Default-Secret-Key-Please-Change-In-Production-Environment-2024";
-    }
-
     builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         .AddJwtBearer(options =>
         {
@@ -539,4 +527,37 @@ static string NormalizeEnvKey(string key)
     }
 
     return key.Replace("__", ":");
+}
+
+/// <summary>
+/// 解析 JWT 签名密钥。拒绝空值、过短以及已公开的历史默认值，避免攻击者伪造管理员令牌。
+/// 仅在 Development 环境下缺失时生成进程内临时随机密钥（重启后令牌失效）。
+/// </summary>
+static string ResolveJwtSecret(string? configured, string? fromEnv, IHostEnvironment environment)
+{
+    const int minLength = 32;
+    string[] knownInsecure =
+    [
+        "OpenDeepWiki-Default-Secret-Key-Please-Change-In-Production-Environment-2024",
+        "replace-this-in-production",
+        "change-this-to-a-long-random-secret"
+    ];
+
+    var secret = string.IsNullOrWhiteSpace(configured) ? fromEnv : configured;
+    var valid = !string.IsNullOrWhiteSpace(secret)
+                && secret.Length >= minLength
+                && !knownInsecure.Contains(secret, StringComparer.Ordinal);
+    if (valid)
+    {
+        return secret!;
+    }
+
+    if (environment.IsDevelopment())
+    {
+        Log.Warning("JWT_SECRET_KEY 未配置或不安全，开发环境使用临时随机密钥（重启后登录态失效）");
+        return Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(48));
+    }
+
+    throw new InvalidOperationException(
+        $"JWT_SECRET_KEY 未配置、长度不足 {minLength} 个字符或使用了公开的默认值。请设置为随机强密钥，例如：openssl rand -base64 48");
 }

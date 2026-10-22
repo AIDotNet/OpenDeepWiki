@@ -28,7 +28,7 @@ services:
       - ConnectionStrings__Default=Host=postgres;Port=5432;Database=opendeepwiki;Username=postgres;Password=opendeepwiki123
 
       # JWT 认证配置 (生产环境请修改)
-      - JWT_SECRET_KEY=OpenDeepWiki-Default-Secret-Key-Please-Change-In-Production-Environment-2024
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:?JWT_SECRET_KEY is required, generate one with: openssl rand -base64 48}
 
       # 仓库存储目录
       - REPOSITORIES_DIRECTORY=/data

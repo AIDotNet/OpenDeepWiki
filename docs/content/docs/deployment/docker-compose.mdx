@@ -73,7 +73,7 @@ services:
       - ConnectionStrings__Default=${CONNECTION_STRING:-Data Source=/data/opendeepwiki.db}
 
       # JWT
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-OpenDeepWiki-Default-Secret-Key-Please-Change-In-Production-Environment-2024}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:?set a random secret, e.g. openssl rand -base64 48}
 
       # 仓库存储与本地目录导入白名单
       - REPOSITORIES_DIRECTORY=/data

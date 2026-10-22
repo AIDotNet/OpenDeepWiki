@@ -60,7 +60,7 @@ spec:
     jwt_secret_key:
       description: 'JWT 密钥（生产环境请务必修改）'
       type: string
-      default: 'OpenDeepWiki-Default-Secret-Key-Please-Change-In-Production-Environment-2024'
+      default: ${{ random(48) }}
       required: true
     
     # 全局 AI 配置（用于 Chat 等功能）

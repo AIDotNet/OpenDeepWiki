@@ -96,7 +96,7 @@ echo # 多语言支持 ^(逗号分隔，如: en,zh,ja,ko,es,fr,de,pt-br^)
 echo WIKI_LANGUAGES=en,zh,zh-tw,ja,ko,es,fr,de,pt-br,pl,ru,ar
 echo.
 echo # JWT 配置（生产环境请修改）
-echo JWT_SECRET_KEY=OpenDeepWiki-Default-Secret-Key-Please-Change-In-Production-Environment-2024
+echo JWT_SECRET_KEY=REPLACE_WITH_RANDOM_SECRET_AT_LEAST_32_CHARS
 ) > "%BACKEND_DIR%\.env.example"
 
 echo 后端构建完成！
