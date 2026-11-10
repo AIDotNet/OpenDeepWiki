@@ -16,8 +16,8 @@ public class AiProviderPresetSeederTests
     {
         var catalog = new AiProviderPresetCatalog();
 
-        Assert.Equal(29, catalog.Presets.Count);
-        Assert.Equal(450, catalog.Presets.Sum(p => p.DefaultModels.Count));
+        Assert.Equal(30, catalog.Presets.Count);
+        Assert.Equal(618, catalog.Presets.Sum(p => p.DefaultModels.Count));
         Assert.Contains(catalog.Presets, p => p.BuiltinId == "routin-ai" && p.DefaultEnabled == true);
         Assert.Contains(catalog.Presets, p => p.BuiltinId == "codex-oauth" && p.AuthMode == "oauth");
         Assert.Contains(catalog.Presets.Single(p => p.BuiltinId == "openai").DefaultModels,
@@ -42,6 +42,10 @@ public class AiProviderPresetSeederTests
             p => p.BuiltinId == "cheaperinference" &&
                  p.DefaultBaseUrl == "https://api.cheaperinference.com/v1" &&
                  p.DefaultModels.Any(m => m.Id == "gpt-5.4-mini"));
+        Assert.Contains(catalog.Presets,
+            p => p.BuiltinId == "uberllm" &&
+                 p.DefaultBaseUrl == "https://api.uberllm.dev/v1" &&
+                 p.DefaultModels.Any(m => m.Id == "deepseek/deepseek-v4.1-flash"));
     }
 
     [Fact]
@@ -53,8 +57,8 @@ public class AiProviderPresetSeederTests
         await seeder.EnsureBuiltInProvidersAsync();
         await seeder.EnsureBuiltInProvidersAsync();
 
-        Assert.Equal(29, await context.AiProviderConfigs.CountAsync(p => !p.IsDeleted));
-        Assert.Equal(611, await context.AiModelConfigs.CountAsync(m => !m.IsDeleted));
+        Assert.Equal(30, await context.AiProviderConfigs.CountAsync(p => !p.IsDeleted));
+        Assert.Equal(618, await context.AiModelConfigs.CountAsync(m => !m.IsDeleted));
 
         var apiRoute = await context.AiProviderConfigs.SingleAsync(p => p.Name == "api-route");
         Assert.True(apiRoute.IsBuiltIn);
